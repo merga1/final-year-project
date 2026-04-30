@@ -1,0 +1,19 @@
+# Node
+node_modules/
+.next/
+dist/
+coverage/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# IDE
+.vscode/*.log
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,23 @@
+(node:8356) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+node:internal/child_process:421
+    throw new ErrnoException(err, 'spawn');
+    ^
+
+Error: spawn EPERM
+    at ChildProcess.spawn (node:internal/child_process:421:11)
+    at spawn (node:child_process:796:9)
+    at Object.execFile (node:child_process:349:17)
+    at exec (node:child_process:236:25)
+    at module.exports (C:\Users\Merga\Documents\Codex\2026-04-28\files-mentioned-by-the-user-final\backend\node_modules\tree-kill\index.js:29:9)
+    at C:\Users\Merga\Documents\Codex\2026-04-28\files-mentioned-by-the-user-final\backend\node_modules\@nestjs\cli\actions\start.action.js:67:17
+    at Object.onWatchStatusChange (C:\Users\Merga\Documents\Codex\2026-04-28\files-mentioned-by-the-user-final\backend\node_modules\@nestjs\cli\lib\compiler\watch-compiler.js:83:17)
+    at C:\Users\Merga\Documents\Codex\2026-04-28\files-mentioned-by-the-user-final\backend\node_modules\typescript\lib\typescript.js:132907:30
+    at emitFilesAndReportErrors (C:\Users\Merga\Documents\Codex\2026-04-28\files-mentioned-by-the-user-final\backend\node_modules\typescript\lib\typescript.js:132728:5)
+    at result.afterProgramCreate (C:\Users\Merga\Documents\Codex\2026-04-28\files-mentioned-by-the-user-final\backend\node_modules\typescript\lib\typescript.js:132903:5) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'spawn'
+}
+
+Node.js v24.14.0

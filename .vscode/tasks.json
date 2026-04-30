@@ -1,0 +1,59 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "backend: dev",
+      "type": "shell",
+      "command": "npm run start:dev",
+      "options": {
+        "cwd": "${workspaceFolder:backend}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "admin-dashboard: dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder:admin-dashboard}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "mobile-app: run",
+      "type": "shell",
+      "command": "flutter run",
+      "options": {
+        "cwd": "${workspaceFolder:mobile-app}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: smoke test",
+      "type": "shell",
+      "command": "npm run test:smoke",
+      "options": {
+        "cwd": "${workspaceFolder:backend}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "admin-dashboard: smoke test",
+      "type": "shell",
+      "command": "npm run test:smoke",
+      "options": {
+        "cwd": "${workspaceFolder:admin-dashboard}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "mobile-app: test",
+      "type": "shell",
+      "command": "flutter test",
+      "options": {
+        "cwd": "${workspaceFolder:mobile-app}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

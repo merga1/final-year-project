@@ -1,0 +1,43 @@
+{
+  "folders": [
+    {
+      "name": "workspace-root",
+      "path": "."
+    },
+    {
+      "name": "mobile-app",
+      "path": "mobile-app"
+    },
+    {
+      "name": "admin-dashboard",
+      "path": "admin-dashboard"
+    },
+    {
+      "name": "backend",
+      "path": "backend"
+    },
+    {
+      "name": "shared",
+      "path": "shared"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.dart_tool": true,
+      "**/.next": true,
+      "**/dist": true,
+      "**/node_modules": true
+    },
+    "editor.formatOnSave": true,
+    "typescript.tsdk": "admin-dashboard/node_modules/typescript/lib"
+  },
+  "extensions": {
+    "recommendations": [
+      "Dart-Code.flutter",
+      "Dart-Code.dart-code",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss"
+    ]
+  }
+}

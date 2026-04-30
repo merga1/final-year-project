@@ -1,0 +1,11 @@
+{
+  "deviceId": "ESP32-001",
+  "customerId": "CUS-001",
+  "timestamp": "2026-04-28T09:00:00Z",
+  "flowRateLpm": 12.4,
+  "totalUsageLiters": 8450.2,
+  "turbidityNtu": 2.1,
+  "valveState": "OPEN",
+  "connectivity": "ONLINE",
+  "batteryPercent": 88
+}
