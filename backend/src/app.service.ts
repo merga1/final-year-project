@@ -1,32 +1,24 @@
 import { Injectable } from '@nestjs/common';
-
-type SummaryCard = {
-  label: string;
-  value: string;
-};
-
-type RecentDevice = {
-  id: string;
-  customer: string;
-  status: 'Online' | 'Warning' | 'Offline';
-  note: string;
-};
-
-type Ticket = {
-  id: string;
-  issue: string;
-  priority: 'High' | 'Medium' | 'Low';
-};
-
-type MobileStatusCard = {
-  title: string;
-  value: string;
-  subtitle: string;
-  tone: 'success' | 'info' | 'warning' | 'danger';
-};
+import { CustomersService } from './customers/customers.service';
+import { DevicesService } from './devices/devices.service';
+import { BillingService } from './billing/billing.service';
+import { AlertsService } from './alerts/alerts.service';
+import { SupportTicketsService } from './support-tickets/support-tickets.service';
+import { PaymentsService } from './payments/payments.service';
+import { ReadingsService } from './readings/readings.service';
 
 @Injectable()
 export class AppService {
+  constructor(
+    private readonly customers: CustomersService,
+    private readonly devices: DevicesService,
+    private readonly billing: BillingService,
+    private readonly alerts: AlertsService,
+    private readonly tickets: SupportTicketsService,
+    private readonly payments: PaymentsService,
+    private readonly readings: ReadingsService,
+  ) {}
+
   getHealth() {
     return {
       status: 'ok',
@@ -35,72 +27,106 @@ export class AppService {
     };
   }
 
-  getAdminOverview() {
-    const summaryCards: SummaryCard[] = [
-      { label: 'Connected Devices', value: '128' },
-      { label: 'Open Tickets', value: '14' },
-      { label: 'Pending Payments', value: '37' },
-      { label: 'Critical Alerts', value: '3' },
-    ];
-
-    const recentDevices: RecentDevice[] = [
-      { id: 'ESP32-001', customer: 'Abel Tesfaye', status: 'Online', note: 'Water quality safe' },
-      { id: 'ESP32-018', customer: 'Liya Bekele', status: 'Warning', note: 'High usage detected' },
-      { id: 'ESP32-042', customer: 'Meron Alemu', status: 'Offline', note: 'No sync for 22 mins' },
-    ];
-
-    const ticketQueue: Ticket[] = [
-      { id: 'TCK-1005', issue: 'Poor water quality', priority: 'High' },
-      { id: 'TCK-1006', issue: 'Valve not responding', priority: 'High' },
-      { id: 'TCK-1007', issue: 'Billing dispute', priority: 'Medium' },
-    ];
+  async getAdminOverview() {
+    const [
+      totalCustomers, activeCustomers,
+      totalDevices, onlineDevices,
+      openTickets, criticalAlerts,
+      pendingBills, overdueCount,
+      verifiedToday, pendingPayments,
+      totalCollected, totalPending,
+      recentDevices, ticketQueue,
+    ] = await Promise.all([
+      this.customers.count(),
+      this.customers.countByStatus('active'),
+      this.devices.count(),
+      this.devices.countByConnectivity('ONLINE'),
+      this.tickets.countByStatus('open'),
+      this.alerts.countCriticalToday(),
+      this.billing.countByStatus('pending'),
+      this.billing.countByStatus('overdue'),
+      this.payments.countByStatus('verified'),
+      this.payments.countByStatus('pending'),
+      this.billing.totalCollected(),
+      this.billing.totalPending(),
+      this.devices.findAll().then(d => d.slice(0, 5)),
+      this.tickets.findAll().then(t => t.slice(0, 5)),
+    ]);
 
     return {
-      systemStatus: 'System Stable',
-      summaryCards,
-      recentDevices,
-      ticketQueue,
+      systemStatus: onlineDevices === totalDevices ? 'System Stable' : 'Attention Required',
+      summaryCards: [
+        { label: 'Connected Devices', value: String(totalDevices) },
+        { label: 'Open Tickets', value: String(openTickets) },
+        { label: 'Pending Payments', value: String(pendingBills) },
+        { label: 'Critical Alerts', value: String(criticalAlerts) },
+      ],
+      detailCards: [
+        { label: 'Total Customers', value: String(totalCustomers) },
+        { label: 'Active Accounts', value: String(activeCustomers) },
+        { label: 'Devices Online', value: String(onlineDevices) },
+        { label: 'Overdue Bills', value: String(overdueCount) },
+        { label: 'Verified Today', value: String(verifiedToday) },
+        { label: 'Pending Payments', value: String(pendingPayments) },
+        { label: 'Collected (ETB)', value: `ETB ${(totalCollected / 1000).toFixed(0)}K` },
+        { label: 'Pending (ETB)', value: `ETB ${(totalPending / 1000).toFixed(0)}K` },
+      ],
+      recentDevices: recentDevices.map(d => ({
+        id: d.meterId,
+        customer: d.customerId,
+        status: d.connectivity === 'ONLINE' ? 'Online' : d.connectivity === 'WARNING' ? 'Warning' : 'Offline',
+        note: d.valveState === 'OPEN' ? 'Valve open' : 'Valve closed',
+      })),
+      ticketQueue: ticketQueue.map(t => ({
+        id: t.id.slice(0, 8).toUpperCase(),
+        issue: t.issue,
+        priority: t.priority,
+        status: t.status,
+      })),
       updatedAt: new Date().toISOString(),
     };
   }
 
-  getMobileHome() {
-    const cards: MobileStatusCard[] = [
+  async getMobileHome(userId: string, meterId?: string) {
+    const customer = await this.customers.findOne(userId);
+    const device = meterId ? await this.devices.findByMeterId(meterId) : null;
+    const latestReading = meterId ? await this.readings.findLatestByMeterId(meterId) : null;
+    const myBills = await this.billing.findByCustomer(userId);
+    const pendingBill = myBills.find(b => b.status === 'pending');
+
+    const cards = [
       {
         title: 'Water Quality',
-        value: 'Safe',
-        subtitle: 'Turbidity: 2.1 NTU',
-        tone: 'success',
+        value: latestReading ? (latestReading.turbidityNtu <= 5 ? 'Safe' : 'Warning') : 'N/A',
+        subtitle: latestReading ? `Turbidity: ${latestReading.turbidityNtu} NTU` : 'No reading yet',
+        tone: latestReading && latestReading.turbidityNtu <= 5 ? 'success' : 'warning',
       },
       {
         title: 'Current Usage',
-        value: '12.4 L/min',
-        subtitle: 'Today: 148 L',
+        value: latestReading ? `${latestReading.flowRateLpm} L/min` : 'N/A',
+        subtitle: latestReading ? `Total: ${latestReading.totalUsageLiters.toFixed(0)} L` : 'No reading yet',
         tone: 'info',
       },
       {
         title: 'Valve State',
-        value: 'Open',
+        value: device?.valveState ?? 'N/A',
         subtitle: 'Remote control enabled',
         tone: 'warning',
       },
       {
         title: 'Outstanding Bill',
-        value: 'ETB 420',
-        subtitle: 'Due in 5 days',
-        tone: 'danger',
+        value: pendingBill ? `ETB ${pendingBill.amountEtb}` : 'No pending bill',
+        subtitle: pendingBill ? `Due: ${pendingBill.dueDate}` : 'All paid up!',
+        tone: pendingBill ? 'danger' : 'success',
       },
     ];
 
     return {
-      customerName: 'Abel Tesfaye',
-      connectionStatus: 'Online',
-      meterId: 'ESP32-001',
+      customerName: customer.name,
+      connectionStatus: device?.connectivity ?? 'OFFLINE',
+      meterId: device?.meterId ?? 'Not assigned',
       cards,
-      alerts: [
-        'Water quality is within the safe range.',
-        'Next bill due in 5 days.',
-      ],
+      alerts: [],
       updatedAt: new Date().toISOString(),
     };
   }

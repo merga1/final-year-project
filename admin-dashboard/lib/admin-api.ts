@@ -1,14 +1,67 @@
+/**
+ * Typed API client for the NestJS backend.
+ * All server-side fetches go through here.
+ */
 import type { OverviewResponse } from '../components/overview-content';
 
-export async function getOverview(): Promise<OverviewResponse> {
-  const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:4000';
-  const response = await fetch(`${baseUrl}/api/admin/overview`, {
+const BASE = process.env.API_BASE_URL ?? 'http://localhost:4000';
+
+async function apiFetch<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE}${path}`, {
     cache: 'no-store',
+    ...init,
+    headers: { ...headers, ...(init?.headers as Record<string, string> ?? {}) },
   });
 
-  if (!response.ok) {
-    throw new Error('Failed to load admin overview');
-  }
-
-  return response.json();
+  if (res.status === 401) throw new Error('UNAUTHORIZED');
+  if (!res.ok) throw new Error(`API error ${res.status} at ${path}`);
+  return res.json();
 }
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+export async function login(email: string, password: string) {
+  return apiFetch<{ accessToken: string; user: { name: string; email: string; role: string } }>(
+    '/auth/login', undefined,
+    { method: 'POST', body: JSON.stringify({ email, password }) },
+  );
+}
+
+// ── Admin endpoints ────────────────────────────────────────────────────────────
+export const getOverview = (token: string) =>
+  apiFetch<OverviewResponse>('/api/admin/overview', token);
+
+export const getCustomers = (token: string) =>
+  apiFetch<any[]>('/api/admin/customers', token);
+
+export const getDevices = (token: string) =>
+  apiFetch<any[]>('/api/admin/devices', token);
+
+export const getReadings = (token: string, meterId?: string) =>
+  apiFetch<any[]>(`/api/admin/readings${meterId ? `?meterId=${meterId}` : ''}`, token);
+
+export const getDailyUsage = (token: string, meterId?: string) =>
+  apiFetch<Array<{ day: string; usageLiters: string }>>(`/api/admin/readings/daily${meterId ? `?meterId=${meterId}` : ''}`, token);
+
+export const getBilling = (token: string) =>
+  apiFetch<any[]>('/api/admin/billing', token);
+
+export const getPayments = (token: string) =>
+  apiFetch<any[]>('/api/admin/payments', token);
+
+export const getAlerts = (token: string) =>
+  apiFetch<any[]>('/api/admin/alerts', token);
+
+export const acknowledgeAlert = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/alerts/${id}/acknowledge`, token, { method: 'PATCH' });
+
+export const getSupportTickets = (token: string) =>
+  apiFetch<any[]>('/api/admin/support-tickets', token);
+
+export const updateTicket = (token: string, id: string, data: any) =>
+  apiFetch<any>(`/api/admin/support-tickets/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const getTechnicians = (token: string) =>
+  apiFetch<any[]>('/api/admin/technicians', token);

@@ -1,24 +1,40 @@
+import { redirect } from 'next/navigation';
 import { SectionPage } from '../../components/section-page';
+import { getDevices } from '../../lib/admin-api';
+import { getServerToken } from '../../lib/auth';
 
-export default function DevicesPage() {
-  return (
-    <SectionPage
-      currentPath="/devices"
-      title="Devices"
-      description="Track device health, GSM connectivity, readings, and valve responsiveness."
-      status="Stable"
-      stats={[
-        { label: 'Installed Devices', value: '128' },
-        { label: 'Online Now', value: '121' },
-        { label: 'Offline', value: '4' },
-        { label: 'Needs Inspection', value: '3' },
-      ]}
-      tableTitle="Device Status"
-      rows={[
-        { primary: 'ESP32-001', secondary: 'Abel Tesfaye • Safe turbidity', status: 'Online' },
-        { primary: 'ESP32-018', secondary: 'Liya Bekele • High usage trend', status: 'Warning' },
-        { primary: 'ESP32-042', secondary: 'Meron Alemu • No sync for 22 mins', status: 'Offline' },
-      ]}
-    />
-  );
+export default async function DevicesPage() {
+  const token = await getServerToken();
+  if (!token) redirect('/login');
+
+  try {
+    const devices = await getDevices(token);
+    const online = devices.filter(d => d.connectivity === 'ONLINE').length;
+    const offline = devices.filter(d => d.connectivity === 'OFFLINE').length;
+    const warning = devices.filter(d => d.connectivity === 'WARNING').length;
+
+    return (
+      <SectionPage
+        currentPath="/devices"
+        title="Devices"
+        description="Track device health, connectivity, readings, and valve responsiveness."
+        status={offline === 0 ? 'Stable' : 'Warning'}
+        stats={[
+          { label: 'Installed Devices', value: String(devices.length) },
+          { label: 'Online Now', value: String(online) },
+          { label: 'Offline', value: String(offline) },
+          { label: 'Warning', value: String(warning) },
+        ]}
+        tableTitle="Device Status"
+        rows={devices.slice(0, 10).map(d => ({
+          primary: d.meterId,
+          secondary: `Zone: ${d.zone} • Valve: ${d.valveState} • Battery: ${d.batteryPercent}%`,
+          status: d.connectivity === 'ONLINE' ? 'Online' : d.connectivity === 'WARNING' ? 'Warning' : 'Offline',
+        }))}
+      />
+    );
+  } catch (e: any) {
+    if (e.message === 'UNAUTHORIZED') redirect('/login');
+    throw e;
+  }
 }

@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 
-import 'models/mobile_home_data.dart';
-import 'services/home_repository.dart';
+import 'core/api_client.dart';
+import 'core/auth_service.dart';
+import 'models/mobile_repository.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/usage_screen.dart';
+import 'screens/bills_screen.dart';
+import 'screens/support_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() {
   runApp(const SmartWaterApp());
 }
 
 class SmartWaterApp extends StatelessWidget {
-  const SmartWaterApp({
-    super.key,
-    this.repository,
-  });
-
-  final HomeRepository? repository;
+  const SmartWaterApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,198 +26,102 @@ class SmartWaterApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0D5C91)),
         useMaterial3: true,
       ),
-      home: CustomerHomePage(
-        repository: repository ?? ApiHomeRepository(),
-      ),
+      home: const AppRoot(),
     );
   }
 }
 
-class CustomerHomePage extends StatefulWidget {
-  const CustomerHomePage({
-    super.key,
-    required this.repository,
-  });
-
-  final HomeRepository repository;
+class AppRoot extends StatefulWidget {
+  const AppRoot({super.key});
 
   @override
-  State<CustomerHomePage> createState() => _CustomerHomePageState();
+  State<AppRoot> createState() => _AppRootState();
 }
 
-class _CustomerHomePageState extends State<CustomerHomePage> {
-  late Future<MobileHomeData> _homeFuture;
+class _AppRootState extends State<AppRoot> {
+  final _apiClient = ApiClient();
+  late final AuthService _auth;
+  late final MobileRepository _repo;
+  bool _ready = false;
+  bool _loggedIn = false;
 
   @override
   void initState() {
     super.initState();
-    _homeFuture = widget.repository.fetchHomeDashboard();
+    _auth = AuthService(_apiClient);
+    _repo = MobileRepository(_apiClient);
+    _tryRestore();
   }
 
-  Future<void> _refresh() async {
-    setState(() {
-      _homeFuture = widget.repository.fetchHomeDashboard();
-    });
-
-    await _homeFuture;
+  Future<void> _tryRestore() async {
+    final restored = await _auth.tryRestoreSession();
+    setState(() { _ready = true; _loggedIn = restored; });
   }
+
+  void _onLogin() => setState(() => _loggedIn = true);
+  void _onLogout() => setState(() => _loggedIn = false);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Smart Water'),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none_outlined),
-          ),
-        ],
-      ),
-      body: FutureBuilder<MobileHomeData>(
-        future: _homeFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Unable to load live data from the backend.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${snapshot.error}',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _refresh,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final home = snapshot.data!;
-
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(
-                  'Welcome, ${home.customerName}',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Meter ${home.meterId} • ${home.connectionStatus}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 16),
-                ...home.cards.expand(
-                  (card) => [
-                    _StatusCard(
-                      title: card.title,
-                      value: card.value,
-                      subtitle: card.subtitle,
-                      color: _toneToColor(card.tone),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-                if (home.alerts.isNotEmpty) ...[
-                  Text(
-                    'Recent Alerts',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  ...home.alerts.map(
-                    (alert) => Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.info_outline),
-                        title: Text(alert),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
-        },
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.water_drop_outlined), label: 'Usage'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Bills'),
-          NavigationDestination(icon: Icon(Icons.support_agent_outlined), label: 'Support'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
-        ],
-      ),
-    );
-  }
-
-  Color _toneToColor(StatusTone tone) {
-    switch (tone) {
-      case StatusTone.success:
-        return const Color(0xFF2E8B57);
-      case StatusTone.info:
-        return const Color(0xFF0D5C91);
-      case StatusTone.warning:
-        return const Color(0xFF9C6B00);
-      case StatusTone.danger:
-        return const Color(0xFF8B1E3F);
+    if (!_ready) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    if (!_loggedIn) {
+      return LoginScreen(authService: _auth, onLogin: _onLogin);
+    }
+
+    return MainShell(repo: _repo, auth: _auth, onLogout: _onLogout);
   }
 }
 
-class _StatusCard extends StatelessWidget {
-  const _StatusCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.color,
-  });
+class MainShell extends StatefulWidget {
+  const MainShell({super.key, required this.repo, required this.auth, required this.onLogout});
+  final MobileRepository repo;
+  final AuthService auth;
+  final VoidCallback onLogout;
 
-  final String title;
-  final String value;
-  final String subtitle;
-  final Color color;
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int _index = 0;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(subtitle),
-          ],
-        ),
+    final pages = [
+      HomeScreen(repo: widget.repo),
+      UsageScreen(repo: widget.repo),
+      BillsScreen(repo: widget.repo),
+      SupportScreen(repo: widget.repo),
+      ProfileScreen(authService: widget.auth, onLogout: widget.onLogout),
+    ];
+
+    const titles = ['Home', 'Usage', 'Bills', 'Support', 'Profile'];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(titles[_index]),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none_outlined),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: IndexedStack(index: _index, children: pages),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.water_drop_outlined), selectedIcon: Icon(Icons.water_drop), label: 'Usage'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Bills'),
+          NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Support'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+        ],
       ),
     );
   }
