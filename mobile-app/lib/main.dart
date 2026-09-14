@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/constants.dart';
 import 'core/api_client.dart';
 import 'core/auth_service.dart';
 import 'models/mobile_repository.dart';
@@ -10,7 +11,9 @@ import 'screens/bills_screen.dart';
 import 'screens/support_screen.dart';
 import 'screens/profile_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiConstants.init();
   runApp(const SmartWaterApp());
 }
 
