@@ -3,7 +3,7 @@ import {
 } from 'typeorm';
 
 export type PaymentStatus = 'verified' | 'pending' | 'failed' | 'disputed';
-export type PaymentMethod = 'chappa' | 'bank_transfer' | 'mobile_payment' | 'cash';
+export type PaymentMethod = 'chapa' | 'chappa' | 'bank_transfer' | 'mobile_payment' | 'cash';
 
 @Entity('payments')
 export class Payment {

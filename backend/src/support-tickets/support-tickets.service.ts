@@ -28,6 +28,10 @@ export class SupportTicketsService {
     return this.repo.findOneBy({ id });
   }
 
+  count() {
+    return this.repo.count();
+  }
+
   countByStatus(status: string) {
     return this.repo.countBy({ status: status as any });
   }

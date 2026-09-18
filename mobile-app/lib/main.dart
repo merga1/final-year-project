@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'core/constants.dart';
 import 'core/api_client.dart';
@@ -6,7 +7,6 @@ import 'core/auth_service.dart';
 import 'models/mobile_repository.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/usage_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/support_screen.dart';
 import 'screens/profile_screen.dart';
@@ -23,11 +23,20 @@ class SmartWaterApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Smart Water',
+      title: 'AquaSense',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0D5C91)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0284C7),
+          primary: const Color(0xFF0284C7),
+        ),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF0284C7),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
       ),
       home: const AppRoot(),
     );
@@ -58,7 +67,10 @@ class _AppRootState extends State<AppRoot> {
 
   Future<void> _tryRestore() async {
     final restored = await _auth.tryRestoreSession();
-    setState(() { _ready = true; _loggedIn = restored; });
+    setState(() {
+      _ready = true;
+      _loggedIn = restored;
+    });
   }
 
   void _onLogin() => setState(() => _loggedIn = true);
@@ -79,7 +91,13 @@ class _AppRootState extends State<AppRoot> {
 }
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key, required this.repo, required this.auth, required this.onLogout});
+  const MainShell({
+    super.key,
+    required this.repo,
+    required this.auth,
+    required this.onLogout,
+  });
+
   final MobileRepository repo;
   final AuthService auth;
   final VoidCallback onLogout;
@@ -90,40 +108,212 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+  String _userId = '7ebb0d261llb24dc88afb564400f8f5cc-289317';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    try {
+      final home = await widget.repo.fetchHome();
+      if (mounted && home.userId.isNotEmpty) {
+        setState(() => _userId = home.userId);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
     final pages = [
       HomeScreen(repo: widget.repo),
-      UsageScreen(repo: widget.repo),
       BillsScreen(repo: widget.repo),
       SupportScreen(repo: widget.repo),
-      ProfileScreen(authService: widget.auth, onLogout: widget.onLogout),
     ];
 
-    const titles = ['Home', 'Usage', 'Bills', 'Support', 'Profile'];
+    const titles = ['Water Dashboard', 'Water Bill', 'Support Tickets'];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[_index]),
-        centerTitle: false,
+        title: Text(
+          titles[_index],
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        centerTitle: true,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none_outlined),
-            onPressed: () {},
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No new notifications')),
+              );
+            },
           ),
         ],
       ),
+      drawer: _buildDrawer(context),
       body: IndexedStack(index: _index, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
+        backgroundColor: Colors.white,
+        elevation: 4,
+        indicatorColor: const Color(0xFFE0F2FE),
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.water_drop_outlined), selectedIcon: Icon(Icons.water_drop), label: 'Usage'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Bills'),
-          NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Support'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_rounded),
+            selectedIcon: Icon(Icons.grid_view_rounded, color: Color(0xFF0284C7)),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long_rounded, color: Color(0xFF0284C7)),
+            label: 'Billing',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.support_agent_outlined),
+            selectedIcon: Icon(Icons.support_agent_rounded, color: Color(0xFF0284C7)),
+            label: 'Support Ticket',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: [
+          // Drawer Header matching Page 7 right screenshot
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
+            color: const Color(0xFF0284C7),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Menu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _userId,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: _userId));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('User ID copied to clipboard')),
+                          );
+                        },
+                        child: const Icon(Icons.copy_rounded, size: 16, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Menu list items
+          ListTile(
+            leading: const Icon(Icons.person_outline_rounded, color: Color(0xFF334155)),
+            title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('Profile')),
+                    body: ProfileScreen(
+                      authService: widget.auth,
+                      onLogout: widget.onLogout,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.shield_outlined, color: Color(0xFF334155)),
+            title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              _showInfoDialog(context, 'Privacy Policy',
+                  'AquaSense values your privacy. Sensor measurements and billing data are encrypted in transit and at rest.');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline_rounded, color: Color(0xFF334155)),
+            title: const Text('About', style: TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              _showInfoDialog(context, 'About AquaSense',
+                  'AquaSense Smart Water Monitoring v1.0.0\nIoT water conservation and leak prevention platform.');
+            },
+          ),
+          const Spacer(),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),
+            title: const Text(
+              'Sign Out',
+              style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              widget.onLogout();
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  void _showInfoDialog(BuildContext context, String title, String body) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );

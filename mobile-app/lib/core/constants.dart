@@ -5,7 +5,7 @@ class ApiConstants {
   static String? _inMemoryBaseUrl;
 
   static const String defaultLocalUrl = 'http://127.0.0.1:4000';
-  static const String defaultWifiUrl = 'http://192.168.11.88:4000';
+  static const String defaultWifiUrl = 'http://192.168.11.137:4000';
   static const String defaultEmulatorUrl = 'http://10.0.2.2:4000';
 
   static Future<void> init() async {

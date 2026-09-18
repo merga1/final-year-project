@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: 'Smart Water Admin',
-  description: 'Administrative dashboard for the smart water management system.',
+  title: 'AquaSense Admin | Smart Water Monitoring',
+  description: 'Administrative dashboard for the AquaSense smart water monitoring system.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

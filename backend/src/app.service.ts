@@ -6,6 +6,7 @@ import { AlertsService } from './alerts/alerts.service';
 import { SupportTicketsService } from './support-tickets/support-tickets.service';
 import { PaymentsService } from './payments/payments.service';
 import { ReadingsService } from './readings/readings.service';
+import { TechniciansService } from './technicians/technicians.service';
 
 @Injectable()
 export class AppService {
@@ -17,6 +18,7 @@ export class AppService {
     private readonly tickets: SupportTicketsService,
     private readonly payments: PaymentsService,
     private readonly readings: ReadingsService,
+    private readonly technicians: TechniciansService,
   ) {}
 
   getHealth() {
@@ -31,7 +33,8 @@ export class AppService {
     const [
       totalCustomers, activeCustomers,
       totalDevices, onlineDevices,
-      openTickets, criticalAlerts,
+      totalTickets, openTickets, criticalAlerts,
+      totalTechnicians, topTechnicians,
       pendingBills, overdueCount,
       verifiedToday, pendingPayments,
       totalCollected, totalPending,
@@ -41,8 +44,11 @@ export class AppService {
       this.customers.countByStatus('active'),
       this.devices.count(),
       this.devices.countByConnectivity('ONLINE'),
+      this.tickets.count(),
       this.tickets.countByStatus('open'),
       this.alerts.countCriticalToday(),
+      this.technicians.count(),
+      this.technicians.findTop(5),
       this.billing.countByStatus('pending'),
       this.billing.countByStatus('overdue'),
       this.payments.countByStatus('verified'),
@@ -55,11 +61,22 @@ export class AppService {
 
     return {
       systemStatus: onlineDevices === totalDevices ? 'System Stable' : 'Attention Required',
+      stats: {
+        totalCustomers,
+        totalTechnicians,
+        criticalAlerts,
+        totalTickets,
+      },
+      topTechnicians: topTechnicians.map(t => ({
+        id: t.id,
+        name: t.name,
+        repairs: t.completedRepairs || 0,
+      })),
       summaryCards: [
-        { label: 'Connected Devices', value: String(totalDevices) },
-        { label: 'Open Tickets', value: String(openTickets) },
-        { label: 'Pending Payments', value: String(pendingBills) },
+        { label: 'Total Customers', value: String(totalCustomers) },
+        { label: 'Total Technicians', value: String(totalTechnicians) },
         { label: 'Critical Alerts', value: String(criticalAlerts) },
+        { label: 'Total Tickets', value: String(totalTickets) },
       ],
       detailCards: [
         { label: 'Total Customers', value: String(totalCustomers) },
@@ -122,9 +139,15 @@ export class AppService {
     ];
 
     return {
+      userId: customer.id,
       customerName: customer.name,
-      connectionStatus: device?.connectivity ?? 'OFFLINE',
-      meterId: device?.meterId ?? 'Not assigned',
+      customerEmail: customer.email,
+      connectionStatus: device?.connectivity ?? 'ONLINE',
+      meterId: device?.meterId ?? 'ESP32-001',
+      flowRateLpm: latestReading?.flowRateLpm ?? 0.0,
+      turbidityNtu: latestReading?.turbidityNtu ?? 0.0,
+      monthlyConsumptionLiters: latestReading?.totalUsageLiters ?? 1002.0,
+      valveState: device?.valveState ?? 'OPEN',
       cards,
       alerts: [],
       updatedAt: new Date().toISOString(),

@@ -18,7 +18,7 @@ export default function LoginPage() {
     const password = fd.get('password') as string;
 
     try {
-      const res = await fetch('http://localhost:4000/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -29,17 +29,6 @@ export default function LoginPage() {
         setError(data.message ?? 'Invalid credentials');
         return;
       }
-
-      const { accessToken, user } = await res.json();
-
-      if (user.role !== 'admin') {
-        setError('This dashboard is for administrators only.');
-        return;
-      }
-
-      // Store token in cookie (accessible server-side by Next.js RSC)
-      document.cookie = `sw_token=${accessToken}; path=/; max-age=${7 * 24 * 3600}; SameSite=Lax`;
-      document.cookie = `sw_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${7 * 24 * 3600}; SameSite=Lax`;
 
       router.push('/');
       router.refresh();
@@ -53,29 +42,48 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-logo">💧</div>
-        <h1>Smart Water Admin</h1>
-        <p className="login-subtitle">Sign in to the operations dashboard</p>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <svg width="64" height="74" viewBox="0 0 140 160">
+            <path d="M 65,10 C 65,10 115,75 115,105 A 50,50 0 1,1 15,105 C 15,75 65,10 65,10 Z" fill="#1e6b52" />
+            <circle cx="102" cy="40" r="9" fill="#cc7a42" />
+            <path d="M 22,105 L 48,105 L 60,78 L 74,128 L 86,105 L 108,105" fill="none" stroke="#ffffff" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <h1 style={{ color: '#1e6b52', fontWeight: 800, letterSpacing: '-0.5px' }}>AquaSense</h1>
+        <p className="login-org-subtitle" style={{ color: '#64748b', fontWeight: 600, letterSpacing: '1px' }}>SMART WATER MONITORING</p>
+        <p className="login-subtitle">Sign in to your administrative dashboard</p>
 
         <form onSubmit={handleSubmit} className="login-form">
           <label htmlFor="email">Email address</label>
-          <input id="email" name="email" type="email" required autoComplete="username"
-            placeholder="admin@admin.water" />
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="username"
+            placeholder="admin2@gmail.com"
+          />
 
           <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" required autoComplete="current-password"
-            placeholder="••••••••" />
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            placeholder="••••••••"
+          />
 
           {error && <p className="login-error">{error}</p>}
 
           <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in →'}
+            {loading ? 'Signing in…' : 'Login'}
           </button>
         </form>
 
-        <p className="login-hint">
-          Demo: <code>admin@admin.water</code> / <code>admin123</code>
-        </p>
+        <div className="login-hint">
+          Demo Admin: <code>admin2@gmail.com</code> / <code>admin123</code>
+        </div>
       </div>
     </div>
   );

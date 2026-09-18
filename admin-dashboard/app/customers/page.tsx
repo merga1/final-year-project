@@ -1,5 +1,6 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { SectionPage } from '../../components/section-page';
+import { AdminShell } from '../../components/admin-shell';
 import { getCustomers } from '../../lib/admin-api';
 import { getServerToken } from '../../lib/auth';
 
@@ -9,32 +10,48 @@ export default async function CustomersPage() {
 
   try {
     const customers = await getCustomers(token);
-    const active = customers.filter(c => c.accountStatus === 'active').length;
-    const suspended = customers.filter(c => c.accountStatus === 'suspended').length;
-
-    const thisWeek = new Date();
-    thisWeek.setDate(thisWeek.getDate() - 7);
-    const newThisWeek = customers.filter(c => new Date(c.createdAt) > thisWeek).length;
 
     return (
-      <SectionPage
-        currentPath="/customers"
-        title="Customers"
-        description="Manage customer records, water accounts, and current billing status."
-        status="Stable"
-        stats={[
-          { label: 'Registered Customers', value: String(customers.length) },
-          { label: 'Active Accounts', value: String(active) },
-          { label: 'Suspended Accounts', value: String(suspended) },
-          { label: 'New This Week', value: String(newThisWeek) },
-        ]}
-        tableTitle="Customer Accounts"
-        rows={customers.slice(0, 10).map(c => ({
-          primary: c.name,
-          secondary: `${c.email} • ${c.zone} • Meter: ${c.meterId ?? 'Unassigned'}`,
-          status: c.accountStatus === 'active' ? 'Verified' : c.accountStatus === 'suspended' ? 'Danger' : 'Pending',
-        }))}
-      />
+      <AdminShell currentPath="/customers">
+        <div className="section-container">
+          <div className="section-header-row">
+            <h2 className="section-main-title">Customer List</h2>
+            <Link href="/customers/new" className="btn-primary-blue">
+              Add New Customer
+            </Link>
+          </div>
+
+          <div className="entity-card-list">
+            {customers.map((cust) => {
+              const displayName =
+                cust.name ||
+                `${cust.firstName ?? ''} ${cust.lastName ?? ''}`.trim() ||
+                'Customer';
+
+              return (
+                <div key={cust.id} className="customer-item-card">
+                  <div className="cust-info-col">
+                    <span className="cust-name">{displayName}</span>
+                    <span className="cust-email">Email: {cust.email}</span>
+                  </div>
+
+                  <div className="cust-actions-col">
+                    <button type="button" className="btn-outline-gray">
+                      View Details
+                    </button>
+                    <Link
+                      href={`/support-tickets?customerId=${cust.id}`}
+                      className="btn-outline-purple"
+                    >
+                      View Tickets
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </AdminShell>
     );
   } catch (e: any) {
     if (e.message === 'UNAUTHORIZED') redirect('/login');

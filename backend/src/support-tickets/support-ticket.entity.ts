@@ -3,7 +3,7 @@ import {
 } from 'typeorm';
 
 export type TicketPriority = 'High' | 'Medium' | 'Low';
-export type TicketStatus = 'open' | 'assigned' | 'in_progress' | 'resolved' | 'closed';
+export type TicketStatus = 'open' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'Pending';
 
 @Entity('support_tickets')
 export class SupportTicket {
@@ -13,7 +13,7 @@ export class SupportTicket {
   @Column()
   customerId: string;
 
-  @Column()
+  @Column({ default: 'Customer' })
   customerName: string;
 
   @Column({ nullable: true })
@@ -22,8 +22,14 @@ export class SupportTicket {
   @Column({ nullable: true })
   technicianName: string;
 
-  @Column()
+  @Column({ default: 'SENSOR' })
+  type: string;
+
+  @Column({ default: 'General support' })
   issue: string;
+
+  @Column({ nullable: true })
+  description: string;
 
   @Column({ default: 'Medium' })
   priority: TicketPriority;

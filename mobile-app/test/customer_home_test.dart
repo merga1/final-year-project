@@ -9,25 +9,24 @@ class FakeMobileRepository implements MobileRepository {
   Future<MobileHomeData> fetchHome() async {
     return const MobileHomeData(
       customerName: 'Abel Tesfaye',
+      customerEmail: 'abel@customer.com',
+      userId: 'mock-user-1',
       connectionStatus: 'ONLINE',
       meterId: 'ESP32-001',
-      cards: [
-        MobileStatusCardData(
-          title: 'Water Quality',
-          value: 'Safe',
-          subtitle: 'Turbidity: 2.1 NTU',
-          tone: StatusTone.success,
-        ),
-        MobileStatusCardData(
-          title: 'Current Usage',
-          value: '12.4 L/min',
-          subtitle: 'Today: 148 L',
-          tone: StatusTone.info,
-        ),
-      ],
+      flowRateLpm: 12.4,
+      turbidityNtu: 2.1,
+      monthlyConsumptionLiters: 148.0,
+      valveState: 'OPEN',
+      cards: [],
       alerts: ['Next bill due in 5 days.'],
     );
   }
+
+  @override
+  Future<Map<String, dynamic>> toggleValve([String? nextState]) async => {
+        'success': true,
+        'valveState': nextState ?? 'CLOSED',
+      };
 
   @override
   Future<List<DailyUsage>> fetchDailyUsage() async => [];
@@ -39,13 +38,20 @@ class FakeMobileRepository implements MobileRepository {
   Future<List<SupportTicket>> fetchTickets() async => [];
 
   @override
-  Future<SupportTicket> createTicket(String issue, String priority) async {
+  Future<SupportTicket> createTicket(
+    String issue,
+    String priority, {
+    String type = 'Sensor Issue',
+    String description = '',
+  }) async {
     return SupportTicket(
       id: 'mock-1',
       issue: issue,
       priority: priority,
       status: 'open',
       createdAt: '2026-09-14T10:00:00Z',
+      type: type,
+      description: description,
     );
   }
 }
@@ -64,6 +70,12 @@ class DelayedMobileRepository implements MobileRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> toggleValve([String? nextState]) async => {
+        'success': true,
+        'valveState': nextState ?? 'CLOSED',
+      };
+
+  @override
   Future<List<DailyUsage>> fetchDailyUsage() async => [];
 
   @override
@@ -73,7 +85,12 @@ class DelayedMobileRepository implements MobileRepository {
   Future<List<SupportTicket>> fetchTickets() async => [];
 
   @override
-  Future<SupportTicket> createTicket(String issue, String priority) async {
+  Future<SupportTicket> createTicket(
+    String issue,
+    String priority, {
+    String type = 'Sensor Issue',
+    String description = '',
+  }) async {
     throw UnimplementedError();
   }
 }
@@ -90,11 +107,13 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Welcome, Abel Tesfaye'), findsOneWidget);
-    expect(find.text('Meter ESP32-001 • ONLINE'), findsOneWidget);
-    expect(find.text('Water Quality'), findsOneWidget);
-    expect(find.text('Current Usage'), findsOneWidget);
-    expect(find.byType(Card), findsWidgets);
+    expect(find.text('Connecting to sensor data...'), findsOneWidget);
+    expect(find.text('Flow Rate'), findsOneWidget);
+    expect(find.text('Turbidity Level'), findsOneWidget);
+    expect(find.text('Monthly Consumption'), findsOneWidget);
+    expect(find.text('Valve Control'), findsOneWidget);
+    expect(find.text('12.4'), findsOneWidget);
+    expect(find.text('2.1'), findsOneWidget);
   });
 
   testWidgets('shows loading indicator before data arrives', (tester) async {

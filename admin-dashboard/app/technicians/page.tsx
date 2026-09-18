@@ -1,5 +1,6 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { SectionPage } from '../../components/section-page';
+import { AdminShell } from '../../components/admin-shell';
 import { getTechnicians } from '../../lib/admin-api';
 import { getServerToken } from '../../lib/auth';
 
@@ -9,33 +10,49 @@ export default async function TechniciansPage() {
 
   try {
     const techs = await getTechnicians(token);
-    const onDuty = techs.filter(t => t.status === 'on_duty').length;
-    const assigned = techs.filter(t => t.currentJobCount > 0).length;
-    const free = techs.filter(t => t.status === 'on_duty' && t.currentJobCount === 0).length;
-
-    const statusLabel = (t: any) =>
-      t.status === 'off_duty' ? 'Offline' :
-      t.currentJobCount > 0 ? 'Scheduled' : 'Online';
 
     return (
-      <SectionPage
-        currentPath="/technicians"
-        title="Technicians"
-        description="Monitor field staff workload, availability, and current service assignments."
-        status="Stable"
-        stats={[
-          { label: 'Technicians', value: String(techs.length) },
-          { label: 'On Duty', value: String(onDuty) },
-          { label: 'Assigned Jobs', value: String(assigned) },
-          { label: 'Free Capacity', value: String(free) },
-        ]}
-        tableTitle="Technician Activity"
-        rows={techs.slice(0, 10).map(t => ({
-          primary: t.name,
-          secondary: `${t.zone} • ${t.currentJobCount} active job(s) • ${t.phone ?? ''}`,
-          status: statusLabel(t),
-        }))}
-      />
+      <AdminShell currentPath="/technicians">
+        <div className="section-container">
+          <div className="section-header-row">
+            <h2 className="section-main-title">Technicians</h2>
+            <Link href="/technicians/new" className="btn-primary-blue">
+              Add New Technician
+            </Link>
+          </div>
+
+          <div className="entity-card-list">
+            {techs.map((tech) => {
+              const displayName = tech.name || `${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim() || 'Technician';
+              const specialization = tech.specialization || 'No specialization';
+              const status = tech.status === 'on_duty' ? 'Active' : tech.status === 'off_duty' ? 'Inactive' : 'On Leave';
+
+              return (
+                <div key={tech.id} className="technician-item-card">
+                  <div className="tech-info-col">
+                    <span className="tech-name">{displayName}</span>
+                    <span className="tech-spec">{specialization}</span>
+                  </div>
+
+                  <div className="tech-contact-col">
+                    <span className="tech-email">{tech.email}</span>
+                    <span className="tech-status">Status: {status}</span>
+                  </div>
+
+                  <div className="tech-actions-col">
+                    <button type="button" className="btn-outline-gray">
+                      View Details
+                    </button>
+                    <Link href={`/support-tickets?techId=${tech.id}`} className="btn-outline-purple">
+                      View Assigned Tickets
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </AdminShell>
     );
   } catch (e: any) {
     if (e.message === 'UNAUTHORIZED') redirect('/login');

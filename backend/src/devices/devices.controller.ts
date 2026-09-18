@@ -6,6 +6,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { BadRequestException } from '@nestjs/common';
+
 @Controller()
 export class DevicesController {
   constructor(
@@ -13,6 +16,32 @@ export class DevicesController {
     private readonly readingsService: ReadingsService,
     private readonly alertsService: AlertsService,
   ) {}
+
+  @Post('api/mobile/valve')
+  @UseGuards(JwtAuthGuard)
+  async toggleValve(
+    @CurrentUser() user: any,
+    @Body() body: { valveState?: 'OPEN' | 'CLOSED' },
+  ) {
+    const meterId = user.meterId;
+    if (!meterId) {
+      throw new BadRequestException('No smart water meter assigned to this account');
+    }
+    const device = await this.devicesService.findByMeterId(meterId);
+    if (!device) {
+      throw new BadRequestException(`Device for meter ${meterId} not found`);
+    }
+
+    const nextState = body.valveState ?? (device.valveState === 'OPEN' ? 'CLOSED' : 'OPEN');
+    await this.devicesService.updateByMeterId(meterId, { valveState: nextState });
+
+    return {
+      success: true,
+      meterId,
+      valveState: nextState,
+      message: `Valve remotely set to ${nextState}`,
+    };
+  }
 
   @Get('api/admin/devices')
   @UseGuards(JwtAuthGuard, RolesGuard)

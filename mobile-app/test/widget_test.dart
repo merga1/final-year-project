@@ -12,6 +12,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(LoginScreen), findsOneWidget);
-    expect(find.text('Smart Water'), findsOneWidget);
+    expect(find.text('AquaSense'), findsOneWidget);
   });
 }

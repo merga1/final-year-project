@@ -4,7 +4,7 @@
  */
 import type { OverviewResponse } from '../components/overview-content';
 
-const BASE = process.env.API_BASE_URL ?? 'http://localhost:4000';
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_BASE_URL ?? 'http://localhost:4000';
 
 async function apiFetch<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -17,7 +17,10 @@ async function apiFetch<T>(path: string, token?: string, init?: RequestInit): Pr
   });
 
   if (res.status === 401) throw new Error('UNAUTHORIZED');
-  if (!res.ok) throw new Error(`API error ${res.status} at ${path}`);
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.message || `API error ${res.status} at ${path}`);
+  }
   return res.json();
 }
 
@@ -29,12 +32,25 @@ export async function login(email: string, password: string) {
   );
 }
 
+export async function changePassword(token: string, data: { oldPassword: string; newPassword: string }) {
+  return apiFetch<{ success: boolean; message: string }>(
+    '/auth/change-password', token,
+    { method: 'POST', body: JSON.stringify(data) },
+  );
+}
+
 // ── Admin endpoints ────────────────────────────────────────────────────────────
 export const getOverview = (token: string) =>
   apiFetch<OverviewResponse>('/api/admin/overview', token);
 
 export const getCustomers = (token: string) =>
   apiFetch<any[]>('/api/admin/customers', token);
+
+export const createCustomer = (token: string, data: any) =>
+  apiFetch<any>('/api/admin/customers', token, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 
 export const getDevices = (token: string) =>
   apiFetch<any[]>('/api/admin/devices', token);
@@ -65,3 +81,9 @@ export const updateTicket = (token: string, id: string, data: any) =>
 
 export const getTechnicians = (token: string) =>
   apiFetch<any[]>('/api/admin/technicians', token);
+
+export const createTechnician = (token: string, data: any) =>
+  apiFetch<any>('/api/admin/technicians', token, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
