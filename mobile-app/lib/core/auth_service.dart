@@ -6,6 +6,7 @@ class AuthService {
   static const _nameKey = 'sw_name';
   static const _emailKey = 'sw_email';
   static const _meterIdKey = 'sw_meterId';
+  static const _roleKey = 'sw_role';
 
   final ApiClient _client;
 
@@ -27,6 +28,7 @@ class AuthService {
     await prefs.setString(_nameKey, user['name'] as String? ?? '');
     await prefs.setString(_emailKey, user['email'] as String? ?? '');
     await prefs.setString(_meterIdKey, user['meterId'] as String? ?? '');
+    await prefs.setString(_roleKey, user['role'] as String? ?? 'customer');
     return true;
   }
 
@@ -44,6 +46,7 @@ class AuthService {
       'name': prefs.getString(_nameKey) ?? '',
       'email': prefs.getString(_emailKey) ?? '',
       'meterId': prefs.getString(_meterIdKey) ?? '',
+      'role': prefs.getString(_roleKey) ?? 'customer',
     };
   }
 

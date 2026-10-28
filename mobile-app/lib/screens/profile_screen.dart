@@ -37,6 +37,12 @@ class ProfileScreen extends StatelessWidget {
             ),
             const Divider(height: 1),
             ListTile(
+              leading: const Icon(Icons.badge_outlined, color: Color(0xFF0D5C91)),
+              title: const Text('Role'),
+              trailing: Text(user['role'] ?? 'customer', style: const TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.account_circle_outlined, color: Color(0xFF0D5C91)),
               title: const Text('Account Status'),
               trailing: const Text('Active', style: TextStyle(color: Color(0xFF2E8B57), fontWeight: FontWeight.w600)),
