@@ -30,7 +30,7 @@ class ApiConstants {
     const override = String.fromEnvironment('API_BASE_URL');
     if (override.isNotEmpty) return override;
 
-    // Default to 127.0.0.1:4000 (works via USB adb reverse on real device or local run)
-    return defaultLocalUrl;
+    // Default to Wi-Fi LAN IP (192.168.11.137:4000) for physical devices on local network
+    return defaultWifiUrl;
   }
 }

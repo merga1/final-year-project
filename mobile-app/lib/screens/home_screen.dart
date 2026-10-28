@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/constants.dart';
 import '../models/mobile_home_data.dart';
 import '../models/mobile_repository.dart';
 
@@ -87,9 +88,46 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text('${snap.error}',
                       textAlign: TextAlign.center,
                       style: Theme.of(ctx).textTheme.bodySmall),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Active: ${ApiConstants.baseUrl}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E6B52)),
+                  ),
                   const SizedBox(height: 16),
-                  FilledButton(
-                      onPressed: _refresh, child: const Text('Retry')),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _refresh,
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text('Retry'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await ApiConstants.setBaseUrl(
+                              ApiConstants.defaultLocalUrl);
+                          _refresh();
+                        },
+                        icon: const Icon(Icons.usb, size: 16),
+                        label: const Text('USB (127.0.0.1)'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await ApiConstants.setBaseUrl(
+                              ApiConstants.defaultWifiUrl);
+                          _refresh();
+                        },
+                        icon: const Icon(Icons.wifi, size: 16),
+                        label: const Text('Wi-Fi (192.168.11.137)'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF1E6B52),
+                          side: const BorderSide(color: Color(0xFF1E6B52)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

@@ -284,6 +284,15 @@ class _MainShellState extends State<MainShell> {
                   'AquaSense Smart Water Monitoring v1.0.0\nIoT water conservation and leak prevention platform.');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.dns_outlined, color: Color(0xFF334155)),
+            title: const Text('Server Connection', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(ApiConstants.baseUrl, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            onTap: () {
+              Navigator.pop(context);
+              _openServerDialog(context);
+            },
+          ),
           const Spacer(),
           const Divider(),
           ListTile(
@@ -313,6 +322,64 @@ class _MainShellState extends State<MainShell> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openServerDialog(BuildContext context) {
+    final controller = TextEditingController(text: ApiConstants.baseUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Server Connection', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Backend Server URL:', style: TextStyle(fontSize: 13, color: Colors.grey)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'http://192.168.11.137:4000',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                ActionChip(
+                  avatar: const Icon(Icons.wifi, size: 16),
+                  label: const Text('Wi-Fi (192.168.11.137)', style: TextStyle(fontSize: 11)),
+                  onPressed: () => controller.text = ApiConstants.defaultWifiUrl,
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.usb, size: 16),
+                  label: const Text('USB (127.0.0.1)', style: TextStyle(fontSize: 11)),
+                  onPressed: () => controller.text = ApiConstants.defaultLocalUrl,
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await ApiConstants.setBaseUrl(controller.text.trim());
+              if (context.mounted) {
+                Navigator.pop(ctx);
+                setState(() {});
+              }
+            },
+            child: const Text('Save & Apply'),
           ),
         ],
       ),
