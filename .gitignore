@@ -3,6 +3,15 @@ node_modules/
 .next/
 dist/
 coverage/
+*.log
+*.tsbuildinfo
+*.sqlite
+*.sqlite-*
+
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
 
 # Flutter / Dart
 .dart_tool/
