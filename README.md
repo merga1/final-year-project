@@ -3,6 +3,7 @@
 This VS Code workspace organizes the project into three apps:
 
 - `mobile-app`: Flutter customer app
+- `technician-app`: Flutter technician app
 - `admin-dashboard`: Next.js admin web dashboard
 - `backend`: Nest.js API and device ingestion server
 
@@ -15,20 +16,18 @@ entry point, and deployment target.
 
 1. Start the Nest.js backend.
 2. Connect the Next.js admin dashboard to backend APIs.
-3. Connect the Flutter mobile app to the same backend.
+3. Connect the Flutter customer and technician apps to the same backend.
 
 ## Current status
 
-This workspace includes a starter structure, base files, and VS Code configuration.
-Framework dependencies are installed for `backend` and `admin-dashboard`.
-Flutter SDK is still required to run or test `mobile-app`.
+This workspace includes the customer and technician mobile clients, the NestJS API, and the admin dashboard described by the SRS. Flutter SDK is required to run the mobile clients.
 
-## Next steps in VS Code
+## Open the workspace in VS Code
 
 1. Open `smart-water-management.code-workspace`.
 2. Install the recommended extensions.
 3. Run dependency installation inside each project folder.
-4. Start implementing auth, devices, readings, billing, alerts, and support modules.
+4. Configure production secrets and device integrations before deployment.
 
 ## Run from terminal
 
@@ -68,6 +67,17 @@ flutter create .
 flutter test
 flutter run
 ```
+
+### Flutter technician app
+
+```powershell
+cd technician-app
+flutter create .
+flutter pub get
+flutter run --dart-define=API_BASE_URL=http://YOUR_IP:4000
+```
+
+The seeded technician account is `john.smith@tech.water` / `technician123` after running `npm run seed` in `backend`.
 
 If the mobile app runs on an Android emulator, the default backend base URL is already set to `http://10.0.2.2:4000`.
 For another device or platform, pass a custom backend URL:

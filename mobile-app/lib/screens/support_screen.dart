@@ -69,9 +69,10 @@ class _SupportScreenState extends State<SupportScreen> {
                     itemCount: tickets.length,
                     itemBuilder: (context, index) {
                       final t = tickets[index];
-                      final isResolved = t.status.toLowerCase() == 'resolved';
+                       final normalizedStatus = t.status.toLowerCase().replaceAll('_', ' ');
+                       final isResolved = ['resolved', 'closed'].contains(normalizedStatus);
                       final title = t.type.isNotEmpty ? t.type : 'Sensor Issue';
-                      final techId = t.technicianId ?? '67f82d233a3c8fb49f6bf502';
+                       final techId = t.technicianId ?? 'Not assigned yet';
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -117,7 +118,7 @@ class _SupportScreenState extends State<SupportScreen> {
                                     ),
                                   ),
                                   child: Text(
-                                    isResolved ? 'Resolved' : 'Open',
+                                     _titleCase(normalizedStatus),
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
@@ -173,6 +174,8 @@ class _SupportScreenState extends State<SupportScreen> {
       ),
     );
   }
+
+  String _titleCase(String value) => value.split(' ').map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}').join(' ');
 }
 
 class _CreateTicketScreen extends StatefulWidget {

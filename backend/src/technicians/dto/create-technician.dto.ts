@@ -14,6 +14,10 @@ export class CreateTechnicianDto {
 
   @IsOptional()
   @IsString()
+  password?: string;
+
+  @IsOptional()
+  @IsString()
   phone?: string;
 
   @IsOptional()

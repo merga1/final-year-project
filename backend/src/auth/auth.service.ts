@@ -2,11 +2,13 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { CustomersService } from '../customers/customers.service';
+import { TechniciansService } from '../technicians/technicians.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly customersService: CustomersService,
+    private readonly techniciansService: TechniciansService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -34,7 +36,23 @@ export class AuthService {
 
   async loginAdmin(email: string, password: string) {
     const customer = await this.customersService.findByEmail(email);
-    if (!customer) throw new UnauthorizedException('Invalid credentials');
+    if (!customer) {
+      const technician = await this.techniciansService.findByEmail(email);
+      if (!technician?.passwordHash || technician.accountStatus !== 'active') {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      const validTechnician = await bcrypt.compare(password, technician.passwordHash);
+      if (!validTechnician) throw new UnauthorizedException('Invalid credentials');
+      const payload = {
+        sub: technician.id,
+        technicianId: technician.id,
+        email: technician.email,
+        name: technician.name,
+        role: 'technician',
+        meterId: undefined,
+      };
+      return { accessToken: this.jwtService.sign(payload), user: payload };
+    }
 
     const valid = await bcrypt.compare(password, customer.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
@@ -90,16 +108,34 @@ export class AuthService {
   }
 
   async changePassword(userId: string, oldPass: string, newPass: string) {
-    const user = await this.customersService.findOne(userId);
-    const valid = await bcrypt.compare(oldPass, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('Incorrect current password');
-
     if (!newPass || newPass.length < 6) {
       throw new BadRequestException('New password must be at least 6 characters long');
     }
 
+    const customer = await this.customersService.findOne(userId).catch(() => null);
+    const technician = customer ? null : await this.techniciansService.findOne(userId).catch(() => null);
+    const user = customer ?? technician;
+    if (!user?.passwordHash) throw new UnauthorizedException('Account not found');
+    const valid = await bcrypt.compare(oldPass, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Incorrect current password');
+
     const passwordHash = await bcrypt.hash(newPass, 10);
-    await this.customersService.update(userId, { passwordHash });
+    if (customer) {
+      await this.customersService.updatePasswordHash(userId, passwordHash);
+    } else {
+      await this.techniciansService.updatePassword(userId, passwordHash);
+    }
     return { success: true, message: 'Password updated successfully' };
+  }
+
+  async forgotPassword(email: string) {
+    const normalized = email.trim().toLowerCase();
+    const known = await this.customersService.findByEmail(normalized) ?? await this.techniciansService.findByEmail(normalized);
+    // Do not reveal whether an account exists. A production deployment should
+    // enqueue an email/SMS reset token here.
+    return {
+      success: true,
+      message: known ? 'If the account exists, reset instructions will be sent shortly.' : 'If the account exists, reset instructions will be sent shortly.',
+    };
   }
 }

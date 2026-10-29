@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/auth_service.dart';
 import '../core/constants.dart';
 import '../widgets/aquasense_logo.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -34,6 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await widget.authService.login(
         _emailController.text.trim(),
         _passwordController.text,
+        rememberMe: _rememberMe,
       );
       widget.onLogin();
     } catch (e) {
@@ -42,6 +44,24 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = 'Enter your email first, then choose Forgot Password.');
+      return;
+    }
+    try {
+      await widget.authService.forgotPassword(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('If the account exists, reset instructions will be sent shortly.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -254,13 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text(
-                                'Password reset link sent to registered email')),
-                      );
-                    },
+                    onPressed: _forgotPassword,
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -379,10 +393,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'Please contact your organization administrator to register a new account.'),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RegisterScreen(
+                            authService: widget.authService,
+                            onRegistered: () {
+                              Navigator.pop(context);
+                              widget.onLogin();
+                            },
+                          ),
                         ),
                       );
                     },

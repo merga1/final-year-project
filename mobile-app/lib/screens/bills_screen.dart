@@ -23,7 +23,7 @@ class _BillsScreenState extends State<BillsScreen> {
     await _future;
   }
 
-  void _showChapaDialog(double amount) {
+  void _showChapaDialog(Bill bill) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -59,7 +59,7 @@ class _BillsScreenState extends State<BillsScreen> {
                   const Text('Total Due:',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   Text(
-                    '\$${amount.toStringAsFixed(2)}',
+                     'ETB ${bill.amountEtb.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
@@ -82,14 +82,25 @@ class _BillsScreenState extends State<BillsScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Payment processed successfully via Chapa!'),
-                  backgroundColor: Color(0xFF059669),
-                ),
-              );
+            onPressed: () async {
+              try {
+                final response = await widget.repo.payWithChapa(bill);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  final checkout = response['checkoutUrl'];
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(checkout is String && checkout.isNotEmpty
+                          ? 'Chapa checkout is ready. Complete it in your browser.'
+                          : 'Payment saved as pending. It will update after Chapa confirms it.'),
+                      backgroundColor: const Color(0xFF059669),
+                    ),
+                  );
+                  _refresh();
+                }
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment could not be started: $e')));
+              }
             },
             child: const Text('Proceed to Pay'),
           ),
@@ -160,7 +171,7 @@ class _BillsScreenState extends State<BillsScreen> {
                         '${latestBill.usageLiters.toStringAsFixed(2)} L'),
                     const Divider(height: 20, color: Color(0xFFF1F5F9)),
                     _buildBillRow(
-                        'Rate', '\$${latestBill.rate.toStringAsFixed(2)}/L'),
+                         'Rate', 'ETB ${latestBill.rate.toStringAsFixed(2)}/L'),
                     const Divider(height: 24, color: Color(0xFFE2E8F0)),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -174,7 +185,7 @@ class _BillsScreenState extends State<BillsScreen> {
                           ),
                         ),
                         Text(
-                          '\$${latestBill.amountEtb.toStringAsFixed(2)}',
+                           'ETB ${latestBill.amountEtb.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -204,13 +215,13 @@ class _BillsScreenState extends State<BillsScreen> {
               _buildBreakdownCard(
                 month: 'April YYYY',
                 usage: '2 L',
-                charge: '\$10.00',
+                 charge: 'ETB 10.00',
               ),
               const SizedBox(height: 10),
               _buildBreakdownCard(
                 month: 'May YYYY',
                 usage: '1000 L',
-                charge: '\$5000.00',
+                 charge: 'ETB 5000.00',
               ),
 
               const SizedBox(height: 28),
@@ -228,7 +239,7 @@ class _BillsScreenState extends State<BillsScreen> {
 
               // "Pay with Chapa" button matching screenshot
               ElevatedButton.icon(
-                onPressed: () => _showChapaDialog(latestBill.amountEtb),
+                 onPressed: latestBill.status == 'paid' ? null : () => _showChapaDialog(latestBill),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7C3AED),
                   foregroundColor: Colors.white,

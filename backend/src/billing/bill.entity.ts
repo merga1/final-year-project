@@ -21,6 +21,9 @@ export class Bill {
   @Column({ type: 'real' })
   amountEtb: number;
 
+  @Column({ type: 'real', default: 5 })
+  rate: number;
+
   @Column({ default: 'pending' })
   status: BillStatus;
 

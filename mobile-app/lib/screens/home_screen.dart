@@ -32,10 +32,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _handleValveToggle(bool currentOpen) async {
     if (_togglingValve) return;
-    setState(() => _togglingValve = true);
-
     final nextOpen = !currentOpen;
     final nextState = nextOpen ? 'OPEN' : 'CLOSED';
+
+    if (!nextOpen) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Close the valve?'),
+          content: const Text('Closing the valve stops water flow for this device. Continue?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Close valve')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
+    setState(() => _togglingValve = true);
 
     // Optimistic UI update
     setState(() => _valveOverride = nextOpen);
@@ -136,6 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final home = snap.data!;
         final isValveOpen = _valveOverride ?? (home.valveState == 'OPEN');
+        final isOffline = home.deviceOffline || home.connectionStatus.toUpperCase() == 'OFFLINE';
 
         return RefreshIndicator(
           onRefresh: _refresh,
@@ -152,6 +168,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(isOffline ? Icons.cloud_off_outlined : Icons.cloud_done_outlined, size: 15, color: isOffline ? Colors.orange : Colors.green),
+                  const SizedBox(width: 5),
+                  Text(
+                    isOffline ? 'Device offline' : 'Device online',
+                    style: TextStyle(fontSize: 12, color: isOffline ? Colors.orange[800] : Colors.green[800], fontWeight: FontWeight.w600),
+                  ),
+                  if (home.lastUpdatedAt != null) ...[
+                    const SizedBox(width: 8),
+                    Text('Updated ${_formatTimestamp(home.lastUpdatedAt!)}', style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                  ],
+                ],
               ),
               const SizedBox(height: 20),
 
@@ -238,14 +270,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 12),
                         GestureDetector(
-                          onTap: () => _handleValveToggle(isValveOpen),
+                          onTap: isOffline || _togglingValve ? null : () => _handleValveToggle(isValveOpen),
                           child: Container(
                             width: 50,
                             height: 28,
                             padding: const EdgeInsets.all(3),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(999),
-                              color: isValveOpen
+                               color: isOffline ? const Color(0xFFCBD5E1) : isValveOpen
                                   ? const Color(0xFF10B981)
                                   : const Color(0xFFEF4444),
                             ),
@@ -275,6 +307,13 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+
+  String _formatTimestamp(String value) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return value;
+    final local = parsed.toLocal();
+    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 }
 

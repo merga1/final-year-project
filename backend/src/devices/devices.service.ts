@@ -2,12 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Device } from './device.entity';
+import { ValveCommand } from './valve-command.entity';
 
 @Injectable()
 export class DevicesService {
   constructor(
     @InjectRepository(Device)
     private readonly repo: Repository<Device>,
+    @InjectRepository(ValveCommand)
+    private readonly commandRepo: Repository<ValveCommand>,
   ) {}
 
   findAll() {
@@ -32,6 +35,10 @@ export class DevicesService {
   async updateByMeterId(meterId: string, data: Partial<Device>) {
     await this.repo.update({ meterId }, data);
     return this.repo.findOneBy({ meterId });
+  }
+
+  createValveCommand(data: Partial<ValveCommand>) {
+    return this.commandRepo.save(this.commandRepo.create(data));
   }
 
   count() {

@@ -10,6 +10,7 @@ import 'screens/home_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/support_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/notifications_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -152,8 +153,11 @@ class _MainShellState extends State<MainShell> {
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No new notifications')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NotificationsScreen(repo: widget.repo),
+                ),
               );
             },
           ),

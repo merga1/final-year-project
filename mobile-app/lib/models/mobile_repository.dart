@@ -80,6 +80,36 @@ class SupportTicket {
   }
 }
 
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.message,
+    required this.createdAt,
+    this.read = false,
+    this.relatedId,
+  });
+
+  final String id;
+  final String type;
+  final String title;
+  final String message;
+  final String createdAt;
+  final bool read;
+  final String? relatedId;
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) => AppNotification(
+        id: json['id']?.toString() ?? '',
+        type: json['type']?.toString() ?? 'info',
+        title: json['title']?.toString() ?? 'Notification',
+        message: json['message']?.toString() ?? '',
+        createdAt: json['createdAt']?.toString() ?? '',
+        read: json['read'] as bool? ?? false,
+        relatedId: json['relatedId']?.toString(),
+      );
+}
+
 class MobileRepository {
   MobileRepository(this._client);
   final ApiClient _client;
@@ -130,4 +160,49 @@ class MobileRepository {
     });
     return SupportTicket.fromJson(Map<String, dynamic>.from(json as Map));
   }
+
+}
+
+extension MobileRepositorySrsFeatures on MobileRepository {
+  Future<List<AppNotification>> fetchNotifications() async {
+    final json = Map<String, dynamic>.from(await _client.get('/api/notifications') as Map);
+    final items = (json['items'] as List<dynamic>? ?? []);
+    return items.map((item) => AppNotification.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await _client.patch('/api/notifications/$id/read', {});
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _client.patch('/api/notifications/read-all', {});
+  }
+
+  Future<List<PaymentRecord>> fetchPayments() async {
+    final list = await _client.get('/api/mobile/payments') as List<dynamic>;
+    return list.map((item) => PaymentRecord.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+  }
+
+  Future<Map<String, dynamic>> payWithChapa(Bill bill) async {
+    final response = await _client.post('/api/mobile/payments/chapa', {
+      'billId': bill.id,
+      'amount': bill.amountEtb,
+    });
+    return Map<String, dynamic>.from(response as Map);
+  }
+}
+
+class PaymentRecord {
+  const PaymentRecord({required this.amount, required this.status, required this.reference, required this.createdAt});
+  final double amount;
+  final String status;
+  final String reference;
+  final String createdAt;
+
+  factory PaymentRecord.fromJson(Map<String, dynamic> json) => PaymentRecord(
+        amount: (json['amount'] as num?)?.toDouble() ?? 0,
+        status: json['status']?.toString() ?? 'pending',
+        reference: json['reference']?.toString() ?? '-',
+        createdAt: json['createdAt']?.toString() ?? '',
+      );
 }

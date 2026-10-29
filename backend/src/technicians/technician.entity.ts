@@ -22,6 +22,12 @@ export class Technician {
   email: string;
 
   @Column({ nullable: true })
+  passwordHash: string;
+
+  @Column({ default: 'active' })
+  accountStatus: 'active' | 'suspended' | 'pending';
+
+  @Column({ nullable: true })
   phone: string;
 
   @Column({ nullable: true })

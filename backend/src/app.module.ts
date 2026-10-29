@@ -13,6 +13,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { SupportTicketsModule } from './support-tickets/support-tickets.module';
 import { TechniciansModule } from './technicians/technicians.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TechniciansModule } from './technicians/technicians.module';
     AlertsModule,
     SupportTicketsModule,
     TechniciansModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -15,11 +15,13 @@ import { Payment } from '../payments/payment.entity';
 import { Alert } from '../alerts/alert.entity';
 import { SupportTicket } from '../support-tickets/support-ticket.entity';
 import { Technician } from '../technicians/technician.entity';
+import { Notification } from '../notifications/notification.entity';
+import { ValveCommand } from '../devices/valve-command.entity';
 
 const ds = new DataSource({
   type: 'better-sqlite3',
   database: path.resolve(__dirname, '../../water.sqlite'),
-  entities: [Customer, Device, DeviceReading, Bill, Payment, Alert, SupportTicket, Technician],
+  entities: [Customer, Device, DeviceReading, Bill, Payment, Alert, SupportTicket, Technician, Notification, ValveCommand],
   synchronize: true,
 });
 
@@ -30,12 +32,15 @@ async function seed() {
   const customerRepo = ds.getRepository(Customer);
   const adminHash = await bcrypt.hash('admin123', 10);
   const customerHash = await bcrypt.hash('customer123', 10);
+  const technicianHash = await bcrypt.hash('technician123', 10);
 
   // Clear existing demo tables to ensure consistent seed matching screenshots
   await ds.query('DELETE FROM support_tickets');
   await ds.query('DELETE FROM payments');
   await ds.query('DELETE FROM bills');
   await ds.query('DELETE FROM alerts');
+  await ds.query('DELETE FROM notifications');
+  await ds.query('DELETE FROM valve_commands');
   await ds.query('DELETE FROM device_readings');
   await ds.query('DELETE FROM devices');
   await ds.query('DELETE FROM technicians');
@@ -279,6 +284,10 @@ async function seed() {
       currentJobCount: 0,
     }));
   }
+  await techRepo.createQueryBuilder()
+    .update(Technician)
+    .set({ passwordHash: technicianHash, accountStatus: 'active' })
+    .execute();
   console.log('✅ Seeded 13 technicians');
 
   // Seed Devices

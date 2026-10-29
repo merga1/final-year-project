@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -25,5 +25,19 @@ export class AppController {
   @UseGuards(JwtAuthGuard)
   getMobileHome(@CurrentUser() user: any) {
     return this.appService.getMobileHome(user.sub, user.meterId);
+  }
+
+  @Get('api/technician/home')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('technician')
+  getTechnicianHome(@CurrentUser() user: any) {
+    return this.appService.getTechnicianHome(user.technicianId ?? user.sub);
+  }
+
+  @Get('api/technician/tickets/:id/device')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('technician')
+  getTechnicianDevice(@CurrentUser() user: any, @Param('id') ticketId: string) {
+    return this.appService.getTechnicianDevice(ticketId, user.technicianId ?? user.sub);
   }
 }

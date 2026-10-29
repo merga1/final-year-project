@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Technician } from './technician.entity';
 import { CreateTechnicianDto } from './dto/create-technician.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class TechniciansService {
@@ -13,6 +14,10 @@ export class TechniciansService {
 
   findAll() {
     return this.repo.find({ order: { createdAt: 'DESC' } });
+  }
+
+  findByEmail(email: string) {
+    return this.repo.findOneBy({ email: email.trim().toLowerCase() });
   }
 
   async findOne(id: string) {
@@ -26,8 +31,11 @@ export class TechniciansService {
     const tech = this.repo.create({
       ...dto,
       name: name || 'Technician',
+      email: dto.email.trim().toLowerCase(),
+      passwordHash: await bcrypt.hash(dto.password || 'technician123', 10),
       specialization: dto.specialization || 'No specialization',
       status: 'on_duty',
+      accountStatus: 'active',
       currentJobCount: 0,
       completedRepairs: 0,
     });
@@ -59,5 +67,17 @@ export class TechniciansService {
 
   countByStatus(status: string) {
     return this.repo.countBy({ status: status as any });
+  }
+
+  findLeastBusy() {
+    return this.repo.findOne({
+      where: { status: 'on_duty', accountStatus: 'active' },
+      order: { currentJobCount: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
+  async updatePassword(id: string, passwordHash: string) {
+    await this.findOne(id);
+    await this.repo.update(id, { passwordHash });
   }
 }

@@ -3,7 +3,7 @@ import {
 } from 'typeorm';
 
 export type TicketPriority = 'High' | 'Medium' | 'Low';
-export type TicketStatus = 'open' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'Pending';
+export type TicketStatus = 'pending' | 'open' | 'assigned' | 'accepted' | 'in_progress' | 'resolved' | 'closed' | 'Pending';
 
 @Entity('support_tickets')
 export class SupportTicket {
@@ -16,11 +16,11 @@ export class SupportTicket {
   @Column({ default: 'Customer' })
   customerName: string;
 
-  @Column({ nullable: true })
-  technicianId: string;
+  @Column({ type: 'text', nullable: true })
+  technicianId: string | null;
 
-  @Column({ nullable: true })
-  technicianName: string;
+  @Column({ type: 'text', nullable: true })
+  technicianName: string | null;
 
   @Column({ default: 'SENSOR' })
   type: string;
@@ -39,6 +39,30 @@ export class SupportTicket {
 
   @Column({ nullable: true })
   notes: string;
+
+  @Column({ type: 'text', nullable: true })
+  progressNotes: string;
+
+  @Column({ type: 'text', nullable: true })
+  rejectionReason: string;
+
+  @Column({ type: 'text', nullable: true })
+  statusHistory: string;
+
+  @Column({ nullable: true })
+  customerAddress: string;
+
+  @Column({ nullable: true })
+  deviceId: string;
+
+  @Column({ type: 'datetime', nullable: true })
+  assignedAt: Date | null;
+
+  @Column({ nullable: true })
+  acceptedAt: Date;
+
+  @Column({ nullable: true })
+  resolvedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

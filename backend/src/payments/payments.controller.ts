@@ -25,4 +25,22 @@ export class PaymentsController {
       ...body,
     });
   }
+
+  @Get('api/mobile/payments')
+  @UseGuards(JwtAuthGuard)
+  getMobilePayments(@CurrentUser() user: any) {
+    return this.service.findByCustomer(user.sub);
+  }
+
+  @Post('api/mobile/payments/chapa')
+  @UseGuards(JwtAuthGuard)
+  createChapaPayment(@CurrentUser() user: any, @Body() body: any) {
+    return this.service.createChapaPayment({
+      billId: body.billId,
+      amount: Number(body.amount ?? 0),
+      customerId: user.sub,
+      customerName: user.name,
+      reference: body.reference,
+    });
+  }
 }

@@ -23,12 +23,17 @@ export class CustomersService {
   }
 
   async findByEmail(email: string) {
-    return this.repo.findOneBy({ email });
+    return this.repo.findOneBy({ email: email.trim().toLowerCase() });
   }
 
   async create(data: Partial<Customer>) {
-    const customer = this.repo.create(data);
+    const customer = this.repo.create({ ...data, email: data.email?.trim().toLowerCase() });
     return this.repo.save(customer);
+  }
+
+  async updatePasswordHash(id: string, passwordHash: string) {
+    await this.findOne(id);
+    await this.repo.update(id, { passwordHash });
   }
 
   async createFromAdmin(dto: CreateCustomerDto) {
@@ -42,7 +47,7 @@ export class CustomersService {
       firstName: dto.firstName,
       lastName: dto.lastName,
       name: fullName || 'Customer',
-      email: dto.email,
+      email: dto.email.trim().toLowerCase(),
       passwordHash,
       dateOfBirth: dto.dateOfBirth,
       address: dto.address,
@@ -63,9 +68,7 @@ export class CustomersService {
       const last = data.lastName ?? existing.lastName ?? '';
       data.name = `${first} ${last}`.trim();
     }
-    if (data.passwordHash) {
-      data.passwordHash = await bcrypt.hash(data.passwordHash, 10);
-    }
+    if (data.email) data.email = data.email.trim().toLowerCase();
     await this.repo.update(id, data);
     return this.findOne(id);
   }

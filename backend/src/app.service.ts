@@ -138,19 +138,61 @@ export class AppService {
       },
     ];
 
+    const latestTimestamp = latestReading?.timestamp ?? device?.lastSeenAt ?? null;
+    const staleAfterMs = 60_000;
+    const isOffline = !latestTimestamp || Date.now() - new Date(latestTimestamp).getTime() > staleAfterMs || device?.connectivity === 'OFFLINE';
     return {
       userId: customer.id,
       customerName: customer.name,
       customerEmail: customer.email,
-      connectionStatus: device?.connectivity ?? 'ONLINE',
+      connectionStatus: isOffline ? 'OFFLINE' : device?.connectivity ?? 'ONLINE',
       meterId: device?.meterId ?? 'ESP32-001',
       flowRateLpm: latestReading?.flowRateLpm ?? 0.0,
       turbidityNtu: latestReading?.turbidityNtu ?? 0.0,
-      monthlyConsumptionLiters: latestReading?.totalUsageLiters ?? 1002.0,
+      monthlyConsumptionLiters: latestReading?.totalUsageLiters ?? 0,
+      dailyConsumptionLiters: latestReading?.totalUsageLiters ?? 0,
+      waterQualityStatus: latestReading ? (latestReading.turbidityNtu <= 5 ? 'Safe' : latestReading.turbidityNtu <= 15 ? 'Warning' : 'Contaminated') : 'Unknown',
+      lastUpdatedAt: latestTimestamp,
+      deviceOffline: isOffline,
       valveState: device?.valveState ?? 'OPEN',
       cards,
-      alerts: [],
+      alerts: await this.alerts.findByMeterId(meterId ?? ''),
       updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async getTechnicianHome(technicianId: string) {
+    const tickets = await this.tickets.findByTechnician(technicianId);
+    return {
+      assigned: tickets.filter((t) => ['assigned', 'open', 'pending'].includes(t.status.toLowerCase())).length,
+      accepted: tickets.filter((t) => ['accepted', 'in_progress'].includes(t.status.toLowerCase())).length,
+      resolved: tickets.filter((t) => ['resolved', 'closed'].includes(t.status.toLowerCase())).length,
+      total: tickets.length,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async getTechnicianDevice(ticketId: string, technicianId: string) {
+    const ticket = await this.tickets.findOneForTechnician(ticketId, technicianId);
+    const device = ticket.deviceId
+      ? await this.devices.findOne(ticket.deviceId)
+      : ticket.customerId
+        ? await this.devices.findAll().then((items) => items.find((item) => item.customerId === ticket.customerId))
+        : null;
+    const meterId = device?.meterId;
+    const [reading, alerts] = meterId
+      ? await Promise.all([this.readings.findLatestByMeterId(meterId), this.alerts.findByMeterId(meterId)])
+      : [null, []];
+    return {
+      ticketId: ticket.id,
+      deviceId: device?.id ?? null,
+      meterId: meterId ?? null,
+      flowRateLpm: reading?.flowRateLpm ?? 0,
+      turbidityNtu: reading?.turbidityNtu ?? 0,
+      valveState: reading?.valveState ?? device?.valveState ?? 'UNKNOWN',
+      connectivity: device?.connectivity ?? 'UNKNOWN',
+      lastUpdatedAt: reading?.timestamp ?? device?.lastSeenAt ?? null,
+      alerts,
     };
   }
 }

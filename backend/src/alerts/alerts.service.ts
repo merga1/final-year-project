@@ -18,6 +18,10 @@ export class AlertsService {
     return this.repo.find({ where: { acknowledged: false }, order: { createdAt: 'DESC' } });
   }
 
+  findByMeterId(meterId: string) {
+    return this.repo.find({ where: { meterId }, order: { createdAt: 'DESC' }, take: 20 });
+  }
+
   count() {
     return this.repo.count();
   }

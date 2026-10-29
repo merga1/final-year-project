@@ -14,6 +14,12 @@ export class AuthController {
     return this.service.loginAdmin(body.email, body.password);
   }
 
+  @Post('forgot-password')
+  @HttpCode(200)
+  forgotPassword(@Body() body: { email: string }) {
+    return this.service.forgotPassword(body.email);
+  }
+
   /** Customer self-registration via mobile app */
   @Post('register')
   register(@Body() body: { name: string; email: string; password: string; meterId?: string }) {

@@ -60,6 +60,13 @@ class ApiClient {
     }, path);
   }
 
+  Future<dynamic> patch(String path, Map<String, dynamic> body) async {
+    return _executeWithFallback((baseUrl) {
+      final uri = Uri.parse('$baseUrl$path');
+      return http.patch(uri, headers: _headers, body: jsonEncode(body));
+    }, path);
+  }
+
   void _checkStatus(http.Response res, String path) {
     if (res.statusCode == 401) throw Exception('Unauthorized — please log in again');
     if (res.statusCode < 200 || res.statusCode >= 300) {
