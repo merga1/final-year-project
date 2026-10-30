@@ -9,6 +9,10 @@
       "path": "mobile-app"
     },
     {
+      "name": "technician-app",
+      "path": "technician-app"
+    },
+    {
       "name": "admin-dashboard",
       "path": "admin-dashboard"
     },
@@ -29,7 +33,11 @@
       "**/node_modules": true
     },
     "editor.formatOnSave": true,
-    "typescript.tsdk": "admin-dashboard/node_modules/typescript/lib"
+    "typescript.tsdk": "admin-dashboard/node_modules/typescript/lib",
+    "dart.flutterSdkPath": "C:\\Users\\Merga\\flutter\\flutter",
+    "terminal.integrated.env.windows": {
+      "Path": "C:\\Users\\Merga\\flutter\\flutter\\bin;C:\\Users\\Merga\\flutter\\flutter\\bin\\cache\\dart-sdk\\bin;${env:Path}"
+    }
   },
   "extensions": {
     "recommendations": [

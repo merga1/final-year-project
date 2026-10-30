@@ -11,6 +11,7 @@ import 'screens/bills_screen.dart';
 import 'screens/support_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/field_jobs_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +58,7 @@ class _AppRootState extends State<AppRoot> {
   late final MobileRepository _repo;
   bool _ready = false;
   bool _loggedIn = false;
+  String _role = 'customer';
 
   @override
   void initState() {
@@ -68,14 +70,26 @@ class _AppRootState extends State<AppRoot> {
 
   Future<void> _tryRestore() async {
     final restored = await _auth.tryRestoreSession();
+    final user = await _auth.getStoredUser();
     setState(() {
       _ready = true;
       _loggedIn = restored;
+      _role = user['role'] ?? 'customer';
     });
   }
 
-  void _onLogin() => setState(() => _loggedIn = true);
-  void _onLogout() => setState(() => _loggedIn = false);
+  Future<void> _onLogin() async {
+    final user = await _auth.getStoredUser();
+    setState(() {
+      _loggedIn = true;
+      _role = user['role'] ?? 'customer';
+    });
+  }
+
+  void _onLogout() => setState(() {
+        _loggedIn = false;
+        _role = 'customer';
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -84,10 +98,49 @@ class _AppRootState extends State<AppRoot> {
     }
 
     if (!_loggedIn) {
-      return LoginScreen(authService: _auth, onLogin: _onLogin);
+      return LoginScreen(
+          authService: _auth,
+          onLogin: () {
+            _onLogin();
+          });
+    }
+
+    if (_role == 'field_tech') {
+      return FieldShell(repo: _repo, auth: _auth, onLogout: _onLogout);
     }
 
     return MainShell(repo: _repo, auth: _auth, onLogout: _onLogout);
+  }
+}
+
+class FieldShell extends StatelessWidget {
+  const FieldShell(
+      {super.key,
+      required this.repo,
+      required this.auth,
+      required this.onLogout});
+  final MobileRepository repo;
+  final AuthService auth;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Field jobs'),
+          bottom: const TabBar(tabs: [
+            Tab(text: 'Jobs'),
+            Tab(text: 'Profile'),
+          ]),
+        ),
+        body: TabBarView(children: [
+          FieldJobsScreen(repo: repo),
+          ProfileScreen(authService: auth, onLogout: onLogout),
+        ]),
+      ),
+    );
   }
 }
 
@@ -174,17 +227,20 @@ class _MainShellState extends State<MainShell> {
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.grid_view_rounded),
-            selectedIcon: Icon(Icons.grid_view_rounded, color: Color(0xFF0284C7)),
+            selectedIcon:
+                Icon(Icons.grid_view_rounded, color: Color(0xFF0284C7)),
             label: 'Home',
           ),
           NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded, color: Color(0xFF0284C7)),
+            selectedIcon:
+                Icon(Icons.receipt_long_rounded, color: Color(0xFF0284C7)),
             label: 'Billing',
           ),
           NavigationDestination(
             icon: Icon(Icons.support_agent_outlined),
-            selectedIcon: Icon(Icons.support_agent_rounded, color: Color(0xFF0284C7)),
+            selectedIcon:
+                Icon(Icons.support_agent_rounded, color: Color(0xFF0284C7)),
             label: 'Support Ticket',
           ),
         ],
@@ -214,7 +270,8 @@ class _MainShellState extends State<MainShell> {
                 ),
                 const SizedBox(height: 14),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -238,10 +295,12 @@ class _MainShellState extends State<MainShell> {
                         onTap: () {
                           Clipboard.setData(ClipboardData(text: _userId));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('User ID copied to clipboard')),
+                            const SnackBar(
+                                content: Text('User ID copied to clipboard')),
                           );
                         },
-                        child: const Icon(Icons.copy_rounded, size: 16, color: Colors.white70),
+                        child: const Icon(Icons.copy_rounded,
+                            size: 16, color: Colors.white70),
                       ),
                     ],
                   ),
@@ -252,8 +311,10 @@ class _MainShellState extends State<MainShell> {
 
           // Menu list items
           ListTile(
-            leading: const Icon(Icons.person_outline_rounded, color: Color(0xFF334155)),
-            title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.w600)),
+            leading: const Icon(Icons.person_outline_rounded,
+                color: Color(0xFF334155)),
+            title: const Text('Profile',
+                style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -271,8 +332,10 @@ class _MainShellState extends State<MainShell> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.shield_outlined, color: Color(0xFF334155)),
-            title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w600)),
+            leading:
+                const Icon(Icons.shield_outlined, color: Color(0xFF334155)),
+            title: const Text('Privacy Policy',
+                style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
               _showInfoDialog(context, 'Privacy Policy',
@@ -280,8 +343,10 @@ class _MainShellState extends State<MainShell> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.info_outline_rounded, color: Color(0xFF334155)),
-            title: const Text('About', style: TextStyle(fontWeight: FontWeight.w600)),
+            leading: const Icon(Icons.info_outline_rounded,
+                color: Color(0xFF334155)),
+            title: const Text('About',
+                style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
               _showInfoDialog(context, 'About AquaSense',
@@ -290,8 +355,10 @@ class _MainShellState extends State<MainShell> {
           ),
           ListTile(
             leading: const Icon(Icons.dns_outlined, color: Color(0xFF334155)),
-            title: const Text('Server Connection', style: TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(ApiConstants.baseUrl, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            title: const Text('Server Connection',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(ApiConstants.baseUrl,
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
             onTap: () {
               Navigator.pop(context);
               _openServerDialog(context);
@@ -303,7 +370,8 @@ class _MainShellState extends State<MainShell> {
             leading: const Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),
             title: const Text(
               'Sign Out',
-              style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
             ),
             onTap: () {
               Navigator.pop(context);
@@ -337,12 +405,14 @@ class _MainShellState extends State<MainShell> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Server Connection', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Server Connection',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Backend Server URL:', style: TextStyle(fontSize: 13, color: Colors.grey)),
+            const Text('Backend Server URL:',
+                style: TextStyle(fontSize: 13, color: Colors.grey)),
             const SizedBox(height: 8),
             TextField(
               controller: controller,
@@ -358,13 +428,17 @@ class _MainShellState extends State<MainShell> {
               children: [
                 ActionChip(
                   avatar: const Icon(Icons.wifi, size: 16),
-                  label: const Text('Wi-Fi (192.168.11.137)', style: TextStyle(fontSize: 11)),
-                  onPressed: () => controller.text = ApiConstants.defaultWifiUrl,
+                  label: const Text('Wi-Fi (192.168.11.137)',
+                      style: TextStyle(fontSize: 11)),
+                  onPressed: () =>
+                      controller.text = ApiConstants.defaultWifiUrl,
                 ),
                 ActionChip(
                   avatar: const Icon(Icons.usb, size: 16),
-                  label: const Text('USB (127.0.0.1)', style: TextStyle(fontSize: 11)),
-                  onPressed: () => controller.text = ApiConstants.defaultLocalUrl,
+                  label: const Text('USB (127.0.0.1)',
+                      style: TextStyle(fontSize: 11)),
+                  onPressed: () =>
+                      controller.text = ApiConstants.defaultLocalUrl,
                 ),
               ],
             ),

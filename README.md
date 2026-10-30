@@ -63,7 +63,7 @@ npm run test:smoke
 
 ```powershell
 cd mobile-app
-flutter create .
+flutter pub get
 flutter test
 flutter run
 ```
@@ -72,9 +72,8 @@ flutter run
 
 ```powershell
 cd technician-app
-flutter create .
 flutter pub get
-flutter run --dart-define=API_BASE_URL=http://YOUR_IP:4000
+  flutter run --dart-define=API_BASE_URL=http://YOUR_IP:4000
 ```
 
 The seeded technician account is `john.smith@tech.water` / `technician123` after running `npm run seed` in `backend`.

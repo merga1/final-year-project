@@ -72,7 +72,7 @@ class AuthService {
     await prefs.setString(_nameKey, user['name'] as String? ?? '');
     await prefs.setString(_emailKey, user['email'] as String? ?? '');
     await prefs.setString(_meterIdKey, user['meterId'] as String? ?? '');
-    await prefs.setString(_roleKey, 'customer');
+    await prefs.setString(_roleKey, user['role'] as String? ?? 'customer');
     await prefs.setString(_userIdKey, user['sub']?.toString() ?? '');
     return true;
   }

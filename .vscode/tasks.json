@@ -22,9 +22,18 @@
     {
       "label": "mobile-app: run",
       "type": "shell",
-      "command": "flutter run",
+      "command": "${config:dart.flutterSdkPath}\\bin\\flutter.bat run",
       "options": {
         "cwd": "${workspaceFolder:mobile-app}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "technician-app: run",
+      "type": "shell",
+      "command": "${config:dart.flutterSdkPath}\\bin\\flutter.bat run",
+      "options": {
+        "cwd": "${workspaceFolder:technician-app}"
       },
       "problemMatcher": []
     },
@@ -49,9 +58,36 @@
     {
       "label": "mobile-app: test",
       "type": "shell",
-      "command": "flutter test",
+      "command": "${config:dart.flutterSdkPath}\\bin\\flutter.bat test",
       "options": {
         "cwd": "${workspaceFolder:mobile-app}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "mobile-app: build apk",
+      "type": "shell",
+      "command": "${config:dart.flutterSdkPath}\\bin\\flutter.bat build apk",
+      "options": {
+        "cwd": "${workspaceFolder:mobile-app}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "technician-app: test",
+      "type": "shell",
+      "command": "${config:dart.flutterSdkPath}\\bin\\flutter.bat test",
+      "options": {
+        "cwd": "${workspaceFolder:technician-app}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "technician-app: build apk",
+      "type": "shell",
+      "command": "${config:dart.flutterSdkPath}\\bin\\flutter.bat build apk",
+      "options": {
+        "cwd": "${workspaceFolder:technician-app}"
       },
       "problemMatcher": []
     }

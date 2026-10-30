@@ -54,6 +54,25 @@ class FakeMobileRepository implements MobileRepository {
       description: description,
     );
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchInvoices() async => [];
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchMyJobs() async => [];
+
+  @override
+  Future<void> actOnJob(String id, String action, [Map<String, dynamic>? body]) async {}
+
+  @override
+  Future<void> disputeInvoice(String id, String note) async {}
+
+  @override
+  Future<void> requestPayment({
+    required String billId,
+    required double amount,
+    required String reference,
+  }) async {}
 }
 
 class DelayedMobileRepository implements MobileRepository {
@@ -93,6 +112,25 @@ class DelayedMobileRepository implements MobileRepository {
   }) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchInvoices() async => [];
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchMyJobs() async => [];
+
+  @override
+  Future<void> actOnJob(String id, String action, [Map<String, dynamic>? body]) async {}
+
+  @override
+  Future<void> disputeInvoice(String id, String note) async {}
+
+  @override
+  Future<void> requestPayment({
+    required String billId,
+    required double amount,
+    required String reference,
+  }) async {}
 }
 
 void main() {

@@ -1,6 +1,10 @@
 {
   "editor.formatOnSave": true,
   "files.insertFinalNewline": true,
+  "dart.flutterSdkPath": "C:\\Users\\Merga\\flutter\\flutter",
+  "terminal.integrated.env.windows": {
+    "Path": "C:\\Users\\Merga\\flutter\\flutter\\bin;C:\\Users\\Merga\\flutter\\flutter\\bin\\cache\\dart-sdk\\bin;${env:Path}"
+  },
   "search.exclude": {
     "**/.next": true,
     "**/dist": true,
