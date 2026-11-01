@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { AdminShell } from './admin-shell';
 
 export type TopTechnician = {
@@ -15,36 +16,83 @@ export type OverviewResponse = {
     totalTickets: number;
   };
   topTechnicians?: TopTechnician[];
-  summaryCards: Array<{ label: string; value: string }>;
+  summaryCards?: Array<{ label: string; value: string }>;
+  detailCards?: Array<{ label: string; value: string }>;
+  recentDevices?: Array<{ id: string; customer?: string; status: string; note: string }>;
+  ticketQueue?: Array<{ id: string; issue?: string; priority?: string; status: string }>;
   updatedAt: string;
 };
 
-export function OverviewContent({ overview }: { overview: OverviewResponse }) {
+export function OverviewContent({
+  overview,
+  alerts = [],
+  tickets = [],
+  billing = [],
+  devices = [],
+}: {
+  overview: OverviewResponse;
+  alerts?: any[];
+  tickets?: any[];
+  billing?: any[];
+  devices?: any[];
+}) {
   const stats = overview.stats ?? {
-    totalCustomers: 17,
-    totalTechnicians: 13,
+    totalCustomers: 0,
+    totalTechnicians: 0,
     criticalAlerts: 0,
-    totalTickets: 12,
+    totalTickets: 0,
   };
+
+  const totalCust = devices.length > 0 ? (overview.stats?.totalCustomers ?? 0) : 0;
+  const onlineDevs = devices.filter(d => d.connectivity === 'ONLINE').length;
+  const totalDevs = devices.length;
+
+  const openTickets = tickets.filter(t =>
+    ['pending', 'assigned', 'accepted'].includes((t.status ?? '').toLowerCase())
+  ).length;
+
+  const unackAlerts = alerts.filter(a => !a.acknowledged).length;
+  const criticalUnackAlerts = alerts.filter(a => !a.acknowledged && a.severity === 'critical').length;
+
+  const unpaidBills = billing.filter(b => (b.status ?? '').toLowerCase() !== 'paid');
+  const overdueBills = billing.filter(b => (b.status ?? '').toLowerCase() === 'overdue').length;
+  const unpaidTotalEtb = unpaidBills.reduce((acc, b) => acc + Number(b.amountEtb ?? 0), 0);
 
   const topTechs: TopTechnician[] =
     overview.topTechnicians && overview.topTechnicians.length > 0
       ? overview.topTechnicians
       : [
-          { id: '1', name: 'John Smith', repairs: 12 },
-          { id: '2', name: 'Sarah Johnson', repairs: 9 },
-          { id: '3', name: 'Michael Chen', repairs: 7 },
+          { id: '1', name: 'Field Team 1', repairs: 8 },
+          { id: '2', name: 'Field Team 2', repairs: 5 },
         ];
+
+  const recentAlertsList = alerts.slice(0, 5);
+  const recentTicketsList = tickets.slice(0, 5);
 
   return (
     <AdminShell currentPath="/">
-      <div className="admin-dashboard-view">
-        <h2 className="dashboard-section-heading">Admin Dashboard</h2>
+      <div className="section-container">
+        <div className="section-header-row">
+          <div>
+            <h2 className="section-main-title">Operations Overview</h2>
+            <p className="text-muted-sm" style={{ marginTop: 2 }}>
+              Status: <span style={{ fontWeight: 700, color: '#059669' }}>{overview.systemStatus || 'System Stable'}</span> &middot; Last updated: {overview.updatedAt ? new Date(overview.updatedAt).toLocaleTimeString() : 'Just now'}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Link href="/support-tickets" className="btn-primary-blue">
+              Manage Tickets
+            </Link>
+            <Link href="/devices/new" className="btn-outline-gray">
+              + Add Meter
+            </Link>
+          </div>
+        </div>
 
-        {/* 4 Gradient Stat Cards */}
-        <div className="gradient-cards-row">
-          {/* Card 1: Total Customers (Green) */}
-          <div className="metric-card metric-card-green">
+        {/* 5 SRS Summary Metric Cards (AD-45) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          {/* 1. Total Customers */}
+          <div className="metric-card metric-card-green" style={{ minHeight: 130 }}>
             <div className="metric-header">
               <span className="metric-label">Total Customers</span>
               <div className="metric-icon-box">
@@ -53,76 +101,158 @@ export function OverviewContent({ overview }: { overview: OverviewResponse }) {
                 </svg>
               </div>
             </div>
-            <div className="metric-value">{stats.totalCustomers}</div>
-            <div className="metric-progress-track">
-              <div className="metric-progress-fill" style={{ width: '35%' }} />
-              <div className="metric-progress-thumb" style={{ left: '35%' }} />
-            </div>
+            <div className="metric-value">{stats.totalCustomers || totalCust || 0}</div>
+            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
+              <Link href="/customers" style={{ textDecoration: 'underline', color: '#fff' }}>View all customers &rarr;</Link>
+            </span>
           </div>
 
-          {/* Card 2: Total Technicians (Purple) */}
-          <div className="metric-card metric-card-purple">
+          {/* 2. Active Devices */}
+          <div className="metric-card metric-card-purple" style={{ minHeight: 130 }}>
             <div className="metric-header">
-              <span className="metric-label">Total Technicians</span>
+              <span className="metric-label">Active Meters</span>
               <div className="metric-icon-box">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  <path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm-5 20c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5-4H7V4h10v13z"/>
                 </svg>
               </div>
             </div>
-            <div className="metric-value">{stats.totalTechnicians}</div>
-            <div className="metric-progress-track">
-              <div className="metric-progress-fill" style={{ width: '40%' }} />
-              <div className="metric-progress-thumb" style={{ left: '40%' }} />
-            </div>
+            <div className="metric-value">{onlineDevs} <span style={{ fontSize: '1rem', fontWeight: 500 }}>/ {totalDevs}</span></div>
+            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
+              <Link href="/devices" style={{ textDecoration: 'underline', color: '#fff' }}>Device inventory &rarr;</Link>
+            </span>
           </div>
 
-          {/* Card 3: Critical Alerts (Red) */}
-          <div className="metric-card metric-card-red">
+          {/* 3. Open Tickets */}
+          <div className="metric-card metric-card-lavender" style={{ minHeight: 130 }}>
             <div className="metric-header">
-              <span className="metric-label">Critical Alerts</span>
-              <div className="metric-icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-                </svg>
-              </div>
-            </div>
-            <div className="metric-value">{stats.criticalAlerts}</div>
-            <div className="metric-progress-track">
-              <div className="metric-progress-fill" style={{ width: '5%' }} />
-              <div className="metric-progress-thumb" style={{ left: '5%' }} />
-            </div>
-          </div>
-
-          {/* Card 4: Total Tickets (Lavender Blue) */}
-          <div className="metric-card metric-card-lavender">
-            <div className="metric-header">
-              <div className="metric-header-stack">
-                <span className="metric-label">Total Tickets</span>
-                <span className="metric-sublabel">Overall count</span>
-              </div>
+              <span className="metric-label">Open Tickets</span>
               <div className="metric-icon-box">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                 </svg>
               </div>
             </div>
-            <div className="metric-value">{stats.totalTickets}</div>
-            <div className="metric-progress-track">
-              <div className="metric-progress-fill" style={{ width: '25%' }} />
-              <div className="metric-progress-thumb" style={{ left: '25%' }} />
+            <div className="metric-value">{openTickets} <span style={{ fontSize: '1rem', fontWeight: 500 }}>open</span></div>
+            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
+              <Link href="/support-tickets" style={{ textDecoration: 'underline', color: '#fff' }}>Queue & assignments &rarr;</Link>
+            </span>
+          </div>
+
+          {/* 4. Unacknowledged Alerts */}
+          <div className="metric-card metric-card-red" style={{ minHeight: 130 }}>
+            <div className="metric-header">
+              <span className="metric-label">Alerts Unack&apos;d</span>
+              <div className="metric-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                </svg>
+              </div>
+            </div>
+            <div className="metric-value">{unackAlerts} {criticalUnackAlerts > 0 && <span style={{ fontSize: '0.85rem' }}>({criticalUnackAlerts} crit)</span>}</div>
+            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
+              <Link href="/alerts" style={{ textDecoration: 'underline', color: '#fff' }}>Review alerts &rarr;</Link>
+            </span>
+          </div>
+
+          {/* 5. Unpaid Bills */}
+          <div className="metric-card" style={{ background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', minHeight: 130 }}>
+            <div className="metric-header">
+              <span className="metric-label">Unpaid Bills</span>
+              <div className="metric-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                </svg>
+              </div>
+            </div>
+            <div className="metric-value">{unpaidBills.length} <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>({overdueBills} overdue)</span></div>
+            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
+              ETB {unpaidTotalEtb.toLocaleString()} &middot; <Link href="/billing" style={{ textDecoration: 'underline', color: '#fff' }}>Billing details &rarr;</Link>
+            </span>
+          </div>
+        </div>
+
+        {/* Deep link panels (AD-46: Recent Alerts & Recent Tickets) */}
+        <div className="detail-two-col">
+          {/* Recent Support Tickets */}
+          <div className="table-card" style={{ padding: '20px 24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Recent Support Tickets</h3>
+              <Link href="/support-tickets" className="link-mono" style={{ fontSize: '0.8rem' }}>
+                View All &rarr;
+              </Link>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {recentTicketsList.length === 0 && (
+                <p className="text-muted-sm" style={{ padding: '16px 0', textAlign: 'center' }}>No tickets in queue.</p>
+              )}
+              {recentTicketsList.map(t => {
+                const status = (t.status ?? 'pending').toLowerCase();
+                const shortId = (t.id ?? '').replace(/-/g, '').slice(0, 8).toUpperCase();
+                return (
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Link href={`/support-tickets/${t.id}`} className="link-mono">
+                        #{shortId} &middot; {t.type ?? 'General'}
+                      </Link>
+                      <span className="text-muted-sm" style={{ fontSize: '0.8rem' }}>
+                        {t.customerName ?? 'Customer'} &middot; {t.description?.slice(0, 36) ?? t.issue ?? 'No details'}
+                      </span>
+                    </div>
+                    <span className={`status-badge ${status === 'resolved' ? 'status-ok' : status === 'pending' ? 'status-warn' : 'status-info'}`} style={{ fontSize: '0.72rem' }}>
+                      {status}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recent Alerts */}
+          <div className="table-card" style={{ padding: '20px 24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Recent Alerts</h3>
+              <Link href="/alerts" className="link-mono" style={{ fontSize: '0.8rem' }}>
+                View All &rarr;
+              </Link>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {recentAlertsList.length === 0 && (
+                <p className="text-muted-sm" style={{ padding: '16px 0', textAlign: 'center' }}>No active alerts.</p>
+              )}
+              {recentAlertsList.map(a => {
+                const isCrit = a.severity === 'critical';
+                return (
+                  <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: !a.acknowledged ? '#fffbeb' : '#f8fafc', borderLeft: !a.acknowledged ? '3px solid #f59e0b' : 'none', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: isCrit ? '#dc2626' : '#0f172a' }}>
+                        {a.type ?? a.alertType ?? 'Anomaly'} &middot; <code className="mono-text" style={{ fontSize: '0.75rem' }}>{a.meterId ?? a.deviceId ?? 'Meter'}</code>
+                      </span>
+                      <span className="text-muted-sm" style={{ fontSize: '0.8rem' }}>{a.message}</span>
+                    </div>
+                    <span className={`status-badge ${a.acknowledged ? 'status-ok' : 'status-warn'}`} style={{ fontSize: '0.72rem' }}>
+                      {a.acknowledged ? 'Ack' : 'Open'}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Top Technicians Section */}
+        {/* Top Technicians & Key Metrics */}
         <div className="white-panel top-technicians-card">
-          <h3 className="panel-card-title">Top Technicians</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 className="panel-card-title" style={{ margin: 0, padding: 0, border: 'none' }}>Field Operations Team</h3>
+            <Link href="/technicians" className="link-mono" style={{ fontSize: '0.8rem' }}>
+              Manage Technicians &rarr;
+            </Link>
+          </div>
           <div className="top-tech-list">
             {topTechs.map((tech) => (
               <div key={tech.id || tech.name} className="top-tech-row">
                 <span className="top-tech-name">{tech.name}</span>
-                <span className="top-tech-repairs">{tech.repairs} repairs</span>
+                <span className="top-tech-repairs">{tech.repairs} jobs assigned / completed</span>
               </div>
             ))}
           </div>

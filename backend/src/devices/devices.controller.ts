@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, HttpCode } from '@nestjs/common';
 import { DevicesService } from './devices.service';
 import { ReadingsService } from '../readings/readings.service';
 import { AlertsService } from '../alerts/alerts.service';
@@ -67,11 +67,43 @@ export class DevicesController {
     return this.devicesService.findAll();
   }
 
+  @Post('api/admin/devices')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  create(@Body() body: any) {
+    return this.devicesService.create(body);
+  }
+
   @Get('api/admin/devices/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  findOne(@Param('id') id: string) {
-    return this.devicesService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    const device = (await this.devicesService.findByMeterId(id))
+      ?? (await this.devicesService.findOne(id).catch(() => null));
+    if (!device) throw new BadRequestException(`Device ${id} not found`);
+    return device;
+  }
+
+  @Patch('api/admin/devices/:id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async activate(@Param('id') id: string) {
+    const device = (await this.devicesService.findByMeterId(id))
+      ?? (await this.devicesService.findOne(id).catch(() => null));
+    if (!device) throw new BadRequestException(`Device ${id} not found`);
+    await this.devicesService.updateByMeterId(device.meterId, { connectivity: 'ONLINE' });
+    return { success: true, message: 'Device activated', connectivity: 'ONLINE' };
+  }
+
+  @Patch('api/admin/devices/:id/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async deactivate(@Param('id') id: string) {
+    const device = (await this.devicesService.findByMeterId(id))
+      ?? (await this.devicesService.findOne(id).catch(() => null));
+    if (!device) throw new BadRequestException(`Device ${id} not found`);
+    await this.devicesService.updateByMeterId(device.meterId, { connectivity: 'OFFLINE' });
+    return { success: true, message: 'Device deactivated', connectivity: 'OFFLINE' };
   }
 
   /**

@@ -61,6 +61,12 @@ export const getReadings = (token: string, meterId?: string) =>
 export const getDailyUsage = (token: string, meterId?: string) =>
   apiFetch<Array<{ day: string; usageLiters: string }>>(`/api/admin/readings/daily${meterId ? `?meterId=${meterId}` : ''}`, token);
 
+export const getZoneUsage = (token: string) =>
+  apiFetch<Array<{ zone: string; totalLiters: number; avgTurbidity: number; meterCount: number }>>('/api/admin/readings/zones', token).catch(() => []);
+
+export const getQualityTrend = (token: string) =>
+  apiFetch<Array<{ day: string; avgTurbidity: number; maxTurbidity: number; avgFlowRate: number }>>('/api/admin/readings/quality', token).catch(() => []);
+
 export const getBilling = (token: string) =>
   apiFetch<any[]>('/api/admin/billing', token);
 
@@ -87,3 +93,90 @@ export const createTechnician = (token: string, data: any) =>
     method: 'POST',
     body: JSON.stringify(data),
   });
+
+// ── Extended Customer API ──────────────────────────────────────────────────────
+export const getCustomer = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/customers/${id}`, token);
+
+export const updateCustomer = (token: string, id: string, data: any) =>
+  apiFetch<any>(`/api/admin/customers/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+export const suspendCustomer = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/customers/${id}/suspend`, token, { method: 'PATCH' });
+
+export const activateCustomer = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/customers/${id}/activate`, token, { method: 'PATCH' });
+
+export const linkDeviceToCustomer = (token: string, customerId: string, meterId: string) =>
+  apiFetch<any>(`/api/admin/customers/${customerId}/link-device`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ meterId }),
+  });
+
+// ── Extended Device API ────────────────────────────────────────────────────────
+export const getDevice = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/devices/${id}`, token);
+
+export const registerDevice = (token: string, data: any) =>
+  apiFetch<any>('/api/admin/devices', token, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const activateDevice = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/devices/${id}/activate`, token, { method: 'PATCH' });
+
+export const deactivateDevice = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/devices/${id}/deactivate`, token, { method: 'PATCH' });
+
+export const getDeviceReadings = (token: string, meterId: string, from?: string, to?: string) => {
+  const params = new URLSearchParams({ meterId });
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  return apiFetch<any[]>(`/api/admin/readings?${params.toString()}`, token);
+};
+
+// ── Extended Ticket API ────────────────────────────────────────────────────────
+export const getTicket = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/support-tickets/${id}`, token);
+
+export const assignTicket = (token: string, id: string, technicianId: string, reason?: string) =>
+  apiFetch<any>(`/api/admin/support-tickets/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ technicianId, status: 'assigned', reason }),
+  });
+
+export const closeTicket = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/support-tickets/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'closed' }),
+  });
+
+export const reopenTicket = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/support-tickets/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'pending' }),
+  });
+
+export const createTicketAdmin = (token: string, data: any) =>
+  apiFetch<any>('/api/admin/support-tickets', token, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+// ── Extended Technician API ────────────────────────────────────────────────────
+export const getTechnician = (token: string, id: string) =>
+  apiFetch<any>(`/api/admin/technicians/${id}`, token);
+
+export const updateTechnician = (token: string, id: string, data: any) =>
+  apiFetch<any>(`/api/admin/technicians/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+// ── Audit Logs API (NFR-A07) ───────────────────────────────────────────────────
+export const getAuditLogs = (token: string, limit = 100) =>
+  apiFetch<any[]>(`/api/admin/audit-logs?limit=${limit}`, token).catch(() => []);

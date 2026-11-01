@@ -329,8 +329,8 @@ async function seed() {
       id: '67f7e058-dc4d-1ecc-7052-d2bc00000003',
       customerId: c3.id,
       customerName: c3.name,
-      technicianId: t2.id,
-      technicianName: t2.name,
+      technicianId: null,
+      technicianName: null,
       type: 'SENSOR',
       issue: 'Flow rate fluctuation',
       description: 'asd',
@@ -396,3 +396,4 @@ async function seed() {
 }
 
 seed().catch(err => { console.error(err); process.exit(1); });
+

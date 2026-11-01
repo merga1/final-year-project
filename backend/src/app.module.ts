@@ -14,6 +14,7 @@ import { AlertsModule } from './alerts/alerts.module';
 import { SupportTicketsModule } from './support-tickets/support-tickets.module';
 import { TechniciansModule } from './technicians/technicians.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     SupportTicketsModule,
     TechniciansModule,
     NotificationsModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],

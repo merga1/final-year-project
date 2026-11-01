@@ -18,6 +18,12 @@ export class SupportTicketsService {
     return this.repo.find({ order: { createdAt: 'DESC' } });
   }
 
+  async findOne(id: string) {
+    const ticket = await this.repo.findOneBy({ id });
+    if (!ticket) throw new NotFoundException(`Ticket ${id} not found`);
+    return ticket;
+  }
+
   findByCustomer(customerId: string) {
     return this.repo.find({ where: { customerId }, order: { createdAt: 'DESC' } });
   }

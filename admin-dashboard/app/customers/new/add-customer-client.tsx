@@ -25,7 +25,8 @@ export default function AddCustomerClient() {
     };
 
     try {
-      const res = await fetch('http://localhost:4000/api/admin/customers', {
+      const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+      const res = await fetch(`${API}/api/admin/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,6 +51,7 @@ export default function AddCustomerClient() {
   }
 
   function getCookie(name: string): string {
+    if (typeof document === 'undefined') return '';
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? match[2] : '';
   }
@@ -74,28 +76,18 @@ export default function AddCustomerClient() {
               name="email"
               type="email"
               required
-              placeholder="Email address"
+              placeholder="e.g. customer@example.com"
             />
           </div>
 
           <div className="form-field-group full-width">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">Temporary Password</label>
             <input
               id="password"
               name="password"
               type="password"
               required
-              placeholder="Password (at least 6 characters)"
-            />
-          </div>
-
-          <div className="form-field-group full-width">
-            <label htmlFor="dateOfBirth">Date of Birth</label>
-            <input
-              id="dateOfBirth"
-              name="dateOfBirth"
-              type="date"
-              placeholder="mm/dd/yyyy"
+              placeholder="Initial account password"
             />
           </div>
 
@@ -122,26 +114,29 @@ export default function AddCustomerClient() {
             </div>
           </div>
 
-          <div className="form-field-group full-width">
-            <label htmlFor="address">Address</label>
-            <input
-              id="address"
-              name="address"
-              type="text"
-              placeholder="Address"
-            />
+          <div className="form-row-two-col">
+            <div className="form-field-group">
+              <label htmlFor="dateOfBirth">Date of Birth</label>
+              <input id="dateOfBirth" name="dateOfBirth" type="date" />
+            </div>
+            <div className="form-field-group">
+              <label htmlFor="address">Address / Woreda</label>
+              <input
+                id="address"
+                name="address"
+                type="text"
+                placeholder="Service address"
+              />
+            </div>
           </div>
 
-          <div className="form-actions-row left-aligned">
-            <button type="submit" className="btn-primary-blue" disabled={loading}>
-              {loading ? 'Adding…' : 'Add Customer'}
-            </button>
+          <div className="form-actions-row right-aligned">
             <button
-              type="button"
-              className="btn-outline-gray"
-              onClick={() => router.push('/customers')}
+              type="submit"
+              className="btn-primary-blue"
+              disabled={loading}
             >
-              Cancel
+              {loading ? 'Adding Customer...' : 'Add Customer'}
             </button>
           </div>
         </form>
