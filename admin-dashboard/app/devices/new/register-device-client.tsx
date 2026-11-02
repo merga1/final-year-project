@@ -10,7 +10,7 @@ function getCookie(name: string): string {
   return match ? match[2] : '';
 }
 
-export function RegisterDeviceClient() {
+export function RegisterDeviceClient({ token }: { token?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,8 +29,8 @@ export function RegisterDeviceClient() {
     }
 
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-      const t = getCookie('sw_token');
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
+      const t = token || getCookie('sw_token');
       const res = await fetch(`${API}/api/admin/devices`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },

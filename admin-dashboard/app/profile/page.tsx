@@ -12,7 +12,7 @@ export default async function ProfilePage() {
 
   return (
     <AdminShell currentPath="/profile">
-      <ProfileClient email={email} />
+      <ProfileClient email={email} token={token} />
     </AdminShell>
   );
 }

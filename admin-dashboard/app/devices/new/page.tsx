@@ -9,7 +9,7 @@ export default async function RegisterDevicePage() {
 
   return (
     <AdminShell currentPath="/devices" title="Register Device">
-      <RegisterDeviceClient />
+      <RegisterDeviceClient token={token} />
     </AdminShell>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 
-export default function ProfileClient({ email }: { email: string }) {
+export default function ProfileClient({ email, token }: { email: string; token?: string }) {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function ProfileClient({ email }: { email: string }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${getCookie('sw_token')}`,
+          Authorization: `Bearer ${token || getCookie('sw_token')}`,
         },
         body: JSON.stringify({ oldPassword, newPassword }),
       });
