@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState, type FormEvent } from 'react';
 
-export default function ProfileClient({ email }: { email: string }) {
+export default function ProfileClient({ email, token }: { email: string; token?: string }) {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,12 +16,12 @@ export default function ProfileClient({ email }: { email: string }) {
     setLoading(true);
 
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
       const res = await fetch(`${API}/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${getCookie('sw_token')}`,
+          Authorization: `Bearer ${token || getCookie('sw_token')}`,
         },
         body: JSON.stringify({ oldPassword, newPassword }),
       });

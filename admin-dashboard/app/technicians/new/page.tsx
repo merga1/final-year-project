@@ -9,7 +9,7 @@ export default async function NewTechnicianPage() {
 
   return (
     <AdminShell currentPath="/technicians/new">
-      <AddTechnicianClient />
+      <AddTechnicianClient token={token} />
     </AdminShell>
   );
 }

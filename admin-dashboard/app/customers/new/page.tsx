@@ -9,7 +9,7 @@ export default async function NewCustomerPage() {
 
   return (
     <AdminShell currentPath="/customers/new">
-      <AddCustomerClient />
+      <AddCustomerClient token={token} />
     </AdminShell>
   );
 }

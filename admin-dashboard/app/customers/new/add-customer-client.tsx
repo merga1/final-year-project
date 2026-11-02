@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function AddCustomerClient() {
+export default function AddCustomerClient({ token }: { token?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,12 +25,12 @@ export default function AddCustomerClient() {
     };
 
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
       const res = await fetch(`${API}/api/admin/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${getCookie('sw_token')}`,
+          Authorization: `Bearer ${token || getCookie('sw_token')}`,
         },
         body: JSON.stringify(body),
       });
