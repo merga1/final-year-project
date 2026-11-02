@@ -7,7 +7,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { CustomersModule } from '../customers/customers.module';
 import { TechniciansModule } from '../technicians/technicians.module';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'smart_water_jwt_secret_2026_final_year';
+const rawSecret = process.env.JWT_SECRET || 'smart_water_jwt_secret_2026_final_year';
+const JWT_SECRET = rawSecret.replace(/^\uFEFF/, '').trim();
 
 @Module({
   imports: [

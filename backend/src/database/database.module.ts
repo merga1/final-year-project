@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const rawDbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const dbUrl = rawDbUrl ? rawDbUrl.replace(/^\uFEFF/, '').trim() : undefined;
 
 @Module({
   imports: [

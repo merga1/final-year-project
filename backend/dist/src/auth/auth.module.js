@@ -15,7 +15,8 @@ const auth_controller_1 = require("./auth.controller");
 const jwt_strategy_1 = require("./strategies/jwt.strategy");
 const customers_module_1 = require("../customers/customers.module");
 const technicians_module_1 = require("../technicians/technicians.module");
-const JWT_SECRET = process.env.JWT_SECRET || 'smart_water_jwt_secret_2026_final_year';
+const rawSecret = process.env.JWT_SECRET || 'smart_water_jwt_secret_2026_final_year';
+const JWT_SECRET = rawSecret.replace(/^\uFEFF/, '').trim();
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;

@@ -15,10 +15,11 @@ const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor() {
+        const rawSecret = process.env.JWT_SECRET || 'smart_water_jwt_secret_2026_final_year';
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: process.env.JWT_SECRET || 'smart_water_jwt_secret_2026_final_year',
+            secretOrKey: rawSecret.replace(/^\uFEFF/, '').trim(),
         });
     }
     async validate(payload) {
