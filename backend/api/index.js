@@ -1,4 +1,5 @@
 'use strict';
+require('dotenv').config();
 require('reflect-metadata');
 
 const express = require('express');
@@ -6,11 +7,10 @@ const server = express();
 let appReady = null;
 
 async function bootstrap() {
-  // Dynamic import of ESM @nestjs/core and NestJS modules
-  const { NestFactory } = await import('@nestjs/core');
-  const { ExpressAdapter } = await import('@nestjs/platform-express');
-  const { ValidationPipe } = await import('@nestjs/common');
-  const { AppModule } = await import('../dist/app.module.js');
+  const { NestFactory } = require('@nestjs/core');
+  const { ExpressAdapter } = require('@nestjs/platform-express');
+  const { ValidationPipe } = require('@nestjs/common');
+  const { AppModule } = require('../dist/app.module');
 
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
     logger: ['error', 'warn'],
