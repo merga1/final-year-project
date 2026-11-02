@@ -1,10 +1,13 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
 import { ValidationPipe } from '@nestjs/common';
 import { IncomingMessage, ServerResponse } from 'http';
+
+// Import from compiled dist — avoids ESM/CJS interop issues on Vercel
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { AppModule } = require('../dist/app.module');
 
 const server = express();
 let appReady: Promise<void> | null = null;

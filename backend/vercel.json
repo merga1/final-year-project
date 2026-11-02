@@ -1,9 +1,13 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
   "builds": [
     {
       "src": "api/index.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "nodeVersion": "20"
+      }
     }
   ],
   "routes": [
@@ -11,8 +15,5 @@
       "src": "/(.*)",
       "dest": "api/index.ts"
     }
-  ],
-  "env": {
-    "DATABASE_URL": "@database_url"
-  }
+  ]
 }
