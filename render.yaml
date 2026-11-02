@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: smart-water-backend
+    env: node
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:14383814Bm.@db.qgjnfvpnjavztraelynf.supabase.co:5432/postgres
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 4000
