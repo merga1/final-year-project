@@ -18,12 +18,24 @@ import { Technician } from '../technicians/technician.entity';
 import { Notification } from '../notifications/notification.entity';
 import { ValveCommand } from '../devices/valve-command.entity';
 
-const ds = new DataSource({
-  type: 'better-sqlite3',
-  database: path.resolve(__dirname, '../../water.sqlite'),
-  entities: [Customer, Device, DeviceReading, Bill, Payment, Alert, SupportTicket, Technician, Notification, ValveCommand],
-  synchronize: true,
-});
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+const ds = new DataSource(
+  dbUrl
+    ? {
+        type: 'postgres',
+        url: dbUrl,
+        entities: [Customer, Device, DeviceReading, Bill, Payment, Alert, SupportTicket, Technician, Notification, ValveCommand],
+        synchronize: true,
+        ssl: { rejectUnauthorized: false },
+      }
+    : {
+        type: 'better-sqlite3',
+        database: path.resolve(__dirname, '../../water.sqlite'),
+        entities: [Customer, Device, DeviceReading, Bill, Payment, Alert, SupportTicket, Technician, Notification, ValveCommand],
+        synchronize: true,
+      },
+);
 
 async function seed() {
   await ds.initialize();

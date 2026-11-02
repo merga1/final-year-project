@@ -2,24 +2,30 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import express, { Express } from 'express';
+import * as express from 'express';
 import { ValidationPipe } from '@nestjs/common';
+import { IncomingMessage, ServerResponse } from 'http';
 
-const server: Express = express();
-let isReady = false;
+const server = express();
+let appReady: Promise<void> | null = null;
 
-async function bootstrap(): Promise<Express> {
-  if (!isReady) {
-    const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
-    app.enableCors({ origin: true, credentials: true });
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    await app.init();
-    isReady = true;
-  }
-  return server;
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
+    logger: ['error', 'warn'],
+  });
+  app.enableCors({ origin: true, credentials: true });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  await app.init();
 }
 
-export default async function handler(req: any, res: any) {
-  await bootstrap();
+function getApp(): Promise<void> {
+  if (!appReady) {
+    appReady = bootstrap();
+  }
+  return appReady;
+}
+
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  await getApp();
   server(req, res);
 }
