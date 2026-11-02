@@ -4,7 +4,7 @@
  */
 import type { OverviewResponse } from '../components/overview-content';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_BASE_URL ?? 'http://localhost:4000';
+const BASE = (process.env.NEXT_PUBLIC_API_URL ?? process.env.API_BASE_URL ?? 'http://localhost:4000').replace(/^\uFEFF/, '').trim();
 
 async function apiFetch<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
