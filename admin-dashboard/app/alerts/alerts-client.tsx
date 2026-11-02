@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -99,7 +99,7 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
     setAckingId(id);
     setError('');
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/u{FEFF}/u, '').trim();
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
       const t = getCookie('sw_token') || token;
       const res = await fetch(`${API}/api/admin/alerts/${id}/acknowledge`, {
         method: 'PATCH',

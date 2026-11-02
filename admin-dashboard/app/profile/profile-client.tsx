@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, type FormEvent } from 'react';
 
@@ -16,7 +16,7 @@ export default function ProfileClient({ email }: { email: string }) {
     setLoading(true);
 
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/u{FEFF}/u, '').trim();
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
       const res = await fetch(`${API}/auth/change-password`, {
         method: 'POST',
         headers: {

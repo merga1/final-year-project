@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -74,7 +74,7 @@ export function DevicesClient({
     setError('');
     setSuccess('');
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/u{FEFF}/u, '').trim();
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
       const t = getCookie('sw_token') || token;
       const res = await fetch(`${API}/api/admin/devices/${id}/${action}`, {
         method: 'PATCH',
