@@ -9,11 +9,20 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class SupportTicketsController {
   constructor(private readonly service: SupportTicketsService) {}
 
+  // ── Admin endpoints ───────────────────────────────────────────────────────────
+
   @Get('api/admin/support-tickets')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   findAll() {
     return this.service.findAll();
+  }
+
+  @Get('api/admin/support-tickets/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
   }
 
   @Patch('api/admin/support-tickets/:id')
@@ -22,6 +31,8 @@ export class SupportTicketsController {
   update(@Param('id') id: string, @Body() body: any) {
     return this.service.update(id, body);
   }
+
+  // ── Customer mobile endpoints ─────────────────────────────────────────────────
 
   @Get('api/mobile/support-tickets')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -50,6 +61,8 @@ export class SupportTicketsController {
       return ticket;
     });
   }
+
+  // ── Technician endpoints ──────────────────────────────────────────────────────
 
   @Get('api/technician/tickets')
   @UseGuards(JwtAuthGuard, RolesGuard)

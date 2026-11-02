@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function AddTechnicianPage() {
   const router = useRouter();
@@ -26,7 +27,8 @@ export default function AddTechnicianPage() {
     };
 
     try {
-      const res = await fetch('http://localhost:4000/api/admin/technicians', {
+      const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+      const res = await fetch(`${API}/api/admin/technicians`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,12 +53,14 @@ export default function AddTechnicianPage() {
   }
 
   function getCookie(name: string): string {
+    if (typeof document === 'undefined') return '';
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? match[2] : '';
   }
 
   return (
     <div className="section-container">
+      <Link href="/technicians" className="back-link">Back to Technicians</Link>
       <div className="form-card-container">
         <h2 className="form-card-title">Add New Technician</h2>
 
@@ -65,23 +69,23 @@ export default function AddTechnicianPage() {
         <form onSubmit={handleSubmit} className="standard-styled-form">
           <div className="form-row-two-col">
             <div className="form-field-group">
-              <label htmlFor="firstName">First Name</label>
+              <label htmlFor="firstName">First Name *</label>
               <input id="firstName" name="firstName" type="text" required placeholder="First Name" />
             </div>
             <div className="form-field-group">
-              <label htmlFor="lastName">Last Name</label>
+              <label htmlFor="lastName">Last Name *</label>
               <input id="lastName" name="lastName" type="text" required placeholder="Last Name" />
             </div>
           </div>
 
           <div className="form-row-two-col">
             <div className="form-field-group">
-              <label htmlFor="email">Email</label>
-              <input id="email" name="email" type="email" required placeholder="Email" />
+              <label htmlFor="email">Email address *</label>
+              <input id="email" name="email" type="email" required placeholder="technician@example.com" />
             </div>
             <div className="form-field-group">
               <label htmlFor="phone">Phone Number</label>
-              <input id="phone" name="phone" type="tel" placeholder="Phone Number" />
+              <input id="phone" name="phone" type="tel" placeholder="+251..." />
             </div>
           </div>
 
@@ -91,8 +95,8 @@ export default function AddTechnicianPage() {
               <input id="hireDate" name="hireDate" type="date" />
             </div>
             <div className="form-field-group">
-              <label htmlFor="address">Address</label>
-              <input id="address" name="address" type="text" placeholder="Address" />
+              <label htmlFor="address">Service Area / Zone</label>
+              <input id="address" name="address" type="text" placeholder="Zone A, Bole" />
             </div>
           </div>
 
@@ -100,27 +104,28 @@ export default function AddTechnicianPage() {
             <label htmlFor="specialization">Specialization</label>
             <select id="specialization" name="specialization" defaultValue="">
               <option value="" disabled>Select areas of expertise</option>
-              <option value="Leak Detection & Pump Systems">Leak Detection & Pump Systems</option>
+              <option value="Leak Detection & Pump Systems">Leak Detection &amp; Pump Systems</option>
               <option value="Smart Meter Calibration">Smart Meter Calibration</option>
-              <option value="Water Quality & Filtration">Water Quality & Filtration</option>
+              <option value="Water Quality & Filtration">Water Quality &amp; Filtration</option>
               <option value="Pipeline Infrastructure">Pipeline Infrastructure</option>
               <option value="General Diagnostics">General Diagnostics</option>
             </select>
           </div>
 
           <div className="form-field-group full-width">
-            <label htmlFor="qualifications">Qualifications/Certifications</label>
+            <label htmlFor="qualifications">Qualifications / Certifications</label>
             <input
               id="qualifications"
               name="qualifications"
               type="text"
-              placeholder="Qualifications/Certifications"
+              placeholder="e.g. Certified Water Meter Tech, Electrical LV"
             />
           </div>
 
           <div className="form-actions-row right-aligned">
+            <Link href="/technicians" className="btn-outline-gray">Cancel</Link>
             <button type="submit" className="btn-primary-blue" disabled={loading}>
-              {loading ? 'Adding…' : 'Add Technician'}
+              {loading ? 'Adding Technician...' : 'Add Technician'}
             </button>
           </div>
         </form>

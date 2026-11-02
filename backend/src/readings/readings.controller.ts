@@ -13,7 +13,7 @@ export class ReadingsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   findAll(@Query('meterId') meterId?: string) {
-    return this.service.findByMeterId(meterId ?? '', 100);
+    return this.service.findByMeterId(meterId || undefined, 100);
   }
 
   @Get('api/admin/readings/daily')
@@ -21,6 +21,20 @@ export class ReadingsController {
   @Roles('admin')
   getDailyUsage(@Query('meterId') meterId?: string) {
     return this.service.getDailyUsage(meterId);
+  }
+
+  @Get('api/admin/readings/zones')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  getZoneUsage() {
+    return this.service.getZoneUsage();
+  }
+
+  @Get('api/admin/readings/quality')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  getQualityTrend() {
+    return this.service.getQualityTrend();
   }
 
   @Get('api/mobile/readings')

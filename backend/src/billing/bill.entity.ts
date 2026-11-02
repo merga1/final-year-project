@@ -12,7 +12,7 @@ export class Bill {
   @Column()
   customerId: string;
 
-  @Column()
+  @Column({ nullable: true })
   customerName: string;
 
   @Column({ type: 'real' })

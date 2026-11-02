@@ -16,7 +16,8 @@ export default function ProfileClient({ email }: { email: string }) {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:4000/auth/change-password', {
+      const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+      const res = await fetch(`${API}/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,6 +44,7 @@ export default function ProfileClient({ email }: { email: string }) {
   }
 
   function getCookie(name: string): string {
+    if (typeof document === 'undefined') return '';
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? match[2] : '';
   }
@@ -50,33 +52,49 @@ export default function ProfileClient({ email }: { email: string }) {
   return (
     <div className="section-container profile-section-view">
       <div className="profile-card-container">
-        <h2 className="profile-card-title">Account Details</h2>
+        <h2 className="profile-card-title">Administrator Account</h2>
 
         <div className="profile-email-block">
-          <span className="profile-email-label">Email Address</span>
+          <span className="profile-email-label">Logged in as</span>
           <span className="profile-email-value">{email}</span>
+        </div>
+
+        <div className="profile-email-block">
+          <span className="profile-email-label">Access Level</span>
+          <span style={{ display: 'inline-block', marginTop: 4 }}>
+            <span className="role-badge" style={{ fontSize: '0.75rem', padding: '3px 8px' }}>
+              Full Administrator
+            </span>
+          </span>
         </div>
 
         {message && <div className="form-success-alert">{message}</div>}
         {error && <div className="form-error-alert">{error}</div>}
 
         <form onSubmit={handleChangePassword} className="profile-form">
-          <div className="profile-input-stack">
+          <div className="form-field-group">
+            <label htmlFor="oldPassword">Current Password</label>
             <input
+              id="oldPassword"
               type="password"
-              placeholder="Old Password"
-              required
+              className="profile-input"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
-              className="profile-input"
-            />
-            <input
-              type="password"
-              placeholder="New Password"
               required
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div className="form-field-group">
+            <label htmlFor="newPassword">New Password</label>
+            <input
+              id="newPassword"
+              type="password"
+              className="profile-input"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="profile-input"
+              required
+              placeholder="••••••••"
             />
           </div>
 
@@ -85,20 +103,17 @@ export default function ProfileClient({ email }: { email: string }) {
             className="btn-change-password"
             disabled={loading}
           >
-            {loading ? 'Updating…' : 'Change Password'}
+            {loading ? 'Updating...' : 'Change Password'}
           </button>
         </form>
       </div>
 
       <footer className="dashboard-global-footer">
         <span className="footer-copyright">
-          Powered by AquaSense Smart Water Management
+          Smart Water Management System &middot; Admin Operations Console
         </span>
         <div className="footer-social-links">
-          <span className="social-icon" aria-label="Twitter">𝕏</span>
-          <span className="social-icon" aria-label="Facebook">ⓕ</span>
-          <span className="social-icon" aria-label="TikTok">♪</span>
-          <span className="social-icon" aria-label="LinkedIn">in</span>
+          <span className="social-icon">SWMS v1.0</span>
         </div>
       </footer>
     </div>

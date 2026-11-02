@@ -1,0 +1,7 @@
+node_modules
+.vercel
+water.sqlite
+.env
+.env.local
+
+.vercel

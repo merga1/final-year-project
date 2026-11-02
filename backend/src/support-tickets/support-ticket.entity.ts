@@ -55,7 +55,7 @@ export class SupportTicket {
   @Column({ nullable: true })
   deviceId: string;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   assignedAt: Date | null;
 
   @Column({ nullable: true })
