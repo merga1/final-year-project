@@ -23,7 +23,7 @@ __decorate([
     __metadata("design:type", String)
 ], Bill.prototype, "customerId", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Bill.prototype, "customerName", void 0);
 __decorate([

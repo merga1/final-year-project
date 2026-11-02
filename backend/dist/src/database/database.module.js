@@ -22,7 +22,7 @@ exports.DatabaseModule = DatabaseModule = __decorate([
                     type: 'postgres',
                     url: dbUrl,
                     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-                    synchronize: true,
+                    synchronize: false,
                     ssl: { rejectUnauthorized: false },
                     logging: false,
                 }

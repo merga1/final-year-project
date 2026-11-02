@@ -12,7 +12,7 @@ const dbUrl = rawDbUrl ? rawDbUrl.replace(/^\uFEFF/, '').trim() : undefined;
             type: 'postgres',
             url: dbUrl,
             entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-            synchronize: true,
+            synchronize: false,
             ssl: { rejectUnauthorized: false },
             logging: false,
           }
