@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { AdminShell } from '../../components/admin-shell';
-import { getAlerts } from '../../lib/admin-api';
+import { getAlerts, getDevices } from '../../lib/admin-api';
 import { getServerToken } from '../../lib/auth';
 import { AlertsClient } from './alerts-client';
 
@@ -9,10 +9,25 @@ export default async function AlertsPage() {
   if (!token) redirect('/login');
 
   try {
-    const alerts = await getAlerts(token);
+    const [alerts, devices] = await Promise.all([
+      getAlerts(token),
+      getDevices(token).catch(() => []),
+    ]);
+
+    const deviceMap = new Map((devices || []).map((d: any) => [d.meterId ?? d.id, d]));
+
+    const enriched = (alerts || []).map((a: any) => {
+      const dev = deviceMap.get(a.meterId ?? a.deviceId);
+      return {
+        ...a,
+        zone: dev?.zone || null,
+        customerId: dev?.customerId || null,
+      };
+    });
+
     return (
       <AdminShell currentPath="/alerts" title="Alerts">
-        <AlertsClient alerts={alerts} token={token} />
+        <AlertsClient alerts={enriched} token={token} />
       </AdminShell>
     );
   } catch (e: any) {
