@@ -178,6 +178,12 @@ export class SupportTicketsService {
     return this.repo.count();
   }
 
+  countOpen() {
+    return this.repo.createQueryBuilder('ticket')
+      .where('ticket.status NOT IN (:...done)', { done: ['resolved', 'closed', 'cancelled'] })
+      .getCount();
+  }
+
   countByStatus(status: string) {
     return this.repo.countBy({ status: status as any });
   }

@@ -31,9 +31,7 @@ export class AlertsService {
   }
 
   countCriticalToday() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return this.repo.count({ where: { severity: 'critical', createdAt: MoreThan(today) } });
+    return this.repo.count({ where: { severity: 'critical', acknowledged: false } });
   }
 
   async acknowledge(id: string, adminName: string) {
