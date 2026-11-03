@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 function PaymentStatusBadge({ status }: { status: string }) {
   const s = (status ?? '').toLowerCase();
@@ -8,6 +9,51 @@ function PaymentStatusBadge({ status }: { status: string }) {
   if (s === 'pending') return <span className="status-badge status-warn">Pending</span>;
   if (s === 'failed') return <span className="status-badge status-danger">Failed</span>;
   return <span className="status-badge status-muted">{status || 'Unknown'}</span>;
+}
+
+function PaymentMethodBadge({ method }: { method?: string }) {
+  const m = (method ?? '').toLowerCase();
+  if (m.includes('chapa') || m.includes('chappa')) {
+    return (
+      <span className="type-pill" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
+        Chapa
+      </span>
+    );
+  }
+  if (m.includes('telebirr') || m.includes('mobile')) {
+    return (
+      <span className="type-pill" style={{ background: '#ecfeff', color: '#0e7490', border: '1px solid #a5f3fc' }}>
+        Telebirr
+      </span>
+    );
+  }
+  if (m.includes('bank') || m.includes('cbe')) {
+    return (
+      <span className="type-pill" style={{ background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' }}>
+        CBE Birr / Bank
+      </span>
+    );
+  }
+  return (
+    <span className="type-pill" style={{ textTransform: 'capitalize' }}>
+      {method || 'Cash'}
+    </span>
+  );
+}
+
+function formatDate(dateStr?: string | Date): string {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return String(dateStr);
+  }
 }
 
 export function PaymentsClient({ payments = [] }: { payments: any[] }) {
@@ -21,9 +67,9 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
 
     const m = (p.method ?? '').toLowerCase();
     if (methodFilter !== 'all') {
-      if (methodFilter === 'telebirr' && !m.includes('telebirr')) return false;
-      if (methodFilter === 'cbe' && !m.includes('cbe')) return false;
-      if (methodFilter === 'chapa' && !m.includes('chapa')) return false;
+      if (methodFilter === 'telebirr' && !m.includes('telebirr') && !m.includes('mobile')) return false;
+      if (methodFilter === 'cbe' && !m.includes('cbe') && !m.includes('bank')) return false;
+      if (methodFilter === 'chapa' && !m.includes('chapa') && !m.includes('chappa')) return false;
       if (methodFilter === 'cash' && !m.includes('cash')) return false;
     }
 
@@ -39,8 +85,8 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
   const pending = payments.filter(p => (p.status ?? '').toLowerCase() === 'pending');
   const failed = payments.filter(p => (p.status ?? '').toLowerCase() === 'failed');
 
-  const totalCollected = verified.reduce((acc, p) => acc + Number(p.amount ?? 0), 0);
-  const totalPending = pending.reduce((acc, p) => acc + Number(p.amount ?? 0), 0);
+  const totalCollected = verified.reduce((acc, p) => acc + Number(p.amount ?? p.amountEtb ?? 0), 0);
+  const totalPending = pending.reduce((acc, p) => acc + Number(p.amount ?? p.amountEtb ?? 0), 0);
 
   const counts: Record<string, number> = {
     all: payments.length,
@@ -55,7 +101,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
         <div>
           <h2 className="section-main-title">Payments Verification</h2>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-            {filtered.length} of {payments.length} transactions shown &middot; Ethiopian Gateway (Chapa / Telebirr)
+            {filtered.length} of {payments.length} transactions shown &middot; Ethiopian Gateway (Chapa / Telebirr / CBE)
           </span>
         </div>
       </div>
@@ -120,12 +166,12 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
             value={methodFilter}
             onChange={e => setMethodFilter(e.target.value)}
             className="filter-select"
-            style={{ minWidth: 150 }}
+            style={{ minWidth: 160 }}
           >
             <option value="all">All Gateways</option>
-            <option value="telebirr">Telebirr</option>
-            <option value="cbe">CBE Birr</option>
             <option value="chapa">Chapa Card / Bank</option>
+            <option value="telebirr">Telebirr</option>
+            <option value="cbe">CBE Birr / Bank</option>
             <option value="cash">Cash Office</option>
           </select>
         </div>
@@ -142,7 +188,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
             onChange={e => setSearch(e.target.value)}
           />
           {search && (
-            <button type="button" className="search-clear" onClick={() => setSearch('')}>x</button>
+            <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
           )}
         </div>
       </div>
@@ -172,19 +218,31 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
               return (
                 <tr key={p.id}>
                   <td>
-                    <code className="mono-text" style={{ fontWeight: 600 }}>{ref}</code>
-                  </td>
-                  <td style={{ fontWeight: 600, color: '#0f172a' }}>{p.customerName ?? 'Customer'}</td>
-                  <td style={{ fontWeight: 700, color: '#0f172a' }}>
-                    ETB {Number(p.amount ?? 0).toLocaleString()}
+                    <code className="table-link-mono" style={{ display: 'inline-block' }}>
+                      {ref}
+                    </code>
                   </td>
                   <td>
-                    <span className="type-pill" style={{ textTransform: 'capitalize' }}>
-                      {p.method ?? p.paymentMethod ?? 'Chapa'}
-                    </span>
+                    {p.customerId ? (
+                      <Link
+                        href={`/customers/${p.customerId}`}
+                        style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                        title="View customer profile"
+                      >
+                        {p.customerName ?? 'Customer'}
+                      </Link>
+                    ) : (
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{p.customerName ?? 'Customer'}</span>
+                    )}
+                  </td>
+                  <td style={{ fontWeight: 700, color: '#0f172a' }}>
+                    ETB {Number(p.amount ?? p.amountEtb ?? 0).toLocaleString()}
+                  </td>
+                  <td>
+                    <PaymentMethodBadge method={p.method ?? p.paymentMethod} />
                   </td>
                   <td className="text-muted-sm" suppressHydrationWarning>
-                    {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : p.date ?? '—'}
+                    {formatDate(p.paidAt ?? p.createdAt)}
                   </td>
                   <td><PaymentStatusBadge status={p.status} /></td>
                 </tr>
