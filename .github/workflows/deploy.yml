@@ -55,7 +55,8 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
         run: |
-          npx vercel deploy --prod --yes --token=$VERCEL_TOKEN
+          CLEAN_TOKEN=$(printf '%s' "$VERCEL_TOKEN" | sed $'s/\xef\xbb\xbf//g' | tr -d '\r\n[:space:]')
+          npx vercel deploy --prod --yes --token="$CLEAN_TOKEN"
 
   deploy-frontend:
     name: Deploy Admin Dashboard
@@ -101,4 +102,5 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
         run: |
-          npx vercel deploy --prod --yes --token=$VERCEL_TOKEN
+          CLEAN_TOKEN=$(printf '%s' "$VERCEL_TOKEN" | sed $'s/\xef\xbb\xbf//g' | tr -d '\r\n[:space:]')
+          npx vercel deploy --prod --yes --token="$CLEAN_TOKEN"

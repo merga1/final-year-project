@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Customer } from './customer.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -13,7 +13,7 @@ export class CustomersService {
   ) {}
 
   findAll() {
-    return this.repo.find({ order: { createdAt: 'DESC' } });
+    return this.repo.find({ where: { role: Not('admin') }, order: { createdAt: 'DESC' } });
   }
 
   async findOne(id: string) {
@@ -74,10 +74,10 @@ export class CustomersService {
   }
 
   count() {
-    return this.repo.count();
+    return this.repo.count({ where: { role: Not('admin') } });
   }
 
   countByStatus(status: string) {
-    return this.repo.countBy({ accountStatus: status as any });
+    return this.repo.countBy({ role: Not('admin'), accountStatus: status as any });
   }
 }
