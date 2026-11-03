@@ -8,11 +8,10 @@ export default async function ProfilePage() {
   if (!token) redirect('/login');
 
   const user = await getServerUser();
-  const email = user?.email || 'admin2@gmail.com';
 
   return (
-    <AdminShell currentPath="/profile">
-      <ProfileClient email={email} token={token} />
+    <AdminShell currentPath="/profile" title="Administrator Profile">
+      <ProfileClient user={user} token={token} />
     </AdminShell>
   );
 }

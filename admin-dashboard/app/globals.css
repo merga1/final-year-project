@@ -1801,3 +1801,16 @@ button, input, select {
 .overview-interactive-row.alert-ack {
   border-left: 3px solid transparent;
 }
+
+/* ── Header Avatar Link ── */
+.header-avatar-link {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+.header-avatar-link:hover .header-avatar-circle,
+.header-avatar-circle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.35);
+  cursor: pointer;
+}

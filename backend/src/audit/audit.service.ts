@@ -30,7 +30,7 @@ export class AuditService implements OnModuleInit {
           action: 'TICKET_ASSIGNED',
           category: 'TICKET',
           targetEntity: 'Ticket #27E34F37',
-          details: 'Assigned valve failure ticket to technician Michael Chen.',
+          details: 'Assigned valve failure ticket to technician Biruk Lemma.',
           status: 'SUCCESS',
           ipAddress: '192.168.1.104',
           createdAt: new Date(now - 1000 * 60 * 45),
@@ -76,7 +76,7 @@ export class AuditService implements OnModuleInit {
           createdAt: new Date(now - 1000 * 60 * 420),
         },
         {
-          actor: 'Technician Michael Chen',
+          actor: 'Technician Biruk Lemma',
           action: 'TICKET_ACCEPTED',
           category: 'TICKET',
           targetEntity: 'Ticket #67F7DE29',

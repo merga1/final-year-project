@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 
 function StatusTag({ status }: { status: string }) {
   const s = (status ?? 'SUCCESS').toUpperCase();
-  if (s === 'SUCCESS') return <span className="status-badge status-ok">SUCCESS</span>;
-  if (s === 'WARNING') return <span className="status-badge status-warn">WARNING</span>;
-  return <span className="status-badge status-danger">FAILED</span>;
+  if (s === 'SUCCESS') return <span className="status-badge status-ok">Success</span>;
+  if (s === 'WARNING') return <span className="status-badge status-warn">Warning</span>;
+  return <span className="status-badge status-danger">Failed</span>;
 }
 
 function CategoryTag({ category }: { category: string }) {
@@ -39,6 +38,36 @@ function CategoryTag({ category }: { category: string }) {
   );
 }
 
+function formatAction(action: string) {
+  if (!action) return 'Action';
+  return action
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function formatAuditDate(dateStr?: string | Date) {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return String(dateStr);
+  }
+}
+
 export function AuditClient({ logs = [] }: { logs: any[] }) {
   const [viewMode, setViewMode] = useState<'timeline' | 'table'>('timeline');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -48,6 +77,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
   const deviceCount = logs.filter(l => (l.category ?? '').toUpperCase() === 'DEVICE').length;
   const valveCount = logs.filter(l => (l.category ?? '').toUpperCase() === 'VALVE').length;
   const ticketCount = logs.filter(l => (l.category ?? '').toUpperCase() === 'TICKET').length;
+  const customerCount = logs.filter(l => (l.category ?? '').toUpperCase() === 'CUSTOMER').length;
   const billingCount = logs.filter(l => (l.category ?? '').toUpperCase() === 'BILLING').length;
 
   const filtered = logs.filter(l => {
@@ -135,20 +165,31 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
           <span className="stat-chip-val">{ticketCount}</span>
           <span className="stat-chip-label">Ticket Changes</span>
         </div>
+        <div
+          className={`stat-chip stat-chip-amber ${categoryFilter === 'customer' ? 'active-chip' : ''}`}
+          style={{ cursor: 'pointer' }}
+          onClick={() => setCategoryFilter(categoryFilter === 'customer' ? 'all' : 'customer')}
+          title="Filter customer operations"
+        >
+          <span className="stat-chip-val">{customerCount}</span>
+          <span className="stat-chip-label">Customer Ops</span>
+        </div>
       </div>
 
       {/* Filter Row */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
         <div className="tab-pill-group">
           {[
-            { id: 'all', label: 'All Categories' },
+            { id: 'all', label: `All (${logs.length})` },
             { id: 'device', label: `Device (${deviceCount})` },
             { id: 'valve', label: `Valve (${valveCount})` },
             { id: 'ticket', label: `Ticket (${ticketCount})` },
+            { id: 'customer', label: `Customer (${customerCount})` },
             { id: 'billing', label: `Billing (${billingCount})` },
           ].map(t => (
             <button
               key={t.id}
+              type="button"
               className={`tab-pill ${categoryFilter === t.id ? 'active' : ''}`}
               onClick={() => setCategoryFilter(t.id)}
             >
@@ -171,6 +212,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
 
         {(categoryFilter !== 'all' || statusFilter !== 'all' || search) && (
           <button
+            type="button"
             className="filter-clear-btn"
             onClick={() => { setCategoryFilter('all'); setStatusFilter('all'); setSearch(''); }}
           >
@@ -192,7 +234,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
           onChange={e => setSearch(e.target.value)}
         />
         {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>x</button>
+          <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
         )}
       </div>
 
@@ -247,18 +289,18 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <CategoryTag category={entry.category} />
                     <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>
-                      {entry.action.replace(/_/g, ' ')}
+                      {formatAction(entry.action)}
                     </strong>
                     <span style={{ color: '#64748b', fontSize: '0.85rem' }}>on</span>
-                    <code className="mono-text" style={{ fontWeight: 600, color: '#1e293b' }}>
+                    <span className="table-link-mono" style={{ fontSize: '0.82rem' }}>
                       {entry.targetEntity}
-                    </code>
+                    </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <StatusTag status={entry.status} />
                     <span className="text-muted-sm" suppressHydrationWarning style={{ fontSize: '0.8rem' }}>
-                      {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '—'}
+                      {formatAuditDate(entry.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -300,15 +342,21 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
               {filtered.map(entry => (
                 <tr key={entry.id}>
                   <td className="text-muted-sm" suppressHydrationWarning style={{ whiteSpace: 'nowrap' }}>
-                    {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '—'}
+                    {formatAuditDate(entry.createdAt)}
+                  </td>
+                  <td style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>{entry.actor}</td>
+                  <td>
+                    <CategoryTag category={entry.category} />
                   </td>
                   <td style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
-                    {entry.actor}
+                    {formatAction(entry.action)}
                   </td>
-                  <td><CategoryTag category={entry.category} /></td>
-                  <td style={{ fontWeight: 600 }}>{entry.action.replace(/_/g, ' ')}</td>
-                  <td><code className="mono-text">{entry.targetEntity}</code></td>
-                  <td style={{ maxWidth: 300, fontSize: '0.85rem' }}>{entry.details}</td>
+                  <td>
+                    <span className="table-link-mono" style={{ fontSize: '0.8rem' }}>
+                      {entry.targetEntity}
+                    </span>
+                  </td>
+                  <td style={{ maxWidth: 320, fontSize: '0.86rem', color: '#334155' }}>{entry.details}</td>
                   <td><StatusTag status={entry.status} /></td>
                 </tr>
               ))}
