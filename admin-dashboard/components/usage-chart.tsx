@@ -12,11 +12,43 @@ type QualityPoint = { day: string; avgTurbidity: number; maxTurbidity: number; a
 const ZONE_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#0891b2'];
 
 function formatDay(day: string) {
+  if (!day) return '—';
   try {
-    const d = new Date(day + 'T00:00:00Z');
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+    const raw = String(day).trim();
+    // If it's pure YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const [y, m, d] = raw.split('-').map(Number);
+      const date = new Date(Date.UTC(y, m - 1, d));
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      });
+    }
+
+    const cleanStr = raw.includes('T') ? raw : `${raw}T00:00:00Z`;
+    const d = new Date(cleanStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      });
+    }
+
+    const direct = new Date(raw);
+    if (!isNaN(direct.getTime())) {
+      return direct.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+    return raw;
   } catch {
-    return day;
+    return String(day);
   }
 }
 
@@ -118,44 +150,25 @@ export function WaterQualityChart({ data }: { data: QualityPoint[] }) {
   if (chartData.length === 0) {
     return (
       <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
-        No water quality data recorded.
+        No water quality data recorded in this period.
       </div>
     );
   }
 
   return (
-    <div style={{ width: '100%', height: 240 }}>
-      <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={chartData} margin={{ top: 10, right: 24, left: 8, bottom: 0 }}>
+    <div style={{ width: '100%', height: 260 }}>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} />
-          <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#64748b' }} unit=" NTU" domain={[0, 6]} width={65} />
-          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#64748b' }} unit=" L/m" width={65} />
+          <YAxis yAxisId="turb" tick={{ fontSize: 11, fill: '#d97706' }} unit=" NTU" width={65} domain={[0, 6]} />
+          <YAxis yAxisId="flow" orientation="right" tick={{ fontSize: 11, fill: '#0891b2' }} unit=" L/m" width={60} />
           <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem' }} />
-          <Legend wrapperStyle={{ fontSize: '0.83rem', paddingTop: 6 }} />
-          
-          {/* Safe drinking water standard threshold (5.0 NTU per WHO/SRS NFR-W01) */}
-          <ReferenceLine yAxisId="left" y={5.0} stroke="#dc2626" strokeDasharray="4 4" label={{ value: '5 NTU Safety Limit', fill: '#dc2626', fontSize: 11, position: 'top' }} />
-
-          <Line
-            yAxisId="left"
-            type="monotone"
-            dataKey="turbidity"
-            name="Avg Turbidity (NTU)"
-            stroke="#7c3aed"
-            strokeWidth={2.5}
-            dot={{ r: 4, fill: '#7c3aed', strokeWidth: 0 }}
-          />
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="flowRate"
-            name="Avg Flow Rate (L/min)"
-            stroke="#0ea5e9"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={{ r: 3, fill: '#0ea5e9', strokeWidth: 0 }}
-          />
+          <Legend wrapperStyle={{ fontSize: '0.8rem', paddingTop: 8 }} />
+          <ReferenceLine yAxisId="turb" y={5.0} stroke="#ef4444" strokeDasharray="4 4" label={{ value: 'WHO Safe Limit (5 NTU)', fill: '#ef4444', fontSize: 10, position: 'insideTopRight' }} />
+          <Line yAxisId="turb" type="monotone" dataKey="turbidity" name="Avg Turbidity (NTU)" stroke="#d97706" strokeWidth={2} dot={{ r: 3 }} />
+          <Line yAxisId="turb" type="monotone" dataKey="maxTurbidity" name="Peak Turbidity (NTU)" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="2 2" dot={false} />
+          <Line yAxisId="flow" type="monotone" dataKey="flowRate" name="Avg Flow (L/min)" stroke="#0891b2" strokeWidth={2} dot={{ r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -36,46 +36,59 @@ let ReadingsService = class ReadingsService {
         const since = new Date();
         since.setDate(since.getDate() - 7);
         const qb = this.repo.createQueryBuilder('r')
-            .select("date(r.timestamp)", 'day')
-            .addSelect('MAX(r.totalUsageLiters) - MIN(r.totalUsageLiters)', 'usageLiters')
+            .select("TO_CHAR(r.timestamp, 'YYYY-MM-DD')", 'day')
+            .addSelect('ROUND(CAST(MAX(r.totalUsageLiters) - MIN(r.totalUsageLiters) AS numeric), 1)', 'usageLiters')
             .where('r.timestamp >= :since', { since: since.toISOString() });
         if (meterId) {
             qb.andWhere('r.meterId = :meterId', { meterId });
         }
-        qb.groupBy('day').orderBy('day', 'ASC');
-        return qb.getRawMany();
+        qb.groupBy("TO_CHAR(r.timestamp, 'YYYY-MM-DD')").orderBy('day', 'ASC');
+        const raw = await qb.getRawMany();
+        return raw;
     }
     async getZoneUsage() {
         const raw = await this.repo.query(`
       SELECT d.zone,
-             ROUND(SUM(sub.usage), 0) as totalLiters,
-             ROUND(AVG(sub.avgTurbidity), 2) as avgTurbidity,
-             COUNT(DISTINCT d.meterId) as meterCount
+             ROUND(CAST(SUM(sub.usage) AS numeric), 0) as "totalLiters",
+             ROUND(CAST(AVG(sub."avgTurbidity") AS numeric), 2) as "avgTurbidity",
+             COUNT(DISTINCT d."meterId") as "meterCount"
       FROM devices d
       JOIN (
-        SELECT meterId, (MAX(totalUsageLiters) - MIN(totalUsageLiters)) as usage, AVG(turbidityNtu) as avgTurbidity
+        SELECT "meterId",
+               (MAX("totalUsageLiters") - MIN("totalUsageLiters")) as usage,
+               AVG("turbidityNtu") as "avgTurbidity"
         FROM device_readings
-        GROUP BY meterId
-      ) sub ON sub.meterId = d.meterId
+        GROUP BY "meterId"
+      ) sub ON sub."meterId" = d."meterId"
       GROUP BY d.zone
-      ORDER BY totalLiters DESC
+      ORDER BY "totalLiters" DESC
     `);
-        return raw;
+        return (raw || []).map((r) => ({
+            zone: r.zone || 'Unknown Zone',
+            totalLiters: Number(r.totalLiters || 0),
+            avgTurbidity: Number(r.avgTurbidity || 0),
+            meterCount: Number(r.meterCount || 0),
+        }));
     }
     async getQualityTrend() {
         const since = new Date();
         since.setDate(since.getDate() - 7);
         const raw = await this.repo.query(`
-      SELECT date(timestamp) as day,
-             ROUND(AVG(turbidityNtu), 2) as avgTurbidity,
-             ROUND(MAX(turbidityNtu), 2) as maxTurbidity,
-             ROUND(AVG(flowRateLpm), 1) as avgFlowRate
+      SELECT TO_CHAR("timestamp", 'YYYY-MM-DD') as day,
+             ROUND(CAST(AVG("turbidityNtu") AS numeric), 2) as "avgTurbidity",
+             ROUND(CAST(MAX("turbidityNtu") AS numeric), 2) as "maxTurbidity",
+             ROUND(CAST(AVG("flowRateLpm") AS numeric), 1) as "avgFlowRate"
       FROM device_readings
-      WHERE timestamp >= ?
-      GROUP BY date(timestamp)
+      WHERE "timestamp" >= $1
+      GROUP BY TO_CHAR("timestamp", 'YYYY-MM-DD')
       ORDER BY day ASC
-    `, [since.toISOString().slice(0, 10)]);
-        return raw;
+    `, [since.toISOString()]);
+        return (raw || []).map((r) => ({
+            day: r.day,
+            avgTurbidity: Number(r.avgTurbidity || 0),
+            maxTurbidity: Number(r.maxTurbidity || 0),
+            avgFlowRate: Number(r.avgFlowRate || 0),
+        }));
     }
     findLatestByMeterId(meterId) {
         return this.repo.findOne({

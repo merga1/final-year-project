@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -10,11 +10,64 @@ import {
 
 function ValveBadge({ state }: { state: string }) {
   const s = (state ?? '').toLowerCase();
+  const isOpen = s === 'open';
   return (
-    <span className={`status-badge ${s === 'open' ? 'status-ok' : 'status-danger'}`}>
-      {s === 'open' ? 'Open' : 'Closed'}
+    <span className={`status-badge ${isOpen ? 'status-ok' : 'status-danger'}`}>
+      {isOpen ? 'Open' : 'Closed'}
     </span>
   );
+}
+
+function BatteryIndicator({ percent }: { percent: number | null | undefined }) {
+  if (percent == null) return <span className="text-muted-sm">—</span>;
+  const val = Math.round(percent);
+  const isLow = val < 20;
+  const isMedium = val >= 20 && val <= 50;
+
+  const color = isLow ? '#dc2626' : isMedium ? '#d97706' : '#16a34a';
+  const bg = isLow ? '#fef2f2' : isMedium ? '#fffbeb' : '#f0fdf4';
+  const border = isLow ? '#fecaca' : isMedium ? '#fde68a' : '#bbf7d0';
+
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '2px 7px',
+        borderRadius: 999,
+        background: bg,
+        border: `1px solid ${border}`,
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        color,
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="16" height="10" rx="2" ry="2" />
+        <line x1="22" y1="11" x2="22" y2="13" />
+      </svg>
+      <span>{val}%</span>
+    </div>
+  );
+}
+
+function formatLastSeen(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return dateStr;
+  }
 }
 
 export function UsageAnalyticsClient({
@@ -65,7 +118,7 @@ export function UsageAnalyticsClient({
   // Calculate average turbidity across all quality points
   const avgSystemTurbidity = qualityTrend.length > 0
     ? (qualityTrend.reduce((acc, q) => acc + Number(q.avgTurbidity || 0), 0) / qualityTrend.length).toFixed(2)
-    : '2.01';
+    : '2.48';
 
   return (
     <div className="section-container">
@@ -91,7 +144,7 @@ export function UsageAnalyticsClient({
               const id = d.meterId ?? d.id;
               return (
                 <option key={id} value={id}>
-                  {id} ({d.zone ?? 'Zone'} - {d.customerName ?? 'Customer'})
+                  {id} ({d.zone ?? 'Zone'}{d.customerName ? ` - ${d.customerName}` : ''})
                 </option>
               );
             })}
@@ -125,7 +178,7 @@ export function UsageAnalyticsClient({
         </div>
       )}
 
-      {/* Primary Analytics Grid: 2 Distinct Visualizations */}
+      {/* Primary Analytics Grid: 3 Distinct Visualizations */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20, marginBottom: 24 }}>
         
         {/* Chart 1: Volumetric Line Chart */}
@@ -148,7 +201,7 @@ export function UsageAnalyticsClient({
           <UsageLineChart data={currentUsage} />
         </div>
 
-        {/* Chart 2: Operational Zone Consumption Breakdown (Completely Different Data from Chart 1!) */}
+        {/* Chart 2: Operational Zone Consumption Breakdown */}
         <div className="table-card" style={{ padding: '20px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div>
@@ -230,9 +283,9 @@ export function UsageAnalyticsClient({
                       </span>
                     </td>
                     <td><ValveBadge state={r.valveState} /></td>
-                    <td>{r.batteryPercent != null ? `${r.batteryPercent}%` : '—'}</td>
+                    <td><BatteryIndicator percent={r.batteryPercent} /></td>
                     <td className="text-muted-sm" suppressHydrationWarning>
-                      {r.timestamp ? new Date(r.timestamp).toLocaleString() : '—'}
+                      {formatLastSeen(r.timestamp)}
                     </td>
                   </tr>
                 ))}
