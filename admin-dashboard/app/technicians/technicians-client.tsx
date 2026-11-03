@@ -1,13 +1,40 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+function toTitleCase(str: string) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function getInitials(name: string) {
+  if (!name) return 'TC';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function DutyBadge({ status }: { status: string }) {
   const on = (status ?? '').toLowerCase() === 'on_duty' || (status ?? '').toLowerCase() === 'onduty';
   return (
     <span className={`status-badge ${on ? 'status-ok' : 'status-muted'}`}>
+      <span
+        style={{
+          display: 'inline-block',
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          backgroundColor: on ? '#16a34a' : '#94a3b8',
+          marginRight: 6,
+        }}
+      />
       {on ? 'On Duty' : 'Off Duty'}
     </span>
   );
@@ -33,25 +60,30 @@ export function TechniciansClient({
   const [jobFilter, setJobFilter] = useState('all');
   const [search, setSearch] = useState('');
 
-  const onDutyCount = technicians.filter(t => (t.status ?? '').toLowerCase() === 'on_duty' || (t.status ?? '').toLowerCase() === 'onduty').length;
+  const onDutyCount = technicians.filter(
+    t => (t.status ?? '').toLowerCase() === 'on_duty' || (t.status ?? '').toLowerCase() === 'onduty'
+  ).length;
   const offDutyCount = technicians.length - onDutyCount;
-  const totalOpen = technicians.reduce((acc, t) => acc + (t.openJobsCount ?? 0), 0);
+  const totalOpen = technicians.reduce((acc, t) => acc + (t.openJobsCount ?? t.openTickets ?? 0), 0);
 
   const filtered = technicians.filter(t => {
     const isOn = (t.status ?? '').toLowerCase() === 'on_duty' || (t.status ?? '').toLowerCase() === 'onduty';
     if (dutyFilter === 'on_duty' && !isOn) return false;
     if (dutyFilter === 'off_duty' && isOn) return false;
 
-    const openJobs = t.openJobsCount ?? 0;
+    const openJobs = t.openJobsCount ?? t.openTickets ?? 0;
     if (jobFilter === 'has_jobs' && openJobs === 0) return false;
     if (jobFilter === 'available' && openJobs > 0) return false;
 
     if (!search) return true;
     const q = search.toLowerCase();
-    const name = (t.name ?? `${t.firstName ?? ''} ${t.lastName ?? ''}`).toLowerCase();
+    const rawName = t.name ?? `${t.firstName ?? ''} ${t.lastName ?? ''}`;
+    const name = rawName.toLowerCase();
     const email = (t.email ?? '').toLowerCase();
+    const phone = (t.phone ?? '').toLowerCase();
     const spec = (t.specialization ?? '').toLowerCase();
-    return name.includes(q) || email.includes(q) || spec.includes(q);
+    const zone = (t.zone ?? '').toLowerCase();
+    return name.includes(q) || email.includes(q) || phone.includes(q) || spec.includes(q) || zone.includes(q);
   });
 
   async function handleToggleStatus(tech: any) {
@@ -70,7 +102,7 @@ export function TechniciansClient({
       if (!res.ok) throw new Error('Failed');
       router.refresh();
     } catch {
-      setError('Could not update status. Please try again.');
+      setError('Could not update technician duty status. Please try again.');
     } finally {
       setTogglingId(null);
     }
@@ -176,12 +208,12 @@ export function TechniciansClient({
         <input
           type="text"
           className="search-input"
-          placeholder="Search by name, email, or specialization..."
+          placeholder="Search by name, email, phone, specialization, or zone..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>x</button>
+          <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
         )}
       </div>
 
@@ -189,8 +221,8 @@ export function TechniciansClient({
         <table className="data-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
+              <th>Technician</th>
+              <th>Contact</th>
               <th>Specialization</th>
               <th>Status</th>
               <th>Open Jobs</th>
@@ -207,18 +239,102 @@ export function TechniciansClient({
             )}
             {filtered.map(tech => {
               const isOn = (tech.status ?? '').toLowerCase() === 'on_duty' || (tech.status ?? '').toLowerCase() === 'onduty';
-              const name = tech.name ?? (`${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim() || 'Technician');
-              const openJobs = tech.openJobsCount ?? 0;
+              const rawName = tech.name ?? (`${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim() || 'Technician');
+              const displayName = toTitleCase(rawName);
+              const initials = getInitials(displayName);
+              const openJobs = tech.openJobsCount ?? tech.openTickets ?? 0;
+              const hasSpec = tech.specialization && tech.specialization.toLowerCase() !== 'no specialization';
+
               return (
                 <tr key={tech.id}>
-                  <td style={{ fontWeight: 700, color: '#0f172a' }}>{name}</td>
-                  <td className="text-muted-sm">{tech.email ?? '—'}</td>
-                  <td className="text-muted-sm">{tech.specialization ?? 'General Field Service'}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                          border: '1.5px solid #bfdbfe',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          color: '#1d4ed8',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initials}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                          {displayName}
+                        </div>
+                        {tech.zone && (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              color: '#64748b',
+                              background: '#f1f5f9',
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {tech.zone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={{ fontSize: '0.85rem', color: '#1e293b' }}>
+                        {tech.email || '—'}
+                      </span>
+                      {tech.phone ? (
+                        <span style={{ fontSize: '0.78rem', color: '#64748b', fontFamily: 'ui-monospace, monospace' }}>
+                          {tech.phone}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No phone listed</span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    {hasSpec ? (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          color: '#334155',
+                        }}
+                      >
+                        {tech.specialization}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                        General Field Service
+                      </span>
+                    )}
+                  </td>
                   <td><DutyBadge status={tech.status} /></td>
                   <td>
-                    <span className={`count-badge ${openJobs > 0 ? 'count-badge-amber' : 'count-badge-muted'}`}>
-                      {openJobs}
-                    </span>
+                    <Link
+                      href={`/support-tickets?techId=${tech.id}`}
+                      style={{ textDecoration: 'none' }}
+                      title={`View ${displayName}'s assigned tickets`}
+                    >
+                      <span className={`count-badge ${openJobs > 0 ? 'count-badge-amber' : 'count-badge-muted'}`} style={{ cursor: 'pointer' }}>
+                        {openJobs}
+                      </span>
+                    </Link>
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -232,7 +348,7 @@ export function TechniciansClient({
                       <Link
                         href={`/support-tickets?techId=${tech.id}`}
                         className="btn-table-action-purple"
-                        title={`View ${name}'s tickets`}
+                        title={`View ${displayName}'s tickets`}
                       >
                         Tickets
                       </Link>

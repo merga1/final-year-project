@@ -13,6 +13,58 @@ function getCookie(name: string): string {
   return match ? match[2] : '';
 }
 
+function BatteryIndicator({ percent }: { percent: number | null | undefined }) {
+  if (percent == null) return <span className="text-muted-sm">—</span>;
+  const val = Math.round(percent);
+  const isLow = val < 20;
+  const isMedium = val >= 20 && val <= 50;
+
+  const color = isLow ? '#dc2626' : isMedium ? '#d97706' : '#16a34a';
+  const bg = isLow ? '#fef2f2' : isMedium ? '#fffbeb' : '#f0fdf4';
+  const border = isLow ? '#fecaca' : isMedium ? '#fde68a' : '#bbf7d0';
+
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '3px 8px',
+        borderRadius: 999,
+        background: bg,
+        border: `1px solid ${border}`,
+        fontSize: '0.78rem',
+        fontWeight: 700,
+        color,
+      }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="16" height="10" rx="2" ry="2" />
+        <line x1="22" y1="11" x2="22" y2="13" />
+      </svg>
+      <span>{val}%</span>
+    </div>
+  );
+}
+
+function formatLastSeen(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export function DeviceDetailClient({
   device,
   readings,
@@ -27,7 +79,7 @@ export function DeviceDetailClient({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const isActive = device.connectivity !== 'OFFLINE';
+  const isActive = (device.connectivity ?? '').toUpperCase() !== 'OFFLINE';
 
   const chartData = [...readings]
     .sort((a, b) => new Date(a.createdAt ?? a.timestamp).getTime() - new Date(b.createdAt ?? b.timestamp).getTime())
@@ -47,7 +99,7 @@ export function DeviceDetailClient({
     setError('');
     setSuccess('');
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
       const t = getCookie('sw_token') || token;
       const res = await fetch(`${API}/api/admin/devices/${device.id ?? device.meterId}/${action}`, {
         method: 'PATCH',
@@ -65,7 +117,7 @@ export function DeviceDetailClient({
 
   return (
     <div className="section-container">
-      <Link href="/devices" className="back-link">Back to Devices</Link>
+      <Link href="/devices" className="back-link">← Back to Devices</Link>
 
       {error && <div className="form-error-alert">{error}</div>}
       {success && <div className="form-success-alert">{success}</div>}
@@ -76,9 +128,9 @@ export function DeviceDetailClient({
           <div className="detail-card">
             <div className="detail-card-header">
               <h2 className="detail-card-title">{device.meterId ?? device.deviceId ?? device.id}</h2>
-              {device.connectivity === 'ONLINE'
+              {(device.connectivity ?? '').toUpperCase() === 'ONLINE'
                 ? <span className="status-badge status-ok">Online</span>
-                : device.connectivity === 'WARNING'
+                : (device.connectivity ?? '').toUpperCase() === 'WARNING'
                   ? <span className="status-badge status-warn">Warning</span>
                   : <span className="status-badge status-danger">Offline</span>}
             </div>
@@ -86,7 +138,21 @@ export function DeviceDetailClient({
             <dl className="detail-fields">
               <div className="detail-field-row">
                 <dt>Customer</dt>
-                <dd>{device.customerName ?? device.customerId ?? '—'}</dd>
+                <dd>
+                  {device.customerId ? (
+                    <Link
+                      href={`/customers/${device.customerId}`}
+                      style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                      title="View Customer Profile"
+                    >
+                      {device.customerName ?? device.customerId}
+                    </Link>
+                  ) : (
+                    <span className="status-badge status-muted" style={{ fontSize: '0.75rem' }}>
+                      Unassigned
+                    </span>
+                  )}
+                </dd>
               </div>
               <div className="detail-field-row">
                 <dt>Zone</dt>
@@ -95,21 +161,19 @@ export function DeviceDetailClient({
               <div className="detail-field-row">
                 <dt>Valve State</dt>
                 <dd>
-                  {device.valveState === 'OPEN'
+                  {(device.valveState ?? '').toUpperCase() === 'OPEN'
                     ? <span className="status-badge status-ok">Open</span>
                     : <span className="status-badge status-muted">{device.valveState ?? '—'}</span>}
                 </dd>
               </div>
               <div className="detail-field-row">
                 <dt>Battery</dt>
-                <dd>{device.batteryPercent != null ? `${device.batteryPercent}%` : '—'}</dd>
+                <dd><BatteryIndicator percent={device.batteryPercent} /></dd>
               </div>
               <div className="detail-field-row">
                 <dt>Last Update</dt>
-                <dd className="text-muted-sm">
-                  {(device.lastReadingAt ?? device.updatedAt)
-                    ? new Date(device.lastReadingAt ?? device.updatedAt).toLocaleString()
-                    : '—'}
+                <dd className="text-muted-sm" suppressHydrationWarning>
+                  {formatLastSeen(device.lastReadingAt ?? device.lastSeenAt ?? device.updatedAt)}
                 </dd>
               </div>
               <div className="detail-field-row">
@@ -204,13 +268,13 @@ export function DeviceDetailClient({
                     .slice(0, 15)
                     .map((r, i) => (
                       <tr key={r.id ?? i}>
-                        <td className="text-muted-sm">
+                        <td className="text-muted-sm" suppressHydrationWarning>
                           {(r.createdAt ?? r.timestamp) ? new Date(r.createdAt ?? r.timestamp).toLocaleString() : '—'}
                         </td>
                         <td>{r.flowLitersPerMin ?? r.flow ?? '—'}</td>
                         <td>{r.turbidityNtu ?? r.turbidity ?? '—'}</td>
                         <td>
-                          {r.valveState === 'OPEN'
+                          {(r.valveState ?? '').toUpperCase() === 'OPEN'
                             ? <span className="status-badge status-ok" style={{ fontSize: '0.7rem' }}>Open</span>
                             : <span className="status-badge status-muted" style={{ fontSize: '0.7rem' }}>{r.valveState ?? '—'}</span>}
                         </td>

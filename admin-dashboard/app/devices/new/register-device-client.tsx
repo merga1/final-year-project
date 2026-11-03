@@ -38,7 +38,10 @@ export function RegisterDeviceClient({ token }: { token?: string }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message || 'Failed to register device');
+        const msg = Array.isArray(data.message)
+          ? data.message.join(', ')
+          : (data.message || 'Failed to register device');
+        setError(msg);
         return;
       }
       setSuccess('Device registered successfully!');

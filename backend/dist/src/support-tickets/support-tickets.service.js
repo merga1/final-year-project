@@ -187,6 +187,11 @@ let SupportTicketsService = class SupportTicketsService {
     count() {
         return this.repo.count();
     }
+    countOpen() {
+        return this.repo.createQueryBuilder('ticket')
+            .where('ticket.status NOT IN (:...done)', { done: ['resolved', 'closed', 'cancelled'] })
+            .getCount();
+    }
     countByStatus(status) {
         return this.repo.countBy({ status: status });
     }

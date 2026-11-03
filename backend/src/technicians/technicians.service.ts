@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Technician } from './technician.entity';
@@ -27,11 +27,17 @@ export class TechniciansService {
   }
 
   async create(dto: CreateTechnicianDto) {
+    const email = dto.email.trim().toLowerCase();
+    const existing = await this.findByEmail(email);
+    if (existing) {
+      throw new ConflictException('A technician with this email address already exists');
+    }
+
     const name = `${dto.firstName.trim()} ${dto.lastName.trim()}`.trim();
     const tech = this.repo.create({
       ...dto,
       name: name || 'Technician',
-      email: dto.email.trim().toLowerCase(),
+      email,
       passwordHash: await bcrypt.hash(dto.password || 'technician123', 10),
       specialization: dto.specialization || 'No specialization',
       status: 'on_duty',

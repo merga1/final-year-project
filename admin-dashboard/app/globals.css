@@ -1720,13 +1720,25 @@ button, input, select {
 
 /* table link mono */
 .table-link-mono {
-  font-family: 'Courier New', Courier, monospace;
-  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 600;
   color: #2563eb;
   text-decoration: none;
-  font-size: 0.87rem;
+  font-size: 0.82rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: inline-block;
+  letter-spacing: -0.01em;
+  transition: all 0.15s ease;
 }
-.table-link-mono:hover { text-decoration: underline; }
+.table-link-mono:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  text-decoration: none;
+  color: #1d4ed8;
+}
 
 
 /* ── Table Action Buttons ─────────────────────────────────── */

@@ -39,7 +39,10 @@ export default function AddTechnicianPage({ token }: { token?: string }) {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message || 'Failed to add technician');
+        const msg = Array.isArray(data.message)
+          ? data.message.join(', ')
+          : (data.message || 'Failed to add technician');
+        setError(msg);
         return;
       }
 

@@ -23,5 +23,6 @@ export declare class SupportTicketsService {
     }): Promise<SupportTicket>;
     private decrementWorkload;
     count(): Promise<number>;
+    countOpen(): Promise<number>;
     countByStatus(status: string): Promise<number>;
 }

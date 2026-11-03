@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -6,18 +6,87 @@ import { useRouter } from 'next/navigation';
 
 function ConnectivityBadge({ status }: { status: string }) {
   const s = (status ?? '').toLowerCase();
-  if (s === 'online') return <span className="status-badge status-ok">Online</span>;
-  if (s === 'offline') return <span className="status-badge status-danger">Offline</span>;
-  return <span className="status-badge status-warn">{status || 'Unknown'}</span>;
+  const isOnline = s === 'online';
+  const isOffline = s === 'offline';
+
+  return (
+    <span className={`status-badge ${isOnline ? 'status-ok' : isOffline ? 'status-danger' : 'status-warn'}`}>
+      <span
+        style={{
+          display: 'inline-block',
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          backgroundColor: isOnline ? '#16a34a' : isOffline ? '#dc2626' : '#d97706',
+          marginRight: 6,
+        }}
+      />
+      {isOnline ? 'Online' : isOffline ? 'Offline' : (status || 'Unknown')}
+    </span>
+  );
 }
 
 function ValveBadge({ state }: { state: string }) {
   const s = (state ?? '').toLowerCase();
+  const isOpen = s === 'open';
   return (
-    <span className={`status-badge ${s === 'open' ? 'status-ok' : 'status-danger'}`}>
-      {s === 'open' ? 'Open' : 'Closed'}
+    <span className={`status-badge ${isOpen ? 'status-ok' : 'status-muted'}`}>
+      {isOpen ? 'Open' : 'Closed'}
     </span>
   );
+}
+
+function BatteryIndicator({ percent }: { percent: number | null | undefined }) {
+  if (percent == null) return <span className="text-muted-sm">—</span>;
+  const val = Math.round(percent);
+  const isLow = val < 20;
+  const isMedium = val >= 20 && val <= 50;
+
+  const color = isLow ? '#dc2626' : isMedium ? '#d97706' : '#16a34a';
+  const bg = isLow ? '#fef2f2' : isMedium ? '#fffbeb' : '#f0fdf4';
+  const border = isLow ? '#fecaca' : isMedium ? '#fde68a' : '#bbf7d0';
+
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '3px 8px',
+        borderRadius: 999,
+        background: bg,
+        border: `1px solid ${border}`,
+        fontSize: '0.78rem',
+        fontWeight: 700,
+        color,
+      }}
+      title={`Battery Level: ${val}%`}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="16" height="10" rx="2" ry="2" />
+        <line x1="22" y1="11" x2="22" y2="13" />
+      </svg>
+      <span>{val}%</span>
+    </div>
+  );
+}
+
+function formatLastSeen(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return dateStr;
+  }
 }
 
 function getCookie(name: string): string {
@@ -65,8 +134,9 @@ export function DevicesClient({
     const q = search.toLowerCase();
     const meterId = (d.meterId ?? d.id ?? '').toLowerCase();
     const customerId = (d.customerId ?? '').toLowerCase();
+    const customerName = (d.customerName ?? '').toLowerCase();
     const zone = (d.zone ?? '').toLowerCase();
-    return meterId.includes(q) || customerId.includes(q) || zone.includes(q);
+    return meterId.includes(q) || customerId.includes(q) || customerName.includes(q) || zone.includes(q);
   });
 
   async function handleDeviceAction(id: string, action: 'activate' | 'deactivate') {
@@ -206,12 +276,12 @@ export function DevicesClient({
         <input
           type="text"
           className="search-input"
-          placeholder="Search by device ID, customer ID, or zone..."
+          placeholder="Search by device ID, customer name, or zone..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>x</button>
+          <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
         )}
       </div>
 
@@ -243,23 +313,43 @@ export function DevicesClient({
               return (
                 <tr key={id}>
                   <td>
-                    <Link href={`/devices/${id}`} className="table-link-mono">
+                    <Link href={`/devices/${id}`} className="table-link-mono" title={`View details for ${id}`}>
                       {id}
                     </Link>
                   </td>
-                  <td className="text-muted-sm" style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <td>
                     {d.customerId ? (
-                      <Link href={`/customers/${d.customerId}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                        {d.customerName ?? d.customerId}
+                      <Link
+                        href={`/customers/${d.customerId}`}
+                        style={{
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontWeight: 600,
+                          color: '#2563eb',
+                          fontSize: '0.88rem',
+                        }}
+                        title={`View profile for ${d.customerName || d.customerId}`}
+                      >
+                        <span>{d.customerName ?? d.customerId}</span>
                       </Link>
-                    ) : '—'}
+                    ) : (
+                      <span className="status-badge status-muted" style={{ fontSize: '0.75rem' }}>
+                        Unassigned
+                      </span>
+                    )}
                   </td>
-                  <td>{d.zone ?? '—'}</td>
+                  <td>
+                    <span style={{ fontSize: '0.84rem', color: '#334155', fontWeight: 500 }}>
+                      {d.zone ?? '—'}
+                    </span>
+                  </td>
                   <td><ConnectivityBadge status={d.connectivity} /></td>
                   <td><ValveBadge state={d.valveState} /></td>
-                  <td>{d.batteryPercent != null ? `${d.batteryPercent}%` : '—'}</td>
+                  <td><BatteryIndicator percent={d.batteryPercent} /></td>
                   <td className="text-muted-sm" suppressHydrationWarning>
-                    {d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleString() : '—'}
+                    {formatLastSeen(d.lastSeenAt)}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
