@@ -9,6 +9,7 @@ const STATUS_LABELS: Record<string, string> = {
   open: 'Pending',
   assigned: 'Assigned',
   accepted: 'Accepted',
+  in_progress: 'In Progress',
   resolved: 'Resolved',
   closed: 'Closed',
 };
@@ -18,6 +19,7 @@ const STATUS_CLASS: Record<string, string> = {
   open: 'status-badge status-warn',
   assigned: 'status-badge status-info',
   accepted: 'status-badge status-info',
+  in_progress: 'status-badge status-ok',
   resolved: 'status-badge status-ok',
   closed: 'status-badge status-muted',
 };
@@ -38,7 +40,7 @@ export function TicketDetailClient({
   token: string;
 }) {
   const router = useRouter();
-  const rawStatus = (ticket.status ?? 'pending').toLowerCase();
+  const rawStatus = (ticket.status ?? 'pending').toLowerCase().replace(/\s+/g, '_');
   const status = rawStatus === 'open' ? 'pending' : rawStatus;
 
   const [selectedTech, setSelectedTech] = useState(status === 'pending' ? '' : (ticket.technicianId ?? ''));
@@ -52,7 +54,7 @@ export function TicketDetailClient({
     setError('');
     setSuccess('');
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
       const t = getCookie('sw_token') || token;
       const res = await fetch(`${API}/api/admin/support-tickets/${ticket.id}`, {
         method: 'PATCH',
@@ -70,7 +72,7 @@ export function TicketDetailClient({
   }
 
   const canAssign = status === 'pending';
-  const canReassign = status === 'assigned' || status === 'accepted';
+  const canReassign = status === 'assigned' || status === 'accepted' || status === 'in_progress';
   const canClose = status === 'resolved';
   const canReopen = status === 'closed';
 
@@ -81,7 +83,7 @@ export function TicketDetailClient({
 
   return (
     <div className="section-container">
-      <Link href="/support-tickets" className="back-link">Back to Tickets</Link>
+      <Link href="/support-tickets" className="back-link">← Back to Tickets</Link>
 
       {error && <div className="form-error-alert">{error}</div>}
       {success && <div className="form-success-alert">{success}</div>}
@@ -104,117 +106,154 @@ export function TicketDetailClient({
             </div>
             <div className="detail-field-row">
               <dt>Customer</dt>
-              <dd>{ticket.customerName ?? ticket.customerId ?? '—'}</dd>
+              <dd>
+                {ticket.customerId ? (
+                  <Link
+                    href={`/customers/${ticket.customerId}`}
+                    style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    {ticket.customerName ?? ticket.customerId}
+                  </Link>
+                ) : (
+                  <span>{ticket.customerName ?? '—'}</span>
+                )}
+              </dd>
             </div>
             <div className="detail-field-row">
               <dt>Device ID</dt>
-              <dd>{ticket.meterId ?? ticket.deviceId ? <code className="mono-text">{ticket.meterId ?? ticket.deviceId}</code> : '—'}</dd>
+              <dd>
+                {ticket.meterId ?? ticket.deviceId ? (
+                  <Link href={`/devices/${ticket.meterId ?? ticket.deviceId}`} className="table-link-mono">
+                    {ticket.meterId ?? ticket.deviceId}
+                  </Link>
+                ) : '—'}
+              </dd>
             </div>
             <div className="detail-field-row">
               <dt>Created</dt>
-              <dd className="text-muted-sm" suppressHydrationWarning>{ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : '—'}</dd>
+              <dd className="text-muted-sm" suppressHydrationWarning>
+                {ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : '—'}
+              </dd>
             </div>
             <div className="detail-field-row">
               <dt>Updated</dt>
-              <dd className="text-muted-sm" suppressHydrationWarning>{ticket.updatedAt ? new Date(ticket.updatedAt).toLocaleString() : '—'}</dd>
+              <dd className="text-muted-sm" suppressHydrationWarning>
+                {ticket.updatedAt ? new Date(ticket.updatedAt).toLocaleString() : '—'}
+              </dd>
+            </div>
+            <div className="detail-field-row">
+              <dt>Assigned Technician</dt>
+              <dd style={{ fontWeight: 600, color: assignedTechName ? '#0f172a' : '#d97706' }}>
+                {assignedTechName ?? 'Unassigned'}
+              </dd>
             </div>
           </dl>
 
           <div style={{ marginTop: 20 }}>
-            <p className="detail-label">Description</p>
-            <p className="detail-desc">{ticket.description ?? ticket.issue ?? 'No description provided.'}</p>
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 6, color: '#334155' }}>
+              Issue Description
+            </h3>
+            <p style={{ background: '#f8fafc', padding: 12, borderRadius: 8, fontSize: '0.9rem', color: '#1e293b', margin: 0, border: '1px solid #e2e8f0' }}>
+              {ticket.description ?? ticket.issue ?? 'No description provided.'}
+            </p>
           </div>
-
-          {ticket.resolutionNotes && (
-            <div style={{ marginTop: 16 }}>
-              <p className="detail-label">Resolution Notes</p>
-              <p className="detail-desc">{ticket.resolutionNotes}</p>
-            </div>
-          )}
         </div>
 
+        {/* Right column: actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="detail-card">
-            <h3 className="detail-card-subtitle">Assigned Technician</h3>
-            {canAssign ? (
-              <p style={{ color: '#d97706', fontSize: '0.9rem', fontWeight: 600 }}>
-                Unassigned (Waiting for dispatch)
-              </p>
-            ) : assignedTechName ? (
-              <p style={{ fontSize: '0.9rem', color: '#0f172a', fontWeight: 600 }}>
-                {assignedTechName}
-              </p>
-            ) : (status === 'resolved' || status === 'closed') ? (
-              <p style={{ color: '#64748b', fontSize: '0.88rem', fontStyle: 'italic' }}>
-                System (Automated Diagnostic Check)
-              </p>
-            ) : (
-              <p style={{ color: '#94a3b8', fontSize: '0.88rem' }}>No technician assigned yet</p>
-            )}
-          </div>
-
+          {/* Assign / Reassign Card */}
           {(canAssign || canReassign) && (
             <div className="detail-card">
-              <h3 className="detail-card-subtitle">{canAssign ? 'Assign Technician' : 'Reassign Technician'}</h3>
-              <div className="form-field-group" style={{ marginBottom: 12 }}>
-                <label>Select Technician</label>
-                <select className="form-select" value={selectedTech} onChange={e => setSelectedTech(e.target.value)}>
-                  <option value="">Choose a technician...</option>
-                  {technicians.map(tech => (
-                    <option key={tech.id} value={tech.id}>
-                      {tech.name ?? `${tech.firstName} ${tech.lastName}`}
-                      {tech.openTickets != null ? ` (${tech.openTickets} open)` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {canReassign && (
-                <div className="form-field-group" style={{ marginBottom: 12 }}>
-                  <label>Reason (optional)</label>
-                  <input type="text" className="form-input" placeholder="Reason for reassignment" value={reassignReason} onChange={e => setReassignReason(e.target.value)} />
+              <h3 className="detail-card-subtitle">
+                {canAssign ? 'Assign Technician' : 'Reassign Technician'}
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+                <div>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
+                    Select Technician:
+                  </label>
+                  <select
+                    className="filter-select"
+                    style={{ width: '100%' }}
+                    value={selectedTech}
+                    onChange={e => setSelectedTech(e.target.value)}
+                  >
+                    <option value="">Choose a technician...</option>
+                    {technicians.map(tech => (
+                      <option key={tech.id} value={tech.id}>
+                        {tech.name ?? `${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim()} &middot; {tech.specialization ?? 'General'} ({tech.status === 'on_duty' ? 'On Duty' : 'Off Duty'})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
-              <button
-                className="btn-primary-blue"
-                style={{ width: '100%' }}
-                disabled={loading || !selectedTech}
-                onClick={() => patchTicket({ technicianId: selectedTech, status: 'assigned', ...(reassignReason ? { reason: reassignReason } : {}) })}
-              >
-                {loading ? 'Saving...' : canAssign ? 'Assign' : 'Reassign'}
-              </button>
+
+                {canReassign && (
+                  <div>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
+                      Reassignment Reason (optional):
+                    </label>
+                    <input
+                      type="text"
+                      className="search-input"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      placeholder="e.g. Technician unavailable, specialization mismatch"
+                      value={reassignReason}
+                      onChange={e => setReassignReason(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="btn-primary-blue"
+                  disabled={loading || !selectedTech}
+                  onClick={() => patchTicket({
+                    technicianId: selectedTech,
+                    status: 'assigned',
+                    ...(reassignReason ? { reassignReason } : {}),
+                  })}
+                >
+                  {loading ? 'Updating...' : canAssign ? 'Assign Ticket' : 'Reassign Ticket'}
+                </button>
+              </div>
             </div>
           )}
 
-          {(canClose || canReopen) && (
+          {/* Close Ticket Card */}
+          {canClose && (
             <div className="detail-card">
-              <h3 className="detail-card-subtitle">{canClose ? 'Close Ticket' : 'Reopen Ticket'}</h3>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: 12 }}>
-                {canClose ? 'Mark as closed after confirming work is complete.' : 'Reopen for further work.'}
+              <h3 className="detail-card-subtitle">Close Ticket</h3>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '8px 0 16px' }}>
+                This ticket has been marked resolved by the technician. Confirm closure to archive it.
               </p>
               <button
-                className={canClose ? 'btn-primary-blue' : 'btn-outline-gray'}
-                style={{ width: '100%' }}
+                type="button"
+                className="btn-success-sm"
+                style={{ width: '100%', padding: '10px' }}
                 disabled={loading}
-                onClick={() => patchTicket({ status: canClose ? 'closed' : 'pending' })}
+                onClick={() => patchTicket({ status: 'closed' })}
               >
-                {loading ? 'Saving...' : canClose ? 'Close Ticket' : 'Reopen Ticket'}
+                {loading ? 'Closing...' : 'Confirm & Close Ticket'}
               </button>
             </div>
           )}
 
-          {ticket.statusHistory && ticket.statusHistory.length > 0 && (
+          {/* Reopen Ticket Card */}
+          {canReopen && (
             <div className="detail-card">
-              <h3 className="detail-card-subtitle">Status History</h3>
-              <div className="status-history-list">
-                {ticket.statusHistory.map((h: any, i: number) => (
-                  <div key={i} className="status-history-item">
-                    <span className={STATUS_CLASS[(h.status ?? '').toLowerCase()] ?? 'status-badge status-muted'}>
-                      {STATUS_LABELS[(h.status ?? '').toLowerCase()] ?? h.status}
-                    </span>
-                    <span className="text-muted-sm">{h.changedAt ? new Date(h.changedAt).toLocaleString() : ''}</span>
-                  </div>
-                ))}
-              </div>
+              <h3 className="detail-card-subtitle">Reopen Ticket</h3>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '8px 0 16px' }}>
+                If the customer reports the issue has recurred, you can reopen this ticket.
+              </p>
+              <button
+                type="button"
+                className="btn-outline-gray"
+                style={{ width: '100%', padding: '10px' }}
+                disabled={loading}
+                onClick={() => patchTicket({ status: 'pending' })}
+              >
+                {loading ? 'Reopening...' : 'Reopen Ticket'}
+              </button>
             </div>
           )}
         </div>
