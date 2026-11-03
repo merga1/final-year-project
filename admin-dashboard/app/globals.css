@@ -1775,3 +1775,29 @@ button, input, select {
   white-space: nowrap;
 }
 .btn-table-action-purple:hover { background: #ede9fe; border-color: #c4b5fd; }
+
+/* ── Overview Interactive Rows ────────────────────────────── */
+.overview-interactive-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease;
+}
+.overview-interactive-row:hover {
+  background: #f1f5f9;
+}
+.overview-interactive-row.alert-unack {
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+}
+.overview-interactive-row.alert-unack:hover {
+  background: #fef3c7;
+}
+.overview-interactive-row.alert-ack {
+  border-left: 3px solid transparent;
+}

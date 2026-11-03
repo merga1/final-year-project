@@ -231,19 +231,7 @@ export function OverviewContent({
                   <Link
                     key={t.id}
                     href={`/support-tickets/${t.id}`}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 12px',
-                      background: '#f8fafc',
-                      borderRadius: 8,
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      transition: 'background 0.15s ease',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '#f8fafc')}
+                    className="overview-interactive-row"
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, paddingRight: 8 }}>
                       <span className="link-mono" style={{ fontSize: '0.85rem' }}>
@@ -288,24 +276,7 @@ export function OverviewContent({
                   <Link
                     key={a.id}
                     href="/alerts"
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 12px',
-                      background: !a.acknowledged ? '#fffbeb' : '#f8fafc',
-                      borderLeft: !a.acknowledged ? '3px solid #f59e0b' : '3px solid transparent',
-                      borderRadius: 8,
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      transition: 'background 0.15s ease',
-                    }}
-                    onMouseEnter={e =>
-                      (e.currentTarget.style.background = !a.acknowledged ? '#fef3c7' : '#f1f5f9')
-                    }
-                    onMouseLeave={e =>
-                      (e.currentTarget.style.background = !a.acknowledged ? '#fffbeb' : '#f8fafc')
-                    }
+                    className={`overview-interactive-row ${!a.acknowledged ? 'alert-unack' : 'alert-ack'}`}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, paddingRight: 8 }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: 600, color: isCrit ? '#dc2626' : '#0f172a' }}>
