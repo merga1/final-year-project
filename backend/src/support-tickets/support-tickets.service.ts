@@ -46,6 +46,36 @@ export class SupportTicketsService {
     return this.repo.save(ticket);
   }
 
+  async createAdminTicket(data: any) {
+    let technicianName = data.technicianName;
+    if (data.technicianId && !technicianName) {
+      const tech = await this.technicians.findOne(data.technicianId).catch(() => null);
+      if (tech) technicianName = tech.name;
+    }
+    const status = data.technicianId ? 'assigned' : (data.status || 'pending');
+    const now = new Date();
+    const ticket = this.repo.create({
+      ...data,
+      status,
+      technicianName: technicianName || null,
+      assignedAt: data.technicianId ? now : null,
+      statusHistory: JSON.stringify([{ status, at: now.toISOString(), note: 'Created by Admin from Alert dispatch' }]),
+    } as Partial<SupportTicket>);
+    const saved: SupportTicket = await this.repo.save(ticket);
+    if (data.technicianId) {
+      await this.technicians.update(data.technicianId, { currentJobCount: () => 'currentJobCount + 1' } as any).catch(() => {});
+      await this.notifications.create({
+        userId: data.technicianId,
+        audience: 'technician',
+        type: 'ticket_assignment',
+        title: 'New ticket assigned from Alert',
+        message: `${saved.type}: ${saved.description ?? saved.issue}`,
+        relatedId: saved.id,
+      }).catch(() => {});
+    }
+    return saved;
+  }
+
   async createCustomerTicket(data: Partial<SupportTicket>) {
     const technician = await this.technicians.findLeastBusy();
     const now = new Date();

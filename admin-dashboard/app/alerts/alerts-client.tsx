@@ -148,7 +148,17 @@ function getCookie(name: string): string {
   return match ? match[2] : '';
 }
 
-export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }) {
+export function AlertsClient({
+  alerts,
+  technicians = [],
+  customers = [],
+  token,
+}: {
+  alerts: any[];
+  technicians?: any[];
+  customers?: any[];
+  token: string;
+}) {
   const router = useRouter();
   const [localAlerts, setLocalAlerts] = useState<any[]>(alerts);
   const [ackingId, setAckingId] = useState<string | null>(null);
@@ -159,6 +169,20 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Dispatch Ticket Modal State
+  const [dispatchModalAlert, setDispatchModalAlert] = useState<any | null>(null);
+  const [dispatchSubmitting, setDispatchSubmitting] = useState(false);
+  const [dispatchSuccessMsg, setDispatchSuccessMsg] = useState('');
+  const [dispatchError, setDispatchError] = useState('');
+
+  // Modal Form Inputs
+  const [ticketType, setTicketType] = useState('SENSOR');
+  const [ticketPriority, setTicketPriority] = useState('High');
+  const [ticketIssue, setTicketIssue] = useState('');
+  const [ticketDescription, setTicketDescription] = useState('');
+  const [selectedTechId, setSelectedTechId] = useState('');
+  const [autoAcknowledgeAlert, setAutoAcknowledgeAlert] = useState(true);
 
   const unack = localAlerts.filter(a => !a.acknowledged).length;
   const ackCount = localAlerts.filter(a => a.acknowledged).length;
@@ -231,6 +255,119 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
     }
   }
 
+  function openDispatchModal(a: any) {
+    setDispatchModalAlert(a);
+    setDispatchError('');
+    setDispatchSuccessMsg('');
+
+    const typ = (a.type ?? '').toLowerCase();
+    let defaultType = 'SENSOR';
+    if (typ.includes('leak')) defaultType = 'LEAK';
+    else if (typ.includes('valve')) defaultType = 'VALVE';
+    else if (typ.includes('battery')) defaultType = 'MAINTENANCE';
+
+    const sev = (a.severity ?? '').toLowerCase();
+    let defaultPri = 'Medium';
+    if (sev === 'critical') defaultPri = 'High';
+    else if (sev === 'info') defaultPri = 'Low';
+
+    const meter = a.meterId ?? a.deviceId ?? 'Hardware Node';
+    setTicketType(defaultType);
+    setTicketPriority(defaultPri);
+    setTicketIssue(`[Alert] ${a.message || 'System Anomaly'}`);
+    setTicketDescription(
+      `Triggered from Alert (${a.type || 'Telemetry Anomaly'})\n` +
+      `Target Meter Node: ${meter}\n` +
+      `Operational Zone: ${a.zone ?? 'General Zone'}\n` +
+      `Severity: ${a.severity ? a.severity.toUpperCase() : 'WARNING'}\n` +
+      `Message: ${a.message || 'Sensor threshold exceeded. Field intervention required.'}`
+    );
+
+    // Pick first on-duty technician or first tech available
+    const onDuty = (technicians || []).find((tech: any) => tech.status === 'on_duty');
+    setSelectedTechId(onDuty ? onDuty.id : (technicians[0]?.id || ''));
+    setAutoAcknowledgeAlert(!a.acknowledged);
+  }
+
+  async function handleDispatchTicket(e: React.FormEvent) {
+    e.preventDefault();
+    if (!dispatchModalAlert) return;
+    setDispatchSubmitting(true);
+    setDispatchError('');
+
+    try {
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
+      const t = getCookie('sw_token') || token;
+
+      const tech = (technicians || []).find((techItem: any) => techItem.id === selectedTechId);
+      const custId = dispatchModalAlert.customerId || customers[0]?.id || 'admin-escalated';
+      const custName = dispatchModalAlert.customerName || (customers.find((c: any) => c.id === custId)?.name) || 'Customer';
+
+      const payload = {
+        customerId: custId,
+        customerName: custName,
+        deviceId: dispatchModalAlert.meterId ?? dispatchModalAlert.deviceId,
+        type: ticketType,
+        issue: ticketIssue,
+        description: ticketDescription,
+        priority: ticketPriority,
+        technicianId: selectedTechId || null,
+        technicianName: tech ? tech.name : null,
+        status: selectedTechId ? 'assigned' : 'pending',
+      };
+
+      const res = await fetch(`${API}/api/admin/support-tickets`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${t}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to create support ticket');
+      }
+
+      const newTicket = await res.json();
+
+      // If auto-acknowledge is checked, acknowledge the alert
+      if (autoAcknowledgeAlert && !dispatchModalAlert.acknowledged) {
+        await fetch(`${API}/api/admin/alerts/${dispatchModalAlert.id}/acknowledge`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        }).catch(() => {});
+      }
+
+      // Update local state to link ticket and update alert status
+      setLocalAlerts(prev => prev.map(item => {
+        if (item.id === dispatchModalAlert.id) {
+          return {
+            ...item,
+            acknowledged: autoAcknowledgeAlert ? true : item.acknowledged,
+            linkedTicket: {
+              id: newTicket.id,
+              status: newTicket.status,
+              technicianName: newTicket.technicianName,
+            },
+          };
+        }
+        return item;
+      }));
+
+      setDispatchSuccessMsg(
+        `Support Ticket #${newTicket.id.slice(0, 8)} created successfully${tech ? ` and assigned to ${tech.name}` : ''}!`
+      );
+      setDispatchModalAlert(null);
+      router.refresh();
+    } catch (err: any) {
+      setDispatchError(err.message || 'Could not dispatch ticket. Please try again.');
+    } finally {
+      setDispatchSubmitting(false);
+    }
+  }
+
   return (
     <div className="section-container">
       <div className="section-header-row">
@@ -241,6 +378,30 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
           </span>
         </div>
       </div>
+
+      {dispatchSuccessMsg && (
+        <div style={{
+          background: '#ecfdf5',
+          border: '1px solid #a7f3d0',
+          color: '#065f46',
+          padding: '10px 16px',
+          borderRadius: 8,
+          fontSize: '0.86rem',
+          fontWeight: 600,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <span>✓ {dispatchSuccessMsg}</span>
+          <button
+            type="button"
+            onClick={() => setDispatchSuccessMsg('')}
+            style={{ background: 'none', border: 'none', color: '#065f46', cursor: 'pointer', fontSize: '1rem', fontWeight: 700 }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* 4 Stats Chips */}
       <div className="stats-strip">
@@ -471,16 +632,31 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
                         </button>
                       ) : (
                         <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600 }}>
-                          Resolved
+                          ✓ Acknowledged
                         </span>
                       )}
-                      <Link
-                        href="/support-tickets"
-                        className="btn-table-action-purple"
-                        title="View or dispatch support tickets"
-                      >
-                        Tickets
-                      </Link>
+
+                      {/* Linked Ticket or Create Ticket Button */}
+                      {a.linkedTicket ? (
+                        <Link
+                          href={`/support-tickets/${a.linkedTicket.id}`}
+                          className="btn-table-action"
+                          title={`View linked ticket (${a.linkedTicket.status} - ${a.linkedTicket.technicianName || 'Unassigned'})`}
+                          style={{ fontSize: '0.76rem', padding: '3px 8px' }}
+                        >
+                          Ticket #{a.linkedTicket.id.slice(0, 8)} &rarr;
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-table-action-purple"
+                          onClick={() => openDispatchModal(a)}
+                          title="Create and assign a support ticket for this alert"
+                          style={{ fontSize: '0.76rem', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                        >
+                          + Ticket
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -498,6 +674,216 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
           itemLabel="alerts"
         />
       </div>
+
+      {/* ── Dispatch Support Ticket Modal ────────────────────────────────────── */}
+      {dispatchModalAlert && (
+        <div className="modal-backdrop" onClick={() => !dispatchSubmitting && setDispatchModalAlert(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: '#f0fdf9',
+                  color: '#1e6b52',
+                  fontSize: '1.05rem',
+                  fontWeight: 700
+                }}>
+                  🛠️
+                </span>
+                <div>
+                  <h3 className="modal-title" style={{ margin: 0 }}>Dispatch Technician Ticket</h3>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    Escalate hardware alert into an actionable maintenance job
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => !dispatchSubmitting && setDispatchModalAlert(null)}
+                aria-label="Close dialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleDispatchTicket}>
+              <div className="modal-body">
+                {dispatchError && (
+                  <div style={{
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: '0.84rem'
+                  }}>
+                    {dispatchError}
+                  </div>
+                )}
+
+                {/* Alert Context Summary Box */}
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="table-link-mono" style={{ fontSize: '0.78rem' }}>
+                        {dispatchModalAlert.meterId ?? dispatchModalAlert.deviceId}
+                      </span>
+                      {dispatchModalAlert.zone && (
+                        <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+                          ({dispatchModalAlert.zone})
+                        </span>
+                      )}
+                    </div>
+                    <SeverityBadge severity={dispatchModalAlert.severity || 'warning'} />
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#1e293b', fontWeight: 500 }}>
+                    {dispatchModalAlert.message}
+                  </p>
+                </div>
+
+                {/* Form Inputs Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+                      Ticket Type
+                    </label>
+                    <select
+                      className="filter-select"
+                      style={{ width: '100%' }}
+                      value={ticketType}
+                      onChange={e => setTicketType(e.target.value)}
+                      required
+                    >
+                      <option value="SENSOR">Sensor Anomaly (SENSOR)</option>
+                      <option value="LEAK">Water Leak (LEAK)</option>
+                      <option value="VALVE">Valve Fault (VALVE)</option>
+                      <option value="MAINTENANCE">General Maintenance</option>
+                      <option value="BILLING">Meter Discrepancy</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+                      Dispatch Priority
+                    </label>
+                    <select
+                      className="filter-select"
+                      style={{ width: '100%' }}
+                      value={ticketPriority}
+                      onChange={e => setTicketPriority(e.target.value)}
+                      required
+                    >
+                      <option value="High">High (Immediate Response)</option>
+                      <option value="Medium">Medium (Standard Triage)</option>
+                      <option value="Low">Low (Scheduled Inspection)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Assign Technician Dropdown */}
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+                    Assign Field Technician
+                  </label>
+                  <select
+                    className="filter-select"
+                    style={{ width: '100%' }}
+                    value={selectedTechId}
+                    onChange={e => setSelectedTechId(e.target.value)}
+                  >
+                    <option value="">Leave unassigned (Queue in Pending)</option>
+                    {(technicians || []).map((t: any) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} — {t.specialization || 'Field Tech'} ({t.currentJobCount ?? 0} active {t.currentJobCount === 1 ? 'job' : 'jobs'}) {t.status === 'on_duty' ? '🟢 On Duty' : '⚪ Off Duty'}
+                      </option>
+                    ))}
+                  </select>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 3, display: 'block' }}>
+                    Technician will receive an automatic dispatch notification.
+                  </span>
+                </div>
+
+                {/* Issue Title */}
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+                    Ticket Title / Issue Summary
+                  </label>
+                  <input
+                    type="text"
+                    className="filter-select"
+                    style={{ width: '100%' }}
+                    value={ticketIssue}
+                    onChange={e => setTicketIssue(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Instructions / Description */}
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+                    Field Repair Instructions & Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    className="filter-select"
+                    style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.82rem' }}
+                    value={ticketDescription}
+                    onChange={e => setTicketDescription(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Auto Acknowledge Option */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <input
+                    type="checkbox"
+                    id="autoAckCheck"
+                    checked={autoAcknowledgeAlert}
+                    onChange={e => setAutoAcknowledgeAlert(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: '#1e6b52', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="autoAckCheck" style={{ fontSize: '0.82rem', color: '#334155', cursor: 'pointer', fontWeight: 500 }}>
+                    Automatically mark alert as <strong>Acknowledged</strong> when ticket is created
+                  </label>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-outline-gray"
+                  onClick={() => setDispatchModalAlert(null)}
+                  disabled={dispatchSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-blue"
+                  disabled={dispatchSubmitting}
+                  style={{ minWidth: 150 }}
+                >
+                  {dispatchSubmitting ? 'Dispatching...' : 'Dispatch Ticket'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

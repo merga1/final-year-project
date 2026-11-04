@@ -13,6 +13,7 @@ export declare class SupportTicketsService {
     findByTechnician(technicianId: string, status?: string): Promise<SupportTicket[]>;
     findOneForTechnician(id: string, technicianId: string): Promise<SupportTicket>;
     create(data: Partial<SupportTicket>): Promise<SupportTicket>;
+    createAdminTicket(data: any): Promise<SupportTicket>;
     createCustomerTicket(data: Partial<SupportTicket>): Promise<SupportTicket>;
     update(id: string, data: Partial<SupportTicket>): Promise<SupportTicket | null>;
     transitionForTechnician(id: string, technicianId: string, data: {
