@@ -45,6 +45,10 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
+], SupportTicket.prototype, "subject", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
 ], SupportTicket.prototype, "description", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 'Medium' }),

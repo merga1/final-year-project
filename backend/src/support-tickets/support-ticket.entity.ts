@@ -29,6 +29,9 @@ export class SupportTicket {
   issue: string;
 
   @Column({ nullable: true })
+  subject: string;
+
+  @Column({ nullable: true })
   description: string;
 
   @Column({ default: 'Medium' })

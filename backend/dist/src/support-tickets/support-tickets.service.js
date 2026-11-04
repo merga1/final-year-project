@@ -25,6 +25,23 @@ let SupportTicketsService = class SupportTicketsService {
         this.notifications = notifications;
         this.technicians = technicians;
     }
+    async onModuleInit() {
+        try {
+            await this.repo.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'support_tickets' AND column_name = 'subject'
+          ) THEN
+            ALTER TABLE support_tickets ALTER COLUMN subject DROP NOT NULL;
+          END IF;
+        END $$;
+      `).catch(() => { });
+        }
+        catch {
+        }
+    }
     findAll() {
         return this.repo.find({ order: { createdAt: 'DESC' } });
     }
@@ -50,7 +67,10 @@ let SupportTicketsService = class SupportTicketsService {
         return ticket;
     }
     create(data) {
-        const ticket = this.repo.create(data);
+        const ticket = this.repo.create({
+            ...data,
+            subject: data.subject || data.issue || data.description || 'Support Ticket',
+        });
         return this.repo.save(ticket);
     }
     async createAdminTicket(data) {
@@ -66,6 +86,7 @@ let SupportTicketsService = class SupportTicketsService {
         const ticket = this.repo.create({
             ...data,
             status,
+            subject: data.subject || data.issue || data.description || 'Alert Escalation',
             technicianName: technicianName || null,
             assignedAt: data.technicianId ? now : null,
             statusHistory: JSON.stringify([{ status, at: now.toISOString(), note: 'Created by Admin from Alert dispatch' }]),
@@ -90,11 +111,12 @@ let SupportTicketsService = class SupportTicketsService {
         const now = new Date();
         const ticket = this.repo.create({
             ...data,
-            status: technician ? 'assigned' : 'pending',
+            status: technician ? 'in_progress' : 'pending',
+            subject: data.subject || data.issue || data.description || 'Customer Support',
             technicianId: technician === null || technician === void 0 ? void 0 : technician.id,
             technicianName: technician === null || technician === void 0 ? void 0 : technician.name,
             assignedAt: technician ? now : undefined,
-            statusHistory: JSON.stringify([{ status: technician ? 'assigned' : 'pending', at: now.toISOString() }]),
+            statusHistory: JSON.stringify([{ status: technician ? 'in_progress' : 'pending', at: now.toISOString() }]),
         });
         const saved = await this.repo.save(ticket);
         if (technician) {
@@ -201,6 +223,8 @@ let SupportTicketsService = class SupportTicketsService {
             updatePayload.type = data.type;
         if (data.issue !== undefined)
             updatePayload.issue = data.issue;
+        if (data.subject !== undefined)
+            updatePayload.subject = data.subject;
         if (data.description !== undefined)
             updatePayload.description = data.description;
         if (data.progressNotes !== undefined)

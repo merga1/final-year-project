@@ -309,6 +309,7 @@ export function AlertsClient({
         deviceId: dispatchModalAlert.meterId ?? dispatchModalAlert.deviceId,
         type: ticketType,
         issue: ticketIssue,
+        subject: ticketIssue,
         description: ticketDescription,
         priority: ticketPriority,
         technicianId: selectedTechId || null,

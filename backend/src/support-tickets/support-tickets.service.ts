@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SupportTicket } from './support-ticket.entity';
@@ -6,13 +6,31 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { TechniciansService } from '../technicians/technicians.service';
 
 @Injectable()
-export class SupportTicketsService {
+export class SupportTicketsService implements OnModuleInit {
   constructor(
     @InjectRepository(SupportTicket)
     private readonly repo: Repository<SupportTicket>,
     private readonly notifications: NotificationsService,
     private readonly technicians: TechniciansService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      await this.repo.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'support_tickets' AND column_name = 'subject'
+          ) THEN
+            ALTER TABLE support_tickets ALTER COLUMN subject DROP NOT NULL;
+          END IF;
+        END $$;
+      `).catch(() => {});
+    } catch {
+      // non-fatal
+    }
+  }
 
   findAll() {
     return this.repo.find({ order: { createdAt: 'DESC' } });
@@ -42,7 +60,10 @@ export class SupportTicketsService {
   }
 
   create(data: Partial<SupportTicket>) {
-    const ticket = this.repo.create(data);
+    const ticket = this.repo.create({
+      ...data,
+      subject: (data as any).subject || data.issue || data.description || 'Support Ticket',
+    });
     return this.repo.save(ticket);
   }
 
@@ -57,6 +78,7 @@ export class SupportTicketsService {
     const ticket = this.repo.create({
       ...data,
       status,
+      subject: data.subject || data.issue || data.description || 'Alert Escalation',
       technicianName: technicianName || null,
       assignedAt: data.technicianId ? now : null,
       statusHistory: JSON.stringify([{ status, at: now.toISOString(), note: 'Created by Admin from Alert dispatch' }]),
@@ -81,11 +103,12 @@ export class SupportTicketsService {
     const now = new Date();
     const ticket = this.repo.create({
       ...data,
-      status: technician ? 'assigned' : 'pending',
+      status: technician ? 'in_progress' : 'pending',
+      subject: (data as any).subject || data.issue || data.description || 'Customer Support',
       technicianId: technician?.id,
       technicianName: technician?.name,
       assignedAt: technician ? now : undefined,
-      statusHistory: JSON.stringify([{ status: technician ? 'assigned' : 'pending', at: now.toISOString() }]),
+      statusHistory: JSON.stringify([{ status: technician ? 'in_progress' : 'pending', at: now.toISOString() }]),
     });
     const saved = await this.repo.save(ticket);
 
@@ -196,6 +219,7 @@ export class SupportTicketsService {
     if (data.priority !== undefined) updatePayload.priority = data.priority;
     if (data.type !== undefined) updatePayload.type = data.type;
     if (data.issue !== undefined) updatePayload.issue = data.issue;
+    if (data.subject !== undefined) updatePayload.subject = data.subject;
     if (data.description !== undefined) updatePayload.description = data.description;
     if (data.progressNotes !== undefined) updatePayload.progressNotes = data.progressNotes;
     if (data.rejectionReason !== undefined) updatePayload.rejectionReason = data.rejectionReason;

@@ -1,12 +1,14 @@
+import { OnModuleInit } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { SupportTicket } from './support-ticket.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TechniciansService } from '../technicians/technicians.service';
-export declare class SupportTicketsService {
+export declare class SupportTicketsService implements OnModuleInit {
     private readonly repo;
     private readonly notifications;
     private readonly technicians;
     constructor(repo: Repository<SupportTicket>, notifications: NotificationsService, technicians: TechniciansService);
+    onModuleInit(): Promise<void>;
     findAll(): Promise<SupportTicket[]>;
     findOne(id: string): Promise<SupportTicket>;
     findByCustomer(customerId: string): Promise<SupportTicket[]>;

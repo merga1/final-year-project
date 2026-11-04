@@ -8,6 +8,7 @@ export declare class SupportTicket {
     technicianName: string | null;
     type: string;
     issue: string;
+    subject: string;
     description: string;
     priority: TicketPriority;
     status: TicketStatus;
