@@ -8,7 +8,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
   open: 'Pending',
   assigned: 'Assigned',
-  accepted: 'Accepted',
+  accepted: 'In Progress',
   in_progress: 'In Progress',
   resolved: 'Resolved',
   closed: 'Closed',
@@ -18,7 +18,7 @@ const STATUS_CLASS: Record<string, string> = {
   pending: 'status-badge status-warn',
   open: 'status-badge status-warn',
   assigned: 'status-badge status-info',
-  accepted: 'status-badge status-info',
+  accepted: 'status-badge status-ok',
   in_progress: 'status-badge status-ok',
   resolved: 'status-badge status-ok',
   closed: 'status-badge status-muted',
@@ -41,7 +41,7 @@ export function TicketDetailClient({
 }) {
   const router = useRouter();
   const rawStatus = (ticket.status ?? 'pending').toLowerCase().replace(/\s+/g, '_');
-  const status = rawStatus === 'open' ? 'pending' : rawStatus;
+  const status = rawStatus === 'open' ? 'pending' : (rawStatus === 'accepted' ? 'in_progress' : rawStatus);
 
   const [selectedTech, setSelectedTech] = useState(status === 'pending' ? '' : (ticket.technicianId ?? ''));
   const [reassignReason, setReassignReason] = useState('');
@@ -76,7 +76,7 @@ export function TicketDetailClient({
   }
 
   const canAssign = status === 'pending';
-  const canReassign = status === 'assigned' || status === 'accepted' || status === 'in_progress';
+  const canReassign = status === 'assigned' || status === 'in_progress';
   const canClose = status === 'resolved';
   const canReopen = status === 'closed';
 

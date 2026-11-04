@@ -281,7 +281,7 @@ let SupportTicketsService = class SupportTicketsService {
             ticket.status = 'closed';
         }
         else if (requested === 'accepted' || requested === 'in_progress') {
-            ticket.status = requested === 'accepted' ? 'accepted' : 'in_progress';
+            ticket.status = 'in_progress';
             ticket.acceptedAt = (_d = ticket.acceptedAt) !== null && _d !== void 0 ? _d : now;
             if ((_e = data.progressNotes) === null || _e === void 0 ? void 0 : _e.trim())
                 ticket.progressNotes = data.progressNotes.trim();

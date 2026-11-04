@@ -275,7 +275,7 @@ export class SupportTicketsService {
       if (current !== 'resolved') throw new BadRequestException('Only resolved tickets can be closed');
       ticket.status = 'closed';
     } else if (requested === 'accepted' || requested === 'in_progress') {
-      ticket.status = requested === 'accepted' ? 'accepted' : 'in_progress';
+      ticket.status = 'in_progress';
       ticket.acceptedAt = ticket.acceptedAt ?? now;
       if (data.progressNotes?.trim()) ticket.progressNotes = data.progressNotes.trim();
     } else {

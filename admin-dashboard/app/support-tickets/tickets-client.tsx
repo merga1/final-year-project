@@ -9,7 +9,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
   open: 'Pending',
   assigned: 'Assigned',
-  accepted: 'Accepted',
+  accepted: 'In Progress',
   in_progress: 'In Progress',
   resolved: 'Resolved',
   closed: 'Closed',
@@ -19,7 +19,7 @@ const STATUS_CLASS: Record<string, string> = {
   pending: 'status-badge status-warn',
   open: 'status-badge status-warn',
   assigned: 'status-badge status-info',
-  accepted: 'status-badge status-info',
+  accepted: 'status-badge status-ok',
   in_progress: 'status-badge status-ok',
   resolved: 'status-badge status-ok',
   closed: 'status-badge status-muted',
@@ -89,7 +89,7 @@ function getCookie(name: string): string {
   return match ? match[2] : '';
 }
 
-const ALL_STATUSES = ['all', 'pending', 'assigned', 'in_progress', 'accepted', 'resolved', 'closed'];
+const ALL_STATUSES = ['all', 'pending', 'assigned', 'in_progress', 'resolved', 'closed'];
 
 export function TicketsClient({
   tickets,
@@ -121,7 +121,9 @@ export function TicketsClient({
 
   const normalizeStatus = (s: string) => {
     const lower = (s ?? 'pending').toLowerCase().replace(/\s+/g, '_');
-    return lower === 'open' ? 'pending' : lower;
+    if (lower === 'open') return 'pending';
+    if (lower === 'accepted') return 'in_progress';
+    return lower;
   };
 
   // Base tickets filtered by technician and/or customer
@@ -161,7 +163,7 @@ export function TicketsClient({
     : scopedTickets.filter(t => normalizeStatus(t.status) === statusFilter);
 
   const counts: Record<string, number> = { all: scopedTickets.length };
-  for (const s of ['pending', 'assigned', 'in_progress', 'accepted', 'resolved', 'closed']) {
+  for (const s of ['pending', 'assigned', 'in_progress', 'resolved', 'closed']) {
     counts[s] = scopedTickets.filter(t => normalizeStatus(t.status) === s).length;
   }
 
