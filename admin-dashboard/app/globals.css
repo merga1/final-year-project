@@ -51,19 +51,26 @@ button, input, select {
 /* ── Sidebar ─────────────────────────────────────────────── */
 .sidebar-container {
   width: 240px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
   background: #ffffff;
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 20px 16px;
+  padding: 16px 14px;
   flex-shrink: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 50;
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px 24px 8px;
+  padding: 4px 8px 16px 8px;
+  flex-shrink: 0;
 }
 
 .brand-logo-wrap {
@@ -95,17 +102,19 @@ button, input, select {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
   font-weight: 600;
   color: #475569;
   transition: background 0.15s, color 0.15s;
@@ -129,8 +138,9 @@ button, input, select {
 
 .sidebar-footer {
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .user-profile-badge {
