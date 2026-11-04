@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { navItems } from './navigation';
 import { LogoutButton } from './logout-button';
+import { HeaderProfileMenu } from './header-profile-menu';
 import { getServerUser } from '../lib/auth';
 
 type AdminShellProps = {
@@ -135,22 +136,16 @@ export async function AdminShell({
         </nav>
 
         <div className="sidebar-footer">
-          <Link
-            href="/profile"
-            style={{ textDecoration: 'none', display: 'block', color: 'inherit' }}
-            title="Administrator Profile"
-          >
-            <div className="user-profile-badge" style={{ cursor: 'pointer' }}>
-              <div className="avatar-circle">{initial}</div>
-              <div className="user-details">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span className="user-name">{userName}</span>
-                  <span className="role-badge">Admin</span>
-                </div>
-                <span className="user-email">{userEmail}</span>
+          <div className="user-profile-badge">
+            <div className="avatar-circle">{initial}</div>
+            <div className="user-details">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="user-name">{userName}</span>
+                <span className="role-badge">Admin</span>
               </div>
+              <span className="user-email">{userEmail}</span>
             </div>
-          </Link>
+          </div>
           <LogoutButton />
         </div>
       </aside>
@@ -171,22 +166,11 @@ export async function AdminShell({
           </div>
 
           <div className="top-nav-right">
-            <Link
-              href="/profile"
-              className="header-avatar-link"
-              title={`Administrator Profile (${userName})`}
-              style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}
-            >
-              <div
-                className="header-avatar-circle"
-                style={{
-                  cursor: 'pointer',
-                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                }}
-              >
-                {initial}
-              </div>
-            </Link>
+            <HeaderProfileMenu
+              userName={userName}
+              userEmail={userEmail}
+              initial={initial}
+            />
           </div>
         </header>
 

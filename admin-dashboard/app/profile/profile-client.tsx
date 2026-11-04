@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import Link from 'next/link';
 
 export default function ProfileClient({
   user,
@@ -62,12 +61,12 @@ export default function ProfileClient({
         return;
       }
 
-      setMessage('Password changed successfully! Next time you log in, use your new credentials.');
+      setMessage('Password changed successfully! Use your new password on subsequent logins.');
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch {
-      setError('Could not connect to the backend server. Please check network connectivity.');
+      setError('Could not connect to the backend server. Please verify network connectivity.');
     } finally {
       setLoading(false);
     }
@@ -80,103 +79,73 @@ export default function ProfileClient({
   }
 
   return (
-    <div className="section-container profile-section-view">
-      {/* Header Profile Hero Card */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-          borderRadius: 12,
-          padding: '24px 28px',
-          color: '#ffffff',
-          marginBottom: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 20,
-          boxShadow: '0 4px 14px rgba(15, 23, 42, 0.12)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)',
-              color: '#ffffff',
-              fontSize: '1.8rem',
-              fontWeight: 800,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 0 4px rgba(255,255,255,0.15)',
-            }}
-          >
-            {initial}
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>
-                {userName}
-              </h2>
-              <span
-                style={{
-                  background: 'rgba(56, 189, 248, 0.18)',
-                  color: '#38bdf8',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                }}
-              >
-                SUPER ADMINISTRATOR
-              </span>
-            </div>
-            <p style={{ margin: '4px 0 0 0', color: '#94a3b8', fontSize: '0.9rem' }}>
-              {userEmail}
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Link
-            href="/audit"
-            className="btn-outline-gray"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              color: '#ffffff',
-              borderColor: 'rgba(255,255,255,0.2)',
-              fontSize: '0.82rem',
-              padding: '8px 14px',
-            }}
-          >
-            View Audit Log
-          </Link>
-          <Link
-            href="/technicians"
-            className="btn-outline-gray"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              color: '#ffffff',
-              borderColor: 'rgba(255,255,255,0.2)',
-              fontSize: '0.82rem',
-              padding: '8px 14px',
-            }}
-          >
-            Field Technicians
-          </Link>
+    <div className="section-container">
+      {/* Header Row */}
+      <div className="section-header-row">
+        <div>
+          <h2 className="section-main-title">Administrator Profile</h2>
+          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+            Account identity, platform privileges, and master security credentials
+          </span>
         </div>
       </div>
 
+      {/* KPI Stats Strip */}
+      <div className="stats-strip">
+        <div className="stat-chip stat-chip-blue">
+          <span className="stat-chip-val" style={{ fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
+            {userName}
+          </span>
+          <span className="stat-chip-label">Super Administrator</span>
+        </div>
+        <div className="stat-chip stat-chip-green">
+          <span className="stat-chip-val">Active</span>
+          <span className="stat-chip-label">Console Session</span>
+        </div>
+        <div className="stat-chip stat-chip-amber">
+          <span className="stat-chip-val">Tier 1</span>
+          <span className="stat-chip-label">Root Privileges</span>
+        </div>
+        <div className="stat-chip stat-chip-purple">
+          <span className="stat-chip-val">JWT 256</span>
+          <span className="stat-chip-label">Signed Token</span>
+        </div>
+      </div>
+
+      {/* Content Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24 }}>
-        {/* Account Details & Privileges */}
+        {/* Account Specifications */}
         <div className="table-card" style={{ padding: 24 }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
-            Account Specifications
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                backgroundColor: '#e0f2fe',
+                color: '#0284c7',
+                fontSize: '1.3rem',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid #bae6fd',
+              }}
+            >
+              {initial}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+                  {userName}
+                </h3>
+                <span className="status-badge status-ok" style={{ fontSize: '0.72rem' }}>
+                  Active
+                </span>
+              </div>
+              <span style={{ fontSize: '0.84rem', color: '#64748b' }}>{userEmail}</span>
+            </div>
+          </div>
 
           <dl className="detail-fields" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="detail-field-row">
@@ -198,7 +167,7 @@ export default function ProfileClient({
             <div className="detail-field-row">
               <dt>System Privileges</dt>
               <dd style={{ fontSize: '0.82rem', color: '#334155', lineHeight: 1.4 }}>
-                Telemetry, Remote Valves, Billing & Invoicing, IoT Calibration, Technicians, Support Escalations
+                Telemetry, Remote Valves, Billing & Invoicing, IoT Calibration, Technicians, Support Escalations, Audit Trail
               </dd>
             </div>
             <div className="detail-field-row">
@@ -274,7 +243,7 @@ export default function ProfileClient({
                   onChange={(e) => setOldPassword(e.target.value)}
                   required
                   placeholder="Enter current password"
-                  style={{ width: '100%', paddingRight: 40 }}
+                  style={{ width: '100%', paddingRight: 50 }}
                 />
                 <button
                   type="button"
@@ -289,6 +258,7 @@ export default function ProfileClient({
                     cursor: 'pointer',
                     color: '#64748b',
                     fontSize: '0.8rem',
+                    fontWeight: 500,
                   }}
                 >
                   {showOld ? 'Hide' : 'Show'}
@@ -309,7 +279,7 @@ export default function ProfileClient({
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   placeholder="Enter new password"
-                  style={{ width: '100%', paddingRight: 40 }}
+                  style={{ width: '100%', paddingRight: 50 }}
                 />
                 <button
                   type="button"
@@ -324,6 +294,7 @@ export default function ProfileClient({
                     cursor: 'pointer',
                     color: '#64748b',
                     fontSize: '0.8rem',
+                    fontWeight: 500,
                   }}
                 >
                   {showNew ? 'Hide' : 'Show'}
@@ -344,7 +315,7 @@ export default function ProfileClient({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   placeholder="Repeat new password"
-                  style={{ width: '100%', paddingRight: 40 }}
+                  style={{ width: '100%', paddingRight: 50 }}
                 />
                 <button
                   type="button"
@@ -359,6 +330,7 @@ export default function ProfileClient({
                     cursor: 'pointer',
                     color: '#64748b',
                     fontSize: '0.8rem',
+                    fontWeight: 500,
                   }}
                 >
                   {showConfirm ? 'Hide' : 'Show'}
@@ -387,15 +359,6 @@ export default function ProfileClient({
           </form>
         </div>
       </div>
-
-      <footer className="dashboard-global-footer" style={{ marginTop: 32 }}>
-        <span className="footer-copyright">
-          Smart Water Management System &middot; Admin Operations Console
-        </span>
-        <div className="footer-social-links">
-          <span className="social-icon">SWMS v1.0 &middot; Secure Mode</span>
-        </div>
-      </footer>
     </div>
   );
 }
