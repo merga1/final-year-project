@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Pagination } from '../../components/pagination';
 
 function StatusTag({ status }: { status: string }) {
   const s = (status ?? 'SUCCESS').toUpperCase();
@@ -73,6 +74,8 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const deviceCount = logs.filter(l => (l.category ?? '').toUpperCase() === 'DEVICE').length;
   const valveCount = logs.filter(l => (l.category ?? '').toUpperCase() === 'VALVE').length;
@@ -95,6 +98,23 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
     const details = (l.details ?? '').toLowerCase();
     return actor.includes(q) || action.includes(q) || target.includes(q) || details.includes(q);
   });
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleCategoryFilter(c: string) {
+    setCategoryFilter(c);
+    setPage(1);
+  }
+
+  function handleStatusFilter(s: string) {
+    setStatusFilter(s);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   return (
     <div className="section-container">
@@ -132,7 +152,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
         <div
           className={`stat-chip stat-chip-blue ${categoryFilter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setCategoryFilter('all')}
+          onClick={() => handleCategoryFilter('all')}
           title="View all events"
         >
           <span className="stat-chip-val">{logs.length}</span>
@@ -141,7 +161,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
         <div
           className={`stat-chip stat-chip-green ${categoryFilter === 'device' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setCategoryFilter(categoryFilter === 'device' ? 'all' : 'device')}
+          onClick={() => handleCategoryFilter(categoryFilter === 'device' ? 'all' : 'device')}
           title="Filter device events"
         >
           <span className="stat-chip-val">{deviceCount}</span>
@@ -150,7 +170,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
         <div
           className={`stat-chip stat-chip-amber ${categoryFilter === 'valve' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setCategoryFilter(categoryFilter === 'valve' ? 'all' : 'valve')}
+          onClick={() => handleCategoryFilter(categoryFilter === 'valve' ? 'all' : 'valve')}
           title="Filter valve actuations"
         >
           <span className="stat-chip-val">{valveCount}</span>
@@ -159,7 +179,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
         <div
           className={`stat-chip stat-chip-purple ${categoryFilter === 'ticket' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setCategoryFilter(categoryFilter === 'ticket' ? 'all' : 'ticket')}
+          onClick={() => handleCategoryFilter(categoryFilter === 'ticket' ? 'all' : 'ticket')}
           title="Filter ticket dispatches"
         >
           <span className="stat-chip-val">{ticketCount}</span>
@@ -168,7 +188,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
         <div
           className={`stat-chip stat-chip-amber ${categoryFilter === 'customer' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setCategoryFilter(categoryFilter === 'customer' ? 'all' : 'customer')}
+          onClick={() => handleCategoryFilter(categoryFilter === 'customer' ? 'all' : 'customer')}
           title="Filter customer operations"
         >
           <span className="stat-chip-val">{customerCount}</span>
@@ -176,66 +196,75 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
         </div>
       </div>
 
-      {/* Filter Row */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        <div className="tab-pill-group">
-          {[
-            { id: 'all', label: `All (${logs.length})` },
-            { id: 'device', label: `Device (${deviceCount})` },
-            { id: 'valve', label: `Valve (${valveCount})` },
-            { id: 'ticket', label: `Ticket (${ticketCount})` },
-            { id: 'customer', label: `Customer (${customerCount})` },
-            { id: 'billing', label: `Billing (${billingCount})` },
-          ].map(t => (
+      {/* Standardized Table Toolbar (Filters & Search) */}
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          <div className="filter-tabs">
+            {[
+              { id: 'all', label: 'All', count: logs.length },
+              { id: 'device', label: 'Device', count: deviceCount },
+              { id: 'valve', label: 'Valve', count: valveCount },
+              { id: 'ticket', label: 'Ticket', count: ticketCount },
+              { id: 'customer', label: 'Customer', count: customerCount },
+              { id: 'billing', label: 'Billing', count: billingCount },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`filter-tab ${categoryFilter === t.id ? 'active' : ''}`}
+                onClick={() => handleCategoryFilter(t.id)}
+              >
+                {t.label}
+                <span className="filter-tab-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={e => handleStatusFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 140 }}
+          >
+            <option value="all">All Statuses</option>
+            <option value="success">Success Only</option>
+            <option value="warning">Warning Only</option>
+            <option value="failed">Failed Only</option>
+          </select>
+
+          {(categoryFilter !== 'all' || statusFilter !== 'all' || search) && (
             <button
-              key={t.id}
               type="button"
-              className={`tab-pill ${categoryFilter === t.id ? 'active' : ''}`}
-              onClick={() => setCategoryFilter(t.id)}
+              className="filter-clear-btn"
+              onClick={() => {
+                setCategoryFilter('all');
+                setStatusFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
             >
-              {t.label}
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 140 }}
-        >
-          <option value="all">All Statuses</option>
-          <option value="success">Success Only</option>
-          <option value="warning">Warning Only</option>
-          <option value="failed">Failed Only</option>
-        </select>
-
-        {(categoryFilter !== 'all' || statusFilter !== 'all' || search) && (
-          <button
-            type="button"
-            className="filter-clear-btn"
-            onClick={() => { setCategoryFilter('all'); setStatusFilter('all'); setSearch(''); }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="search-bar-wrap" style={{ marginBottom: 20 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search by actor, action name, target entity, or change details..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
-        )}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search audit trail..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>×</button>
+            )}
+          </div>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -244,84 +273,95 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
         </div>
       ) : viewMode === 'timeline' ? (
         /* ── Chronological Timeline View ── */
-        <div style={{ position: 'relative', paddingLeft: 24 }}>
-          {/* Vertical line connecting nodes */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 16,
-              bottom: 16,
-              left: 10,
-              width: 2,
-              backgroundColor: '#e2e8f0',
-            }}
-          />
+        <div className="table-card" style={{ padding: '24px 20px 0 20px', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', paddingLeft: 24, marginBottom: 20 }}>
+            {/* Vertical line connecting nodes */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 16,
+                bottom: 16,
+                left: 10,
+                width: 2,
+                backgroundColor: '#e2e8f0',
+              }}
+            />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {filtered.map(entry => (
-              <div
-                key={entry.id}
-                style={{
-                  position: 'relative',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 10,
-                  padding: '16px 20px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                }}
-              >
-                {/* Timeline node dot */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {paginated.map(entry => (
                 <div
+                  key={entry.id}
                   style={{
-                    position: 'absolute',
-                    left: -20,
-                    top: 20,
-                    width: 12,
-                    height: 12,
-                    borderRadius: '50%',
-                    backgroundColor: entry.status === 'WARNING' ? '#d97706' : entry.status === 'FAILED' ? '#dc2626' : '#2563eb',
-                    border: '2px solid #ffffff',
-                    boxShadow: '0 0 0 2px #cbd5e1',
+                    position: 'relative',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    padding: '16px 20px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                   }}
-                />
+                >
+                  {/* Timeline node dot */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: -20,
+                      top: 20,
+                      width: 12,
+                      height: 12,
+                      borderRadius: '50%',
+                      backgroundColor: entry.status === 'WARNING' ? '#d97706' : entry.status === 'FAILED' ? '#dc2626' : '#2563eb',
+                      border: '2px solid #ffffff',
+                      boxShadow: '0 0 0 2px #cbd5e1',
+                    }}
+                  />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <CategoryTag category={entry.category} />
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>
-                      {formatAction(entry.action)}
-                    </strong>
-                    <span style={{ color: '#64748b', fontSize: '0.85rem' }}>on</span>
-                    <span className="table-link-mono" style={{ fontSize: '0.82rem' }}>
-                      {entry.targetEntity}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <CategoryTag category={entry.category} />
+                      <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>
+                        {formatAction(entry.action)}
+                      </strong>
+                      <span style={{ color: '#64748b', fontSize: '0.85rem' }}>on</span>
+                      <span className="table-link-mono" style={{ fontSize: '0.82rem' }}>
+                        {entry.targetEntity}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <StatusTag status={entry.status} />
+                      <span className="text-muted-sm" suppressHydrationWarning style={{ fontSize: '0.8rem' }}>
+                        {formatAuditDate(entry.createdAt)}
+                      </span>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <StatusTag status={entry.status} />
-                    <span className="text-muted-sm" suppressHydrationWarning style={{ fontSize: '0.8rem' }}>
-                      {formatAuditDate(entry.createdAt)}
+                  <p style={{ margin: '6px 0 10px 0', fontSize: '0.9rem', color: '#334155', lineHeight: 1.5 }}>
+                    {entry.details}
+                  </p>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+                    <span>
+                      Initiated by: <strong style={{ color: '#0f172a' }}>{entry.actor}</strong>
                     </span>
+                    {entry.ipAddress && (
+                      <span className="mono-text" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                        IP: {entry.ipAddress}
+                      </span>
+                    )}
                   </div>
                 </div>
-
-                <p style={{ margin: '6px 0 10px 0', fontSize: '0.9rem', color: '#334155', lineHeight: 1.5 }}>
-                  {entry.details}
-                </p>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
-                  <span>
-                    Initiated by: <strong style={{ color: '#0f172a' }}>{entry.actor}</strong>
-                  </span>
-                  {entry.ipAddress && (
-                    <span className="mono-text" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                      IP: {entry.ipAddress}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+
+          <Pagination
+            totalItems={filtered.length}
+            currentPage={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="audit events"
+          />
         </div>
       ) : (
         /* ── Compact Table View ── */
@@ -339,7 +379,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(entry => (
+              {paginated.map(entry => (
                 <tr key={entry.id}>
                   <td className="text-muted-sm" suppressHydrationWarning style={{ whiteSpace: 'nowrap' }}>
                     {formatAuditDate(entry.createdAt)}
@@ -362,6 +402,15 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
               ))}
             </tbody>
           </table>
+
+          <Pagination
+            totalItems={filtered.length}
+            currentPage={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="audit events"
+          />
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Pagination } from '../../components/pagination';
 
 function normBillStatus(status?: string): 'paid' | 'overdue' | 'pending' {
   const s = (status ?? 'unpaid').toLowerCase().trim();
@@ -32,7 +33,14 @@ function formatDate(dateStr?: string | Date): string {
   }
 }
 
-function formatPeriod(start?: string, end?: string): string {
+function formatPeriod(start?: string, end?: string, periodStr?: string): string {
+  if (periodStr && typeof periodStr === 'string' && periodStr.includes(' to ')) {
+    const [pStart, pEnd] = periodStr.split(' to ');
+    return `${formatDate(pStart)} – ${formatDate(pEnd)}`;
+  }
+  if (!start && !end && periodStr) {
+    return formatDate(periodStr);
+  }
   if (!start && !end) return '—';
   const sStr = formatDate(start);
   const eStr = formatDate(end);
@@ -50,6 +58,8 @@ export function BillingClient({
 }) {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [selectedBill, setSelectedBill] = useState<any | null>(null);
 
   const filtered = bills.filter(b => {
@@ -61,6 +71,18 @@ export function BillingClient({
     const id = (b.id ?? '').toLowerCase();
     return cust.includes(q) || id.includes(q);
   });
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleFilter(f: string) {
+    setFilter(f);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   const totalInvoiced = bills.reduce((acc, b) => acc + Number(b.amountEtb ?? 0), 0);
   const paidBills = bills.filter(b => normBillStatus(b.status) === 'paid');
@@ -96,7 +118,7 @@ export function BillingClient({
         <div
           className={`stat-chip stat-chip-blue ${filter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setFilter('all')}
+          onClick={() => handleFilter('all')}
           title="View all bills"
         >
           <span className="stat-chip-val">ETB {Math.round(totalInvoiced).toLocaleString()}</span>
@@ -105,7 +127,7 @@ export function BillingClient({
         <div
           className={`stat-chip stat-chip-green ${filter === 'paid' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setFilter(filter === 'paid' ? 'all' : 'paid')}
+          onClick={() => handleFilter(filter === 'paid' ? 'all' : 'paid')}
           title="Filter paid bills"
         >
           <span className="stat-chip-val">ETB {Math.round(paidTotal).toLocaleString()}</span>
@@ -114,7 +136,7 @@ export function BillingClient({
         <div
           className={`stat-chip stat-chip-amber ${filter === 'pending' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setFilter(filter === 'pending' ? 'all' : 'pending')}
+          onClick={() => handleFilter(filter === 'pending' ? 'all' : 'pending')}
           title="Filter pending collection"
         >
           <span className="stat-chip-val">ETB {Math.round(pendingTotal).toLocaleString()}</span>
@@ -123,7 +145,7 @@ export function BillingClient({
         <div
           className={`stat-chip stat-chip-red ${filter === 'overdue' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setFilter(filter === 'overdue' ? 'all' : 'overdue')}
+          onClick={() => handleFilter(filter === 'overdue' ? 'all' : 'overdue')}
           title="Filter overdue bills"
         >
           <span className="stat-chip-val">{overdueBills.length}</span>
@@ -132,35 +154,53 @@ export function BillingClient({
       </div>
 
       {/* Filter Tabs & Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-        <div className="filter-tabs">
-          {['all', 'pending', 'overdue', 'paid'].map(s => (
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          <div className="filter-tabs">
+            {['all', 'pending', 'overdue', 'paid'].map(s => (
+              <button
+                key={s}
+                type="button"
+                className={`filter-tab ${filter === s ? 'active' : ''}`}
+                onClick={() => handleFilter(s)}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+                <span className="filter-tab-count">{counts[s] ?? 0}</span>
+              </button>
+            ))}
+          </div>
+
+          {(filter !== 'all' || search) && (
             <button
-              key={s}
               type="button"
-              className={`filter-tab ${filter === s ? 'active' : ''}`}
-              onClick={() => setFilter(s)}
+              className="filter-clear-btn"
+              onClick={() => {
+                setFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
             >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-              <span className="filter-tab-count">{counts[s] ?? 0}</span>
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        <div className="search-bar-wrap" style={{ minWidth: 260 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search invoice or customer..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          {search && (
-            <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
-          )}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search invoice or customer..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>×</button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -188,7 +228,7 @@ export function BillingClient({
                 </td>
               </tr>
             )}
-            {filtered.map(b => {
+            {paginated.map(b => {
               const shortId = (b.id ?? '').replace(/-/g, '').slice(0, 8).toUpperCase();
               return (
                 <tr key={b.id}>
@@ -216,7 +256,7 @@ export function BillingClient({
                     )}
                   </td>
                   <td className="text-muted-sm" suppressHydrationWarning>
-                    {formatPeriod(b.periodStart ?? b.billingPeriodStart, b.periodEnd ?? b.billingPeriodEnd)}
+                    {formatPeriod(b.periodStart ?? b.billingPeriodStart, b.periodEnd ?? b.billingPeriodEnd, b.period ?? b.billingPeriod)}
                   </td>
                   <td>{b.usageLiters != null ? `${Number(b.usageLiters).toLocaleString()} L` : '—'}</td>
                   <td className="text-muted-sm">{b.rate ? `ETB ${b.rate}/L` : 'Standard'}</td>
@@ -242,6 +282,15 @@ export function BillingClient({
             })}
           </tbody>
         </table>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="invoices"
+        />
       </div>
 
       {/* Modal / Detail Slide-in */}

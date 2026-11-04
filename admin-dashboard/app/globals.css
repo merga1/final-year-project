@@ -1824,3 +1824,35 @@ button, input, select {
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.35);
   cursor: pointer;
 }
+
+/* ── Standardized Table Toolbar (Search, Filter, Pagination) ── */
+.table-toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.table-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 270px;
+  flex-grow: 0;
+}
+
+@media (max-width: 768px) {
+  .table-toolbar-right {
+    width: 100%;
+    min-width: 100%;
+  }
+}

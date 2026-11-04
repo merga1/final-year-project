@@ -11,8 +11,8 @@ type QualityPoint = { day: string; avgTurbidity: number; maxTurbidity: number; a
 
 const ZONE_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#0891b2'];
 
-function formatDay(day: string) {
-  if (!day) return '—';
+function formatDay(day: string | undefined | null) {
+  if (!day || day === 'undefined' || day === 'null') return '—';
   try {
     const raw = String(day).trim();
     // If it's pure YYYY-MM-DD
@@ -77,6 +77,7 @@ export function UsageLineChart({ data }: { data: DayUsage[] }) {
           <Tooltip
             contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
             formatter={(v: any) => [`${Number(v).toLocaleString()} L`, 'Daily Consumption']}
+            labelFormatter={(label: any) => String(label)}
           />
           <Line
             type="monotone"
@@ -163,7 +164,10 @@ export function WaterQualityChart({ data }: { data: QualityPoint[] }) {
           <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} />
           <YAxis yAxisId="turb" tick={{ fontSize: 11, fill: '#d97706' }} unit=" NTU" width={65} domain={[0, 6]} />
           <YAxis yAxisId="flow" orientation="right" tick={{ fontSize: 11, fill: '#0891b2' }} unit=" L/m" width={60} />
-          <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem' }} />
+          <Tooltip
+            contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
+            labelFormatter={(label: any) => String(label)}
+          />
           <Legend wrapperStyle={{ fontSize: '0.8rem', paddingTop: 8 }} />
           <ReferenceLine yAxisId="turb" y={5.0} stroke="#ef4444" strokeDasharray="4 4" label={{ value: 'WHO Safe Limit (5 NTU)', fill: '#ef4444', fontSize: 10, position: 'insideTopRight' }} />
           <Line yAxisId="turb" type="monotone" dataKey="turbidity" name="Avg Turbidity (NTU)" stroke="#d97706" strokeWidth={2} dot={{ r: 3 }} />

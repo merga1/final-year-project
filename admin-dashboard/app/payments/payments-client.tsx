@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Pagination } from '../../components/pagination';
 
 function PaymentStatusBadge({ status }: { status: string }) {
   const s = (status ?? '').toLowerCase();
@@ -60,6 +61,8 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
   const [filter, setFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filtered = payments.filter(p => {
     const s = (p.status ?? 'pending').toLowerCase();
@@ -80,6 +83,23 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
     const method = (p.method ?? '').toLowerCase();
     return cust.includes(q) || ref.includes(q) || method.includes(q);
   });
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleFilter(f: string) {
+    setFilter(f);
+    setPage(1);
+  }
+
+  function handleMethodFilter(m: string) {
+    setMethodFilter(m);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   const verified = payments.filter(p => (p.status ?? '').toLowerCase() === 'verified');
   const pending = payments.filter(p => (p.status ?? '').toLowerCase() === 'pending');
@@ -110,7 +130,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
         <div
           className={`stat-chip stat-chip-green ${filter === 'verified' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setFilter(filter === 'verified' ? 'all' : 'verified')}
+          onClick={() => handleFilter(filter === 'verified' ? 'all' : 'verified')}
           title="Filter verified payments"
         >
           <span className="stat-chip-val">ETB {Math.round(totalCollected).toLocaleString()}</span>
@@ -119,7 +139,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
         <div
           className={`stat-chip stat-chip-amber ${filter === 'pending' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setFilter(filter === 'pending' ? 'all' : 'pending')}
+          onClick={() => handleFilter(filter === 'pending' ? 'all' : 'pending')}
           title="Filter pending verification"
         >
           <span className="stat-chip-val">ETB {Math.round(totalPending).toLocaleString()}</span>
@@ -128,7 +148,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
         <div
           className={`stat-chip stat-chip-blue ${filter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => { setFilter('all'); setMethodFilter('all'); setSearch(''); }}
+          onClick={() => { handleFilter('all'); setMethodFilter('all'); setSearch(''); }}
           title="View all transactions"
         >
           <span className="stat-chip-val">{payments.length}</span>
@@ -137,7 +157,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
         <div
           className={`stat-chip stat-chip-red ${filter === 'failed' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setFilter(filter === 'failed' ? 'all' : 'failed')}
+          onClick={() => handleFilter(filter === 'failed' ? 'all' : 'failed')}
           title="Filter failed payments"
         >
           <span className="stat-chip-val">{failed.length}</span>
@@ -146,15 +166,15 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
       </div>
 
       {/* Filter Tabs & Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
           <div className="filter-tabs">
             {['all', 'verified', 'pending', 'failed'].map(s => (
               <button
                 key={s}
                 type="button"
                 className={`filter-tab ${filter === s ? 'active' : ''}`}
-                onClick={() => setFilter(s)}
+                onClick={() => handleFilter(s)}
               >
                 {s.charAt(0).toUpperCase() + s.slice(1)}
                 <span className="filter-tab-count">{counts[s] ?? 0}</span>
@@ -164,7 +184,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
 
           <select
             value={methodFilter}
-            onChange={e => setMethodFilter(e.target.value)}
+            onChange={e => handleMethodFilter(e.target.value)}
             className="filter-select"
             style={{ minWidth: 160 }}
           >
@@ -174,22 +194,39 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
             <option value="cbe">CBE Birr / Bank</option>
             <option value="cash">Cash Office</option>
           </select>
+
+          {(filter !== 'all' || methodFilter !== 'all' || search) && (
+            <button
+              type="button"
+              className="filter-clear-btn"
+              onClick={() => {
+                setFilter('all');
+                setMethodFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
 
-        <div className="search-bar-wrap" style={{ minWidth: 260 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search reference, customer, method..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          {search && (
-            <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
-          )}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search reference, customer, method..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>×</button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -213,7 +250,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
                 </td>
               </tr>
             )}
-            {filtered.map(p => {
+            {paginated.map(p => {
               const ref = p.reference ?? p.transactionRef ?? (p.id ? `TX-${p.id.slice(0, 8).toUpperCase()}` : '—');
               return (
                 <tr key={p.id}>
@@ -250,6 +287,15 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
             })}
           </tbody>
         </table>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="transactions"
+        />
       </div>
     </div>
   );

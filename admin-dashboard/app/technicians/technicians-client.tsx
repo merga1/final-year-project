@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Pagination } from '../../components/pagination';
 
 function toTitleCase(str: string) {
   if (!str) return '';
@@ -59,6 +60,8 @@ export function TechniciansClient({
   const [dutyFilter, setDutyFilter] = useState('all');
   const [jobFilter, setJobFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const onDutyCount = technicians.filter(
     t => (t.status ?? '').toLowerCase() === 'on_duty' || (t.status ?? '').toLowerCase() === 'onduty'
@@ -85,6 +88,23 @@ export function TechniciansClient({
     const zone = (t.zone ?? '').toLowerCase();
     return name.includes(q) || email.includes(q) || phone.includes(q) || spec.includes(q) || zone.includes(q);
   });
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleDutyFilter(d: string) {
+    setDutyFilter(d);
+    setPage(1);
+  }
+
+  function handleJobFilter(j: string) {
+    setJobFilter(j);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   async function handleToggleStatus(tech: any) {
     const isCurrentlyOn = (tech.status ?? '').toLowerCase() === 'on_duty' || (tech.status ?? '').toLowerCase() === 'onduty';
@@ -124,7 +144,7 @@ export function TechniciansClient({
         <div
           className={`stat-chip stat-chip-blue ${dutyFilter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setDutyFilter('all')}
+          onClick={() => handleDutyFilter('all')}
           title="Click to view all technicians"
         >
           <span className="stat-chip-val">{technicians.length}</span>
@@ -133,7 +153,7 @@ export function TechniciansClient({
         <div
           className={`stat-chip stat-chip-green ${dutyFilter === 'on_duty' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setDutyFilter(dutyFilter === 'on_duty' ? 'all' : 'on_duty')}
+          onClick={() => handleDutyFilter(dutyFilter === 'on_duty' ? 'all' : 'on_duty')}
           title="Filter On Duty technicians"
         >
           <span className="stat-chip-val">{onDutyCount}</span>
@@ -142,7 +162,7 @@ export function TechniciansClient({
         <div
           className={`stat-chip stat-chip-muted ${dutyFilter === 'off_duty' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setDutyFilter(dutyFilter === 'off_duty' ? 'all' : 'off_duty')}
+          onClick={() => handleDutyFilter(dutyFilter === 'off_duty' ? 'all' : 'off_duty')}
           title="Filter Off Duty technicians"
         >
           <span className="stat-chip-val">{offDutyCount}</span>
@@ -151,7 +171,7 @@ export function TechniciansClient({
         <div
           className={`stat-chip stat-chip-amber ${jobFilter === 'has_jobs' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setJobFilter(jobFilter === 'has_jobs' ? 'all' : 'has_jobs')}
+          onClick={() => handleJobFilter(jobFilter === 'has_jobs' ? 'all' : 'has_jobs')}
           title="Filter technicians with active jobs"
         >
           <span className="stat-chip-val">{totalOpen}</span>
@@ -161,60 +181,71 @@ export function TechniciansClient({
 
       {error && <div className="form-error-alert">{error}</div>}
 
-      {/* Filter Row */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        <div className="tab-pill-group">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'on_duty', label: `On Duty (${onDutyCount})` },
-            { id: 'off_duty', label: `Off Duty (${offDutyCount})` },
-          ].map(t => (
+      {/* Standardized Table Toolbar (Filters & Search) */}
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          <div className="filter-tabs">
+            {[
+              { id: 'all', label: 'All', count: technicians.length },
+              { id: 'on_duty', label: 'On Duty', count: onDutyCount },
+              { id: 'off_duty', label: 'Off Duty', count: offDutyCount },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`filter-tab ${dutyFilter === t.id ? 'active' : ''}`}
+                onClick={() => handleDutyFilter(t.id)}
+              >
+                {t.label}
+                <span className="filter-tab-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={jobFilter}
+            onChange={e => handleJobFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 160 }}
+          >
+            <option value="all">All Workloads</option>
+            <option value="has_jobs">Active Jobs &gt; 0</option>
+            <option value="available">Available (0 Jobs)</option>
+          </select>
+
+          {(dutyFilter !== 'all' || jobFilter !== 'all' || search) && (
             <button
-              key={t.id}
-              className={`tab-pill ${dutyFilter === t.id ? 'active' : ''}`}
-              onClick={() => setDutyFilter(t.id)}
+              type="button"
+              className="filter-clear-btn"
+              onClick={() => {
+                setDutyFilter('all');
+                setJobFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
             >
-              {t.label}
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        <select
-          value={jobFilter}
-          onChange={e => setJobFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 160 }}
-        >
-          <option value="all">All Workloads</option>
-          <option value="has_jobs">Active Jobs &gt; 0</option>
-          <option value="available">Available (0 Jobs)</option>
-        </select>
-
-        {(dutyFilter !== 'all' || jobFilter !== 'all' || search) && (
-          <button
-            className="filter-clear-btn"
-            onClick={() => { setDutyFilter('all'); setJobFilter('all'); setSearch(''); }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="search-bar-wrap" style={{ marginBottom: 16 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search by name, email, phone, specialization, or zone..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
-        )}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search technicians..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>×</button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="table-card">
@@ -237,7 +268,7 @@ export function TechniciansClient({
                 </td>
               </tr>
             )}
-            {filtered.map(tech => {
+            {paginated.map(tech => {
               const isOn = (tech.status ?? '').toLowerCase() === 'on_duty' || (tech.status ?? '').toLowerCase() === 'onduty';
               const rawName = tech.name ?? (`${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim() || 'Technician');
               const displayName = toTitleCase(rawName);
@@ -359,6 +390,15 @@ export function TechniciansClient({
             })}
           </tbody>
         </table>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="technicians"
+        />
       </div>
     </div>
   );

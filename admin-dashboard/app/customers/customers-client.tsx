@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Pagination } from '../../components/pagination';
 
 function formatName(name: string | undefined | null): string {
   if (!name) return 'Customer';
@@ -25,6 +26,8 @@ export function CustomersClient({ customers }: { customers: any[] }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [meterFilter, setMeterFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const getStatus = (c: any) => (c.accountStatus ?? c.status ?? 'active').toLowerCase();
 
@@ -50,6 +53,23 @@ export function CustomersClient({ customers }: { customers: any[] }) {
     return formatted.includes(q) || email.includes(q) || phone.includes(q) || deviceId.includes(q);
   });
 
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleStatusFilter(s: string) {
+    setStatusFilter(s);
+    setPage(1);
+  }
+
+  function handleMeterFilter(m: string) {
+    setMeterFilter(m);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
+
   return (
     <div className="section-container">
       <div className="section-header-row">
@@ -69,7 +89,7 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         <div
           className={`stat-chip stat-chip-blue ${statusFilter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
-          onClick={() => setStatusFilter('all')}
+          onClick={() => handleStatusFilter('all')}
           title="Click to view all customers"
         >
           <span className="stat-chip-val">{customers.length}</span>
@@ -78,7 +98,7 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         <div
           className={`stat-chip stat-chip-green ${statusFilter === 'active' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
-          onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
+          onClick={() => handleStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
           title="Filter active customers"
         >
           <span className="stat-chip-val">{active}</span>
@@ -87,7 +107,7 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         <div
           className={`stat-chip stat-chip-red ${statusFilter === 'suspended' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
-          onClick={() => setStatusFilter(statusFilter === 'suspended' ? 'all' : 'suspended')}
+          onClick={() => handleStatusFilter(statusFilter === 'suspended' ? 'all' : 'suspended')}
           title="Filter suspended customers"
         >
           <span className="stat-chip-val">{suspended}</span>
@@ -96,7 +116,7 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         <div
           className={`stat-chip stat-chip-amber ${statusFilter === 'pending' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
-          onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
+          onClick={() => handleStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
           title="Filter pending activation"
         >
           <span className="stat-chip-val">{pending}</span>
@@ -104,72 +124,78 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         </div>
       </div>
 
-      {/* Filter and Search Controls */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        {/* Status Tab Pills */}
-        <div className="tab-pill-group">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'active', label: `Active (${active})` },
-            { id: 'suspended', label: `Suspended (${suspended})` },
-            { id: 'pending', label: `Pending (${pending})` },
-          ].map(t => (
+      {/* Standardized Table Toolbar (Filters & Search) */}
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          {/* Status Filter Tabs */}
+          <div className="filter-tabs">
+            {[
+              { id: 'all', label: 'All', count: customers.length },
+              { id: 'active', label: 'Active', count: active },
+              { id: 'suspended', label: 'Suspended', count: suspended },
+              { id: 'pending', label: 'Pending', count: pending },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`filter-tab ${statusFilter === t.id ? 'active' : ''}`}
+                onClick={() => handleStatusFilter(t.id)}
+              >
+                {t.label}
+                <span className="filter-tab-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Meter Assignment Filter */}
+          <select
+            value={meterFilter}
+            onChange={e => handleMeterFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 160 }}
+          >
+            <option value="all">All Meter Status</option>
+            <option value="metered">Assigned Meter Only</option>
+            <option value="unmetered">No Meter Linked</option>
+          </select>
+
+          {(statusFilter !== 'all' || meterFilter !== 'all' || search) && (
             <button
-              key={t.id}
               type="button"
-              className={`tab-pill ${statusFilter === t.id ? 'active' : ''}`}
-              onClick={() => setStatusFilter(t.id)}
+              className="filter-clear-btn"
+              onClick={() => {
+                setStatusFilter('all');
+                setMeterFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
             >
-              {t.label}
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Meter Assignment Filter */}
-        <select
-          value={meterFilter}
-          onChange={e => setMeterFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 160 }}
-        >
-          <option value="all">All Meter Status</option>
-          <option value="metered">Assigned Meter Only</option>
-          <option value="unmetered">No Meter Linked</option>
-        </select>
-
-        {(statusFilter !== 'all' || meterFilter !== 'all' || search) && (
-          <button
-            type="button"
-            className="filter-clear-btn"
-            onClick={() => {
-              setStatusFilter('all');
-              setMeterFilter('all');
-              setSearch('');
-            }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Search Bar */}
-      <div className="search-bar-wrap" style={{ marginBottom: 16 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.35-4.35" />
-        </svg>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search by customer name, email, phone, or meter ID..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>
-            &times;
-          </button>
-        )}
+        {/* Search Bar */}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search customers..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>
+                &times;
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Customer Data Table */}
@@ -193,7 +219,7 @@ export function CustomersClient({ customers }: { customers: any[] }) {
                   </td>
                 </tr>
               )}
-              {filtered.map(c => {
+              {paginated.map(c => {
                 const rawName = c.name ?? (`${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || 'Customer');
                 const displayName = formatName(rawName);
                 const initial = displayName.charAt(0).toUpperCase();
@@ -310,6 +336,15 @@ export function CustomersClient({ customers }: { customers: any[] }) {
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="customers"
+        />
       </div>
     </div>
   );

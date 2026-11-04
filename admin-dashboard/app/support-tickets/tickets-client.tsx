@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Pagination } from '../../components/pagination';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
@@ -112,6 +113,8 @@ export function TicketsClient({
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [assignTechId, setAssignTechId] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
@@ -162,6 +165,38 @@ export function TicketsClient({
     counts[s] = scopedTickets.filter(t => normalizeStatus(t.status) === s).length;
   }
 
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleStatusFilter(s: string) {
+    setStatusFilter(s);
+    setPage(1);
+  }
+
+  function handleTechFilter(t: string) {
+    setTechFilter(t);
+    setPage(1);
+  }
+
+  function handleCustomerFilter(c: string) {
+    setCustomerFilter(c);
+    setPage(1);
+  }
+
+  function handlePriorityFilter(p: string) {
+    setPriorityFilter(p);
+    setPage(1);
+  }
+
+  function handleTypeFilter(t: string) {
+    setTypeFilter(t);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
+
   const selectedTech = technicians.find(t => t.id === techFilter);
   const selectedCust = customers.find(c => c.id === customerFilter);
 
@@ -196,72 +231,6 @@ export function TicketsClient({
             {filtered.length} of {scopedTickets.length} tickets shown &middot; {counts['pending'] ?? 0} pending assignment
           </span>
         </div>
-
-        {/* Filters dropdowns for Technician & Customer (AD-29) */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <select
-            value={techFilter}
-            onChange={e => setTechFilter(e.target.value)}
-            className="filter-select"
-            aria-label="Filter tickets by technician"
-          >
-            <option value="">All Technicians</option>
-            {technicians.map(tech => {
-              const name = tech.name ?? `${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim();
-              return (
-                <option key={tech.id} value={tech.id}>
-                  Tech: {name}
-                </option>
-              );
-            })}
-          </select>
-
-          {customers.length > 0 && (
-            <select
-              value={customerFilter}
-              onChange={e => setCustomerFilter(e.target.value)}
-              className="filter-select"
-              aria-label="Filter tickets by customer"
-            >
-              <option value="">All Customers</option>
-              {customers.map(c => {
-                const fullName = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
-                const name = c.name || fullName || c.email;
-                return (
-                  <option key={c.id} value={c.id}>
-                    Customer: {name}
-                  </option>
-                );
-              })}
-            </select>
-          )}
-
-          <select
-            value={priorityFilter}
-            onChange={e => setPriorityFilter(e.target.value)}
-            className="filter-select"
-            aria-label="Filter tickets by priority"
-          >
-            <option value="all">All Priorities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            className="filter-select"
-            aria-label="Filter tickets by type"
-          >
-            <option value="all">All Types</option>
-            <option value="sensor">Sensor / Meter</option>
-            <option value="leak">Leak</option>
-            <option value="valve">Valve</option>
-            <option value="billing">Billing</option>
-          </select>
-        </div>
       </div>
 
       {/* 4 AquaSense Stat Chips */}
@@ -269,7 +238,7 @@ export function TicketsClient({
         <div
           className={`stat-chip stat-chip-blue ${statusFilter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter('all')}
+          onClick={() => handleStatusFilter('all')}
           title="View all tickets"
         >
           <span className="stat-chip-val">{scopedTickets.length}</span>
@@ -278,7 +247,7 @@ export function TicketsClient({
         <div
           className={`stat-chip stat-chip-green ${statusFilter === 'in_progress' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
+          onClick={() => handleStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
           title="Filter In Progress tickets"
         >
           <span className="stat-chip-val">{counts['in_progress'] ?? 0}</span>
@@ -287,7 +256,7 @@ export function TicketsClient({
         <div
           className={`stat-chip stat-chip-amber ${statusFilter === 'assigned' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'assigned' ? 'all' : 'assigned')}
+          onClick={() => handleStatusFilter(statusFilter === 'assigned' ? 'all' : 'assigned')}
           title="Filter Assigned tickets"
         >
           <span className="stat-chip-val">{counts['assigned'] ?? 0}</span>
@@ -296,7 +265,7 @@ export function TicketsClient({
         <div
           className={`stat-chip stat-chip-red ${statusFilter === 'pending' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
+          onClick={() => handleStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
           title="Filter Pending tickets"
         >
           <span className="stat-chip-val">{counts['pending'] ?? 0}</span>
@@ -317,7 +286,7 @@ export function TicketsClient({
             {selectedCust && <strong>Customer: {selectedCust.name ?? selectedCust.email}</strong>}
           </span>
           <button
-            onClick={() => { setTechFilter(''); setCustomerFilter(''); }}
+            onClick={() => { setTechFilter(''); setCustomerFilter(''); setPage(1); }}
             style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
           >
             Clear Filter ×
@@ -327,59 +296,132 @@ export function TicketsClient({
 
       {error && <div className="form-error-alert">{error}</div>}
 
-      {/* Status tabs */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        <div className="tab-pill-group">
-          {ALL_STATUSES.map(s => {
-            const count = counts[s] ?? 0;
-            const label = s === 'all' ? 'All' : (STATUS_LABELS[s] ?? s);
-            return (
-              <button
-                key={s}
-                type="button"
-                className={`tab-pill ${statusFilter === s ? 'active' : ''}`}
-                onClick={() => setStatusFilter(s)}
-              >
-                <span>{label}</span>
-                <span className="tab-count-bubble">{count}</span>
-              </button>
-            );
-          })}
+      {/* Standardized Table Toolbar (Filters & Search) */}
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          {/* Status Filter Tabs */}
+          <div className="filter-tabs">
+            {ALL_STATUSES.map(s => {
+              const count = counts[s] ?? 0;
+              const label = s === 'all' ? 'All' : (STATUS_LABELS[s] ?? s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  className={`filter-tab ${statusFilter === s ? 'active' : ''}`}
+                  onClick={() => handleStatusFilter(s)}
+                >
+                  {label}
+                  <span className="filter-tab-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Technician Dropdown */}
+          <select
+            value={techFilter}
+            onChange={e => handleTechFilter(e.target.value)}
+            className="filter-select"
+            aria-label="Filter tickets by technician"
+          >
+            <option value="">All Technicians</option>
+            {technicians.map(tech => {
+              const name = tech.name ?? `${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim();
+              return (
+                <option key={tech.id} value={tech.id}>
+                  Tech: {name}
+                </option>
+              );
+            })}
+          </select>
+
+          {/* Customer Dropdown */}
+          {customers.length > 0 && (
+            <select
+              value={customerFilter}
+              onChange={e => handleCustomerFilter(e.target.value)}
+              className="filter-select"
+              aria-label="Filter tickets by customer"
+            >
+              <option value="">All Customers</option>
+              {customers.map(c => {
+                const fullName = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
+                const name = c.name || fullName || c.email;
+                return (
+                  <option key={c.id} value={c.id}>
+                    Customer: {name}
+                  </option>
+                );
+              })}
+            </select>
+          )}
+
+          {/* Priority Dropdown */}
+          <select
+            value={priorityFilter}
+            onChange={e => handlePriorityFilter(e.target.value)}
+            className="filter-select"
+            aria-label="Filter tickets by priority"
+          >
+            <option value="all">All Priorities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+
+          {/* Type Dropdown */}
+          <select
+            value={typeFilter}
+            onChange={e => handleTypeFilter(e.target.value)}
+            className="filter-select"
+            aria-label="Filter tickets by type"
+          >
+            <option value="all">All Types</option>
+            <option value="sensor">Sensor / Meter</option>
+            <option value="leak">Leak</option>
+            <option value="valve">Valve</option>
+            <option value="billing">Billing</option>
+          </select>
+
+          {(statusFilter !== 'all' || techFilter || customerFilter || priorityFilter !== 'all' || typeFilter !== 'all' || search) && (
+            <button
+              type="button"
+              className="filter-clear-btn"
+              onClick={() => {
+                setStatusFilter('all');
+                setTechFilter('');
+                setCustomerFilter('');
+                setPriorityFilter('all');
+                setTypeFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
 
-        {(statusFilter !== 'all' || techFilter || customerFilter || priorityFilter !== 'all' || typeFilter !== 'all' || search) && (
-          <button
-            type="button"
-            className="filter-clear-btn"
-            onClick={() => {
-              setStatusFilter('all');
-              setTechFilter('');
-              setCustomerFilter('');
-              setPriorityFilter('all');
-              setTypeFilter('all');
-              setSearch('');
-            }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="search-bar-wrap" style={{ marginBottom: 16 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search by ticket ID, customer, technician, or issue description..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
-        )}
+        {/* Search */}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search tickets..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>×</button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="table-card">
@@ -405,7 +447,7 @@ export function TicketsClient({
                 </td>
               </tr>
             )}
-            {filtered.map(t => {
+            {paginated.map(t => {
               const normStatus = normalizeStatus(t.status);
               const isPending = normStatus === 'pending';
               const assignedTech = technicians.find(tech => tech.id === t.technicianId);
@@ -505,6 +547,15 @@ export function TicketsClient({
             })}
           </tbody>
         </table>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="support tickets"
+        />
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export default async function HomePage() {
   try {
     const [overview, alerts, tickets, billing, devices] = await Promise.all([
       getOverview(token).catch(err => {
-        if (err.message === 'UNAUTHORIZED') throw err;
+        if (err.message === 'UNAUTHORIZED' || err.message?.includes('401')) throw err;
         return {
           systemStatus: 'System Stable',
           stats: { totalCustomers: 0, totalTechnicians: 0, criticalAlerts: 0, totalTickets: 0 },
@@ -20,10 +20,22 @@ export default async function HomePage() {
           updatedAt: new Date().toISOString(),
         };
       }),
-      getAlerts(token).catch(() => []),
-      getSupportTickets(token).catch(() => []),
-      getBilling(token).catch(() => []),
-      getDevices(token).catch(() => []),
+      getAlerts(token).catch(err => {
+        if (err.message === 'UNAUTHORIZED' || err.message?.includes('401')) throw err;
+        return [];
+      }),
+      getSupportTickets(token).catch(err => {
+        if (err.message === 'UNAUTHORIZED' || err.message?.includes('401')) throw err;
+        return [];
+      }),
+      getBilling(token).catch(err => {
+        if (err.message === 'UNAUTHORIZED' || err.message?.includes('401')) throw err;
+        return [];
+      }),
+      getDevices(token).catch(err => {
+        if (err.message === 'UNAUTHORIZED' || err.message?.includes('401')) throw err;
+        return [];
+      }),
     ]);
 
     return (
@@ -36,7 +48,21 @@ export default async function HomePage() {
       />
     );
   } catch (e: any) {
-    if (e.message === 'UNAUTHORIZED') redirect('/login');
-    throw e;
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    // Fallback safe state instead of crashing with Next.js unhandled 500 error
+    return (
+      <OverviewContent
+        overview={{
+          systemStatus: 'System Stable',
+          stats: { totalCustomers: 0, totalTechnicians: 0, criticalAlerts: 0, totalTickets: 0 },
+          topTechnicians: [],
+          updatedAt: new Date().toISOString(),
+        }}
+        alerts={[]}
+        tickets={[]}
+        billing={[]}
+        devices={[]}
+      />
+    );
   }
 }

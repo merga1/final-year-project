@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Pagination } from '../../components/pagination';
 
 function formatAlertType(type: string) {
   const norm = (type ?? '').toLowerCase().replace(/_/g, ' ');
@@ -156,6 +157,8 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
   const [severityFilter, setSeverityFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const unack = localAlerts.filter(a => !a.acknowledged).length;
   const ackCount = localAlerts.filter(a => a.acknowledged).length;
@@ -185,6 +188,28 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
     const zone = (a.zone ?? '').toLowerCase();
     return meterId.includes(q) || msg.includes(q) || zone.includes(q) || t.includes(q);
   });
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleAckFilter(a: string) {
+    setAckFilter(a);
+    setPage(1);
+  }
+
+  function handleSeverityFilter(s: string) {
+    setSeverityFilter(s);
+    setPage(1);
+  }
+
+  function handleTypeFilter(t: string) {
+    setTypeFilter(t);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   async function handleAcknowledge(id: string) {
     setAckingId(id);
@@ -223,7 +248,7 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
           className={`stat-chip stat-chip-red ${severityFilter === 'critical' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
           onClick={() => {
-            setSeverityFilter(severityFilter === 'critical' ? 'all' : 'critical');
+            handleSeverityFilter(severityFilter === 'critical' ? 'all' : 'critical');
             setAckFilter('unack');
           }}
           title="Filter critical unacknowledged alerts"
@@ -235,7 +260,7 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
           className={`stat-chip stat-chip-amber ${ackFilter === 'unack' && severityFilter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
           onClick={() => {
-            setAckFilter(ackFilter === 'unack' ? 'all' : 'unack');
+            handleAckFilter(ackFilter === 'unack' ? 'all' : 'unack');
             setSeverityFilter('all');
           }}
           title="Filter all unacknowledged alerts"
@@ -247,7 +272,7 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
           className={`stat-chip stat-chip-green ${ackFilter === 'ack' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
           onClick={() => {
-            setAckFilter(ackFilter === 'ack' ? 'all' : 'ack');
+            handleAckFilter(ackFilter === 'ack' ? 'all' : 'ack');
             setSeverityFilter('all');
           }}
           title="Filter acknowledged alerts"
@@ -263,6 +288,7 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
             setSeverityFilter('all');
             setTypeFilter('all');
             setSearch('');
+            setPage(1);
           }}
           title="View all alerts"
         >
@@ -273,87 +299,92 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
 
       {error && <div className="form-error-alert">{error}</div>}
 
-      {/* Filter Row */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        <div className="tab-pill-group">
-          {[
-            { id: 'all', label: 'All Status' },
-            { id: 'unack', label: `Unacknowledged (${unack})` },
-            { id: 'ack', label: `Acknowledged (${ackCount})` },
-          ].map(t => (
+      {/* Standardized Table Toolbar (Filters & Search) */}
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          <div className="filter-tabs">
+            {[
+              { id: 'all', label: 'All Status', count: localAlerts.length },
+              { id: 'unack', label: 'Unacknowledged', count: unack },
+              { id: 'ack', label: 'Acknowledged', count: ackCount },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`filter-tab ${ackFilter === t.id ? 'active' : ''}`}
+                onClick={() => handleAckFilter(t.id)}
+              >
+                {t.label}
+                <span className="filter-tab-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Severity */}
+          <select
+            value={severityFilter}
+            onChange={e => handleSeverityFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 140 }}
+          >
+            <option value="all">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+          </select>
+
+          {/* Anomaly Type */}
+          <select
+            value={typeFilter}
+            onChange={e => handleTypeFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 160 }}
+          >
+            <option value="all">All Anomaly Types</option>
+            <option value="leak">Pipe Leak</option>
+            <option value="water_quality">Water Quality (Turbidity)</option>
+            <option value="high_flow">High Flow / Usage</option>
+            <option value="battery">Low Battery</option>
+            <option value="offline">Meter Offline</option>
+          </select>
+
+          {(ackFilter !== 'all' || severityFilter !== 'all' || typeFilter !== 'all' || search) && (
             <button
-              key={t.id}
               type="button"
-              className={`tab-pill ${ackFilter === t.id ? 'active' : ''}`}
-              onClick={() => setAckFilter(t.id)}
+              className="filter-clear-btn"
+              onClick={() => {
+                setAckFilter('all');
+                setSeverityFilter('all');
+                setTypeFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
             >
-              {t.label}
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Severity */}
-        <select
-          value={severityFilter}
-          onChange={e => setSeverityFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 140 }}
-        >
-          <option value="all">All Severities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-        </select>
-
-        {/* Anomaly Type */}
-        <select
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 160 }}
-        >
-          <option value="all">All Anomaly Types</option>
-          <option value="leak">Pipe Leak</option>
-          <option value="water_quality">Water Quality (Turbidity)</option>
-          <option value="high_flow">High Flow / Usage</option>
-          <option value="battery">Low Battery</option>
-          <option value="offline">Meter Offline</option>
-        </select>
-
-        {(ackFilter !== 'all' || severityFilter !== 'all' || typeFilter !== 'all' || search) && (
-          <button
-            type="button"
-            className="filter-clear-btn"
-            onClick={() => {
-              setAckFilter('all');
-              setSeverityFilter('all');
-              setTypeFilter('all');
-              setSearch('');
-            }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="search-bar-wrap" style={{ marginBottom: 16 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.35-4.35" />
-        </svg>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search by device ID, message, or anomaly type..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>
-            ×
-          </button>
-        )}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search alerts..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>
+                ×
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="table-card">
@@ -377,7 +408,7 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
                 </td>
               </tr>
             )}
-            {filtered.map(a => {
+            {paginated.map(a => {
               const meta = formatAlertType(a.type ?? a.alertType ?? 'anomaly');
               const meter = a.meterId ?? a.deviceId;
               return (
@@ -457,6 +488,15 @@ export function AlertsClient({ alerts, token }: { alerts: any[]; token: string }
             })}
           </tbody>
         </table>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="alerts"
+        />
       </div>
     </div>
   );

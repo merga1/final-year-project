@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Pagination } from '../../components/pagination';
 
 function ConnectivityBadge({ status }: { status: string }) {
   const s = (status ?? '').toLowerCase();
@@ -110,6 +111,8 @@ export function DevicesClient({
   const [zoneFilter, setZoneFilter] = useState('all');
   const [valveFilter, setValveFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const online = devices.filter(d => (d.connectivity ?? '').toLowerCase() === 'online').length;
   const offline = devices.filter(d => (d.connectivity ?? '').toLowerCase() === 'offline').length;
@@ -138,6 +141,28 @@ export function DevicesClient({
     const zone = (d.zone ?? '').toLowerCase();
     return meterId.includes(q) || customerId.includes(q) || customerName.includes(q) || zone.includes(q);
   });
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleStatusFilter(s: string) {
+    setStatusFilter(s);
+    setPage(1);
+  }
+
+  function handleZoneFilter(z: string) {
+    setZoneFilter(z);
+    setPage(1);
+  }
+
+  function handleValveFilter(v: string) {
+    setValveFilter(v);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   async function handleDeviceAction(id: string, action: 'activate' | 'deactivate') {
     setActionId(id);
@@ -176,7 +201,7 @@ export function DevicesClient({
         <div
           className={`stat-chip stat-chip-blue ${statusFilter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter('all')}
+          onClick={() => handleStatusFilter('all')}
           title="Click to view all devices"
         >
           <span className="stat-chip-val">{devices.length}</span>
@@ -185,7 +210,7 @@ export function DevicesClient({
         <div
           className={`stat-chip stat-chip-green ${statusFilter === 'online' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'online' ? 'all' : 'online')}
+          onClick={() => handleStatusFilter(statusFilter === 'online' ? 'all' : 'online')}
           title="Filter online devices"
         >
           <span className="stat-chip-val">{online}</span>
@@ -194,7 +219,7 @@ export function DevicesClient({
         <div
           className={`stat-chip stat-chip-red ${statusFilter === 'offline' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'offline' ? 'all' : 'offline')}
+          onClick={() => handleStatusFilter(statusFilter === 'offline' ? 'all' : 'offline')}
           title="Filter offline devices"
         >
           <span className="stat-chip-val">{offline}</span>
@@ -203,7 +228,7 @@ export function DevicesClient({
         <div
           className={`stat-chip stat-chip-amber ${statusFilter === 'warning' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'warning' ? 'all' : 'warning')}
+          onClick={() => handleStatusFilter(statusFilter === 'warning' ? 'all' : 'warning')}
           title="Filter warning devices"
         >
           <span className="stat-chip-val">{warning}</span>
@@ -214,75 +239,87 @@ export function DevicesClient({
       {error && <div className="form-error-alert">{error}</div>}
       {success && <div className="form-success-alert">{success}</div>}
 
-      {/* Filter Row */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        <div className="tab-pill-group">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'online', label: `Online (${online})` },
-            { id: 'offline', label: `Offline (${offline})` },
-            { id: 'warning', label: `Warning (${warning})` },
-          ].map(t => (
+      {/* Standardized Table Toolbar (Filters & Search) */}
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          <div className="filter-tabs">
+            {[
+              { id: 'all', label: 'All', count: devices.length },
+              { id: 'online', label: 'Online', count: online },
+              { id: 'offline', label: 'Offline', count: offline },
+              { id: 'warning', label: 'Warning', count: warning },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`filter-tab ${statusFilter === t.id ? 'active' : ''}`}
+                onClick={() => handleStatusFilter(t.id)}
+              >
+                {t.label}
+                <span className="filter-tab-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Zone Filter */}
+          <select
+            value={zoneFilter}
+            onChange={e => handleZoneFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 140 }}
+          >
+            <option value="all">All Zones</option>
+            {uniqueZones.map(z => (
+              <option key={String(z)} value={String(z)}>{String(z)}</option>
+            ))}
+          </select>
+
+          {/* Valve State Filter */}
+          <select
+            value={valveFilter}
+            onChange={e => handleValveFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 140 }}
+          >
+            <option value="all">All Valves</option>
+            <option value="open">Valve Open</option>
+            <option value="closed">Valve Closed</option>
+          </select>
+
+          {(statusFilter !== 'all' || zoneFilter !== 'all' || valveFilter !== 'all' || search) && (
             <button
-              key={t.id}
-              className={`tab-pill ${statusFilter === t.id ? 'active' : ''}`}
-              onClick={() => setStatusFilter(t.id)}
+              type="button"
+              className="filter-clear-btn"
+              onClick={() => {
+                setStatusFilter('all');
+                setZoneFilter('all');
+                setValveFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
             >
-              {t.label}
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Zone Filter */}
-        <select
-          value={zoneFilter}
-          onChange={e => setZoneFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 140 }}
-        >
-          <option value="all">All Zones</option>
-          {uniqueZones.map(z => (
-            <option key={String(z)} value={String(z)}>{String(z)}</option>
-          ))}
-        </select>
-
-        {/* Valve State Filter */}
-        <select
-          value={valveFilter}
-          onChange={e => setValveFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 140 }}
-        >
-          <option value="all">All Valves</option>
-          <option value="open">Valve Open</option>
-          <option value="closed">Valve Closed</option>
-        </select>
-
-        {(statusFilter !== 'all' || zoneFilter !== 'all' || valveFilter !== 'all' || search) && (
-          <button
-            className="filter-clear-btn"
-            onClick={() => { setStatusFilter('all'); setZoneFilter('all'); setValveFilter('all'); setSearch(''); }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="search-bar-wrap" style={{ marginBottom: 16 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search by device ID, customer name, or zone..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>×</button>
-        )}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search devices..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>×</button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="table-card">
@@ -307,7 +344,7 @@ export function DevicesClient({
                 </td>
               </tr>
             )}
-            {filtered.map(d => {
+            {paginated.map(d => {
               const id = d.meterId ?? d.id;
               const isOnline = (d.connectivity ?? '').toLowerCase() === 'online';
               return (
@@ -370,6 +407,15 @@ export function DevicesClient({
             })}
           </tbody>
         </table>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="devices"
+        />
       </div>
     </div>
   );

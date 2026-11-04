@@ -7,6 +7,7 @@ import {
   ZoneDistributionBarChart,
   WaterQualityChart,
 } from '../../components/usage-chart';
+import { Pagination } from '../../components/pagination';
 
 function ValveBadge({ state }: { state: string }) {
   const s = (state ?? '').toLowerCase();
@@ -88,6 +89,10 @@ export function UsageAnalyticsClient({
   const [selectedMeter, setSelectedMeter] = useState<string>('all');
   const [currentUsage, setCurrentUsage] = useState<Array<{ day: string; usageLiters: string }>>(dailyUsage);
   const [loading, setLoading] = useState(false);
+  const [readingsPage, setReadingsPage] = useState(1);
+  const [readingsPageSize, setReadingsPageSize] = useState(10);
+
+  const paginatedReadings = recentReadings.slice((readingsPage - 1) * readingsPageSize, readingsPage * readingsPageSize);
 
   async function handleMeterChange(meterId: string) {
     setSelectedMeter(meterId);
@@ -264,7 +269,7 @@ export function UsageAnalyticsClient({
                 </tr>
               </thead>
               <tbody>
-                {recentReadings.slice(0, 10).map((r, i) => (
+                {paginatedReadings.map((r, i) => (
                   <tr key={r.id ?? i}>
                     <td>
                       <Link href={`/devices/${r.meterId ?? r.deviceId}`} className="table-link-mono">
@@ -291,6 +296,15 @@ export function UsageAnalyticsClient({
                 ))}
               </tbody>
             </table>
+
+            <Pagination
+              totalItems={recentReadings.length}
+              currentPage={readingsPage}
+              pageSize={readingsPageSize}
+              onPageChange={setReadingsPage}
+              onPageSizeChange={setReadingsPageSize}
+              itemLabel="packets"
+            />
           </div>
         </div>
       )}
