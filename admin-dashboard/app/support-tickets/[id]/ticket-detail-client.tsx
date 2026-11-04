@@ -61,11 +61,15 @@ export function TicketDetailClient({
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Action failed');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.message || 'Action failed');
+      }
       setSuccess('Action completed successfully.');
+      setReassignReason('');
       router.refresh();
-    } catch {
-      setError('Action failed. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'Action failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -210,7 +214,7 @@ export function TicketDetailClient({
                   onClick={() => patchTicket({
                     technicianId: selectedTech,
                     status: 'assigned',
-                    ...(reassignReason ? { reassignReason } : {}),
+                    ...(reassignReason ? { notes: reassignReason, reassignReason } : {}),
                   })}
                 >
                   {loading ? 'Updating...' : canAssign ? 'Assign Ticket' : 'Reassign Ticket'}

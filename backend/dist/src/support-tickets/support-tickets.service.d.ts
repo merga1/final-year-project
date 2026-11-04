@@ -15,7 +15,7 @@ export declare class SupportTicketsService {
     create(data: Partial<SupportTicket>): Promise<SupportTicket>;
     createAdminTicket(data: any): Promise<SupportTicket>;
     createCustomerTicket(data: Partial<SupportTicket>): Promise<SupportTicket>;
-    update(id: string, data: Partial<SupportTicket>): Promise<SupportTicket | null>;
+    update(id: string, data: any): Promise<SupportTicket | null>;
     transitionForTechnician(id: string, technicianId: string, data: {
         status: string;
         notes?: string;

@@ -3,7 +3,7 @@ export declare class NotificationsController {
     private readonly service;
     constructor(service: NotificationsService);
     list(user: any): Promise<{
-        items: import("./notification.entity").Notification[];
+        items: any;
         unread: number;
     }>;
     markRead(user: any, id: string): Promise<import("./notification.entity").Notification>;
