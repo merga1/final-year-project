@@ -246,7 +246,7 @@ export function BillingClient({
                     {b.customerId ? (
                       <Link
                         href={`/customers/${b.customerId}`}
-                        style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                        style={{ color: '#1e6b52', fontWeight: 600, textDecoration: 'none' }}
                         title="View customer profile"
                       >
                         {b.customerName ?? 'Customer'}
@@ -324,7 +324,7 @@ export function BillingClient({
                   {selectedBill.customerId ? (
                     <Link
                       href={`/customers/${selectedBill.customerId}`}
-                      style={{ color: '#2563eb', textDecoration: 'none' }}
+                      style={{ color: '#1e6b52', textDecoration: 'none' }}
                     >
                       {selectedBill.customerName}
                     </Link>
@@ -353,7 +353,7 @@ export function BillingClient({
               </div>
               <div className="detail-field-row">
                 <dt>Total Billed</dt>
-                <dd style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0284c7' }}>
+                <dd style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e6b52' }}>
                   ETB {Number(selectedBill.amountEtb ?? 0).toLocaleString()}
                 </dd>
               </div>

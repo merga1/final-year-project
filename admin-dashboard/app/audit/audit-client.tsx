@@ -14,7 +14,7 @@ function CategoryTag({ category }: { category: string }) {
   const cat = (category ?? 'GENERAL').toUpperCase();
   let bg = '#f1f5f9';
   let color = '#475569';
-  if (cat === 'DEVICE') { bg = '#eff6ff'; color = '#2563eb'; }
+  if (cat === 'DEVICE') { bg = '#f0fdf9'; color = '#1e6b52'; }
   else if (cat === 'VALVE') { bg = '#ecfdf5'; color = '#059669'; }
   else if (cat === 'TICKET') { bg = '#f5f3ff'; color = '#7c3aed'; }
   else if (cat === 'CUSTOMER') { bg = '#fff7ed'; color = '#ea580c'; }
@@ -309,7 +309,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
                       width: 12,
                       height: 12,
                       borderRadius: '50%',
-                      backgroundColor: entry.status === 'WARNING' ? '#d97706' : entry.status === 'FAILED' ? '#dc2626' : '#2563eb',
+                      backgroundColor: entry.status === 'WARNING' ? '#d97706' : entry.status === 'FAILED' ? '#dc2626' : '#1e6b52',
                       border: '2px solid #ffffff',
                       boxShadow: '0 0 0 2px #cbd5e1',
                     }}

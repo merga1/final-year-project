@@ -110,7 +110,7 @@ export function TicketDetailClient({
                 {ticket.customerId ? (
                   <Link
                     href={`/customers/${ticket.customerId}`}
-                    style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                    style={{ color: '#1e6b52', fontWeight: 600, textDecoration: 'none' }}
                   >
                     {ticket.customerName ?? ticket.customerId}
                   </Link>

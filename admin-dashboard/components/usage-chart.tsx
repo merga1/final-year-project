@@ -9,7 +9,7 @@ type DayUsage = { day: string; usageLiters: string };
 type ZoneUsage = { zone: string; totalLiters: number; avgTurbidity: number; meterCount: number };
 type QualityPoint = { day: string; avgTurbidity: number; maxTurbidity: number; avgFlowRate: number };
 
-const ZONE_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#0891b2'];
+const ZONE_COLORS = ['#1e6b52', '#059669', '#cc7a42', '#7c3aed', '#0891b2'];
 
 function formatDay(day: string | undefined | null) {
   if (!day || day === 'undefined' || day === 'null') return '—';
@@ -83,9 +83,9 @@ export function UsageLineChart({ data }: { data: DayUsage[] }) {
             type="monotone"
             dataKey="usage"
             name="Daily Volume (L)"
-            stroke="#2563eb"
+            stroke="#1e6b52"
             strokeWidth={2.5}
-            dot={{ r: 4, fill: '#2563eb', strokeWidth: 0 }}
+            dot={{ r: 4, fill: '#1e6b52', strokeWidth: 0 }}
             activeDot={{ r: 6 }}
           />
         </LineChart>

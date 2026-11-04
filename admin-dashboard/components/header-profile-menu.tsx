@@ -71,7 +71,7 @@ export function HeaderProfileMenu({
           className="header-avatar-circle"
           style={{
             transform: open ? 'scale(1.08)' : 'scale(1)',
-            boxShadow: open ? '0 0 0 3px rgba(2, 132, 199, 0.4)' : undefined,
+            boxShadow: open ? '0 0 0 3px rgba(30, 107, 82, 0.4)' : undefined,
           }}
         >
           {initial}
@@ -108,8 +108,8 @@ export function HeaderProfileMenu({
                   width: 40,
                   height: 40,
                   borderRadius: '50%',
-                  backgroundColor: '#e0f2fe',
-                  color: '#0284c7',
+                  backgroundColor: '#e6f7f2',
+                  color: '#1e6b52',
                   fontWeight: 800,
                   fontSize: '1.1rem',
                   display: 'flex',
@@ -173,7 +173,7 @@ export function HeaderProfileMenu({
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1e6b52" strokeWidth="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>

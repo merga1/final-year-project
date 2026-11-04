@@ -107,98 +107,88 @@ export function OverviewContent({
           </div>
         </div>
 
-        {/* 5 SRS Summary Metric Cards (AD-45) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+        {/* 5 SRS Summary Metric Cards (AD-45) - Standardized Uniform Stat-Chips */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
           {/* 1. Total Customers */}
-          <div className="metric-card metric-card-green" style={{ minHeight: 130 }}>
-            <div className="metric-header">
-              <span className="metric-label">Total Customers</span>
-              <div className="metric-icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                </svg>
-              </div>
+          <div className="stat-chip stat-chip-teal" style={{ minHeight: 120, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="stat-chip-label">Total Customers</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1e6b52" opacity="0.8">
+                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+              </svg>
             </div>
-            <div className="metric-value">{totalCustomersCount}</div>
-            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
-              <Link href="/customers" style={{ textDecoration: 'underline', color: '#fff' }}>View all customers &rarr;</Link>
-            </span>
+            <div className="stat-chip-val">{totalCustomersCount}</div>
+            <Link href="/customers" style={{ fontSize: '0.78rem', color: '#1e6b52', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              View all customers &rarr;
+            </Link>
           </div>
 
           {/* 2. Active Devices */}
-          <div className="metric-card metric-card-purple" style={{ minHeight: 130 }}>
-            <div className="metric-header">
-              <span className="metric-label">Active Meters</span>
-              <div className="metric-icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm-5 20c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5-4H7V4h10v13z"/>
-                </svg>
-              </div>
+          <div className="stat-chip stat-chip-green" style={{ minHeight: 120, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="stat-chip-label">Active Meters</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#059669" opacity="0.8">
+                <path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm-5 20c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5-4H7V4h10v13z"/>
+              </svg>
             </div>
-            <div className="metric-value">
-              {onlineDevs} <span style={{ fontSize: '1rem', fontWeight: 500 }}>/ {totalDevs}</span>
+            <div className="stat-chip-val">
+              {onlineDevs} <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#64748b' }}>/ {totalDevs}</span>
             </div>
-            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
-              <Link href="/devices" style={{ textDecoration: 'underline', color: '#fff' }}>Device inventory &rarr;</Link>
-            </span>
+            <Link href="/devices" style={{ fontSize: '0.78rem', color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Device inventory &rarr;
+            </Link>
           </div>
 
           {/* 3. Open Tickets */}
-          <div className="metric-card metric-card-lavender" style={{ minHeight: 130 }}>
-            <div className="metric-header">
-              <span className="metric-label">Open Tickets</span>
-              <div className="metric-icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                </svg>
-              </div>
+          <div className="stat-chip stat-chip-amber" style={{ minHeight: 120, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="stat-chip-label">Open Tickets</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#d97706" opacity="0.8">
+                <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+              </svg>
             </div>
-            <div className="metric-value">
-              {openTickets} <span style={{ fontSize: '1rem', fontWeight: 500 }}>open</span>
+            <div className="stat-chip-val">
+              {openTickets} <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#64748b' }}>open</span>
             </div>
-            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
-              <Link href="/support-tickets" style={{ textDecoration: 'underline', color: '#fff' }}>Queue & assignments &rarr;</Link>
-            </span>
+            <Link href="/support-tickets" style={{ fontSize: '0.78rem', color: '#d97706', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Queue & assignments &rarr;
+            </Link>
           </div>
 
           {/* 4. Unacknowledged Alerts */}
-          <div className="metric-card metric-card-red" style={{ minHeight: 130 }}>
-            <div className="metric-header">
-              <span className="metric-label">Alerts Unack&apos;d</span>
-              <div className="metric-icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-                </svg>
-              </div>
+          <div className="stat-chip stat-chip-red" style={{ minHeight: 120, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="stat-chip-label">Alerts Unack&apos;d</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#dc2626" opacity="0.8">
+                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+              </svg>
             </div>
-            <div className="metric-value">
+            <div className="stat-chip-val">
               {unackAlerts}{' '}
               {criticalUnackAlerts > 0 && (
-                <span style={{ fontSize: '0.85rem' }}>({criticalUnackAlerts} crit)</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#dc2626' }}>({criticalUnackAlerts} crit)</span>
               )}
             </div>
-            <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
-              <Link href="/alerts" style={{ textDecoration: 'underline', color: '#fff' }}>Review alerts &rarr;</Link>
-            </span>
+            <Link href="/alerts" style={{ fontSize: '0.78rem', color: '#dc2626', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Review alerts &rarr;
+            </Link>
           </div>
 
           {/* 5. Unpaid Bills */}
-          <div className="metric-card" style={{ background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', minHeight: 130 }}>
-            <div className="metric-header">
-              <span className="metric-label">Unpaid Bills</span>
-              <div className="metric-icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
-                </svg>
-              </div>
+          <div className="stat-chip stat-chip-purple" style={{ minHeight: 120, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="stat-chip-label">Unpaid Bills</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#7c3aed" opacity="0.8">
+                <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+              </svg>
             </div>
-            <div className="metric-value">
+            <div className="stat-chip-val">
               {unpaidBills.length}{' '}
-              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>({overdueBills} overdue)</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>({overdueBills} overdue)</span>
             </div>
-            <span style={{ fontSize: '0.78rem', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
-              ETB {unpaidTotalEtb.toLocaleString()} &middot;{' '}
-              <Link href="/billing" style={{ textDecoration: 'underline', color: '#fff' }}>Billing details &rarr;</Link>
+            <span style={{ fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>ETB {unpaidTotalEtb.toLocaleString()} &middot; </span>
+              <Link href="/billing" style={{ color: '#7c3aed', fontWeight: 600 }}>Billing details &rarr;</Link>
             </span>
           </div>
         </div>

@@ -364,7 +364,7 @@ export function DevicesClient({
                           alignItems: 'center',
                           gap: 6,
                           fontWeight: 600,
-                          color: '#2563eb',
+                          color: '#1e6b52',
                           fontSize: '0.88rem',
                         }}
                         title={`View profile for ${d.customerName || d.customerId}`}

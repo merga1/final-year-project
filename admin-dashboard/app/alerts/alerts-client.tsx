@@ -69,9 +69,9 @@ function formatAlertType(type: string) {
   return {
     label: formatted || 'Anomaly',
     category: 'other',
-    color: '#2563eb',
-    bg: '#eff6ff',
-    border: '#bfdbfe',
+    color: '#1e6b52',
+    bg: '#f0fdf9',
+    border: '#a7f3d0',
   };
 }
 

@@ -55,7 +55,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         <div style={{ padding: 40, textAlign: 'center' }}>
           <h2 style={{ color: '#dc2626', marginBottom: 12 }}>Failed to load ticket</h2>
           <p style={{ color: '#64748b', marginBottom: 24 }}>{e.message ?? 'An unexpected error occurred.'}</p>
-          <a href="/support-tickets" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+          <a href="/support-tickets" style={{ color: '#1e6b52', textDecoration: 'underline' }}>
             ← Back to Support Tickets
           </a>
         </div>

@@ -5,12 +5,16 @@
   --text-muted: #64748b;
   --text-sub: #94a3b8;
   --border-color: #e2e8f0;
-  --primary-blue: #0284c7;
-  --primary-blue-hover: #0369a1;
-  --active-nav-bg: #bae6fd;
-  --active-nav-text: #0369a1;
-  --avatar-bg: #7dd3fc;
-  --avatar-text: #0369a1;
+  /* AquaSense Brand Palette matching Logo (#1e6b52 Teal & #cc7a42 Warm Amber) */
+  --brand-primary: #1e6b52;
+  --brand-primary-hover: #16533f;
+  --brand-accent-amber: #cc7a42;
+  --primary-blue: #1e6b52;
+  --primary-blue-hover: #16533f;
+  --active-nav-bg: #e6f7f2;
+  --active-nav-text: #1e6b52;
+  --avatar-bg: #e6f7f2;
+  --avatar-text: #1e6b52;
   --radius-card: 16px;
   --radius-input: 10px;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -264,16 +268,18 @@ button, input, select {
 }
 
 .header-avatar-circle {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--avatar-bg);
-  color: var(--avatar-text);
+  background: linear-gradient(135deg, #1e6b52 0%, #2a8a6b 100%);
+  color: #ffffff;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+  box-shadow: 0 1px 3px rgba(30, 107, 82, 0.2);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
 /* ── Page Content Area ───────────────────────────────────── */
@@ -462,7 +468,7 @@ button, input, select {
 }
 
 .btn-primary-blue {
-  background: #0284c7;
+  background: #1e6b52;
   color: #ffffff;
   border: none;
   padding: 10px 18px;
@@ -477,7 +483,7 @@ button, input, select {
 }
 
 .btn-primary-blue:hover {
-  background: #0369a1;
+  background: #16533f;
 }
 
 .btn-outline-gray {
@@ -824,7 +830,7 @@ button, input, select {
 }
 
 .btn-change-password:hover {
-  background: #0284c7;
+  background: #16533f;
 }
 
 .dashboard-global-footer {
@@ -936,7 +942,7 @@ button, input, select {
 }
 
 .login-btn {
-  background: #0284c7;
+  background: #1e6b52;
   color: #ffffff;
   border: none;
   padding: 12px;
@@ -949,7 +955,7 @@ button, input, select {
 }
 
 .login-btn:hover {
-  background: #0369a1;
+  background: #16533f;
 }
 
 .login-hint {
@@ -996,8 +1002,9 @@ button, input, select {
 /* ── Role Badge ──────────────────────────────────────────── */
 .role-badge {
   display: inline-block;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: rgba(30, 107, 82, 0.12);
+  color: #1e6b52;
+  border: 1px solid rgba(30, 107, 82, 0.25);
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1021,12 +1028,20 @@ button, input, select {
   flex-direction: column;
   gap: 4px;
   border: 1px solid transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.stat-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.stat-chip-teal   { background: #f0fdf9; border-color: #a7f3d0; color: #1e6b52; }
+.stat-chip-teal .stat-chip-val { color: #1e6b52; }
 .stat-chip-red    { background: #fef2f2; border-color: #fecaca; }
 .stat-chip-amber  { background: #fffbeb; border-color: #fde68a; }
 .stat-chip-green  { background: #ecfdf5; border-color: #a7f3d0; }
-.stat-chip-blue   { background: #eff6ff; border-color: #bfdbfe; }
+.stat-chip-blue   { background: #f0fdf9; border-color: #99f6e4; color: #1e6b52; }
 .stat-chip-muted  { background: #f1f5f9; border-color: #e2e8f0; }
 
 .stat-chip-val {
@@ -1118,7 +1133,7 @@ button, input, select {
 
 /* ── Acknowledge Button ──────────────────────────────────── */
 .btn-ack {
-  background: #0284c7;
+  background: #1e6b52;
   color: #fff;
   border: none;
   padding: 5px 12px;
@@ -1130,7 +1145,7 @@ button, input, select {
   transition: background 0.15s;
 }
 
-.btn-ack:hover    { background: #0369a1; }
+.btn-ack:hover    { background: #16533f; }
 .btn-ack:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ── Filter Tabs ─────────────────────────────────────────── */
@@ -1156,7 +1171,7 @@ button, input, select {
 }
 
 .filter-tab:hover      { background: #f8fafc; color: #0f172a; }
-.filter-tab.active     { background: #0284c7; border-color: #0284c7; color: #ffffff; }
+.filter-tab.active     { background: #1e6b52; border-color: #1e6b52; color: #ffffff; }
 
 .filter-tab-count {
   background: rgba(0,0,0,0.08);
@@ -1242,7 +1257,7 @@ button, input, select {
 .link-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.82rem;
-  color: #0284c7;
+  color: #1e6b52;
   font-weight: 700;
   text-decoration: none;
 }
@@ -1261,7 +1276,7 @@ button, input, select {
   transition: color 0.15s;
 }
 
-.back-link:hover { color: #0284c7; }
+.back-link:hover { color: #1e6b52; }
 
 .detail-two-col {
   display: grid;
@@ -1500,8 +1515,9 @@ button, input, select {
 /* ── Role Badge ──────────────────────────────────────────── */
 .role-badge {
   display: inline-block;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: rgba(30, 107, 82, 0.12);
+  color: #1e6b52;
+  border: 1px solid rgba(30, 107, 82, 0.25);
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1545,7 +1561,7 @@ button, input, select {
   gap: 6px;
 }
 .tab-pill:hover       { background: #e2e8f0; color: #1e293b; }
-.tab-pill.active      { background: #ffffff; color: #2563eb; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.tab-pill.active      { background: #ffffff; color: #1e6b52; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 
 .tab-count-bubble {
   display: inline-flex;
@@ -1561,8 +1577,8 @@ button, input, select {
   color: #475569;
 }
 .tab-pill.active .tab-count-bubble {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #e6f7f2;
+  color: #1e6b52;
 }
 
 .filter-select {
@@ -1577,7 +1593,7 @@ button, input, select {
   outline: none;
   transition: border-color 0.15s;
 }
-.filter-select:focus  { border-color: #93c5fd; }
+.filter-select:focus  { border-color: #a7f3d0; }
 .filter-select:hover  { border-color: #cbd5e1; }
 
 .filter-clear-btn {
@@ -1595,7 +1611,7 @@ button, input, select {
 
 /* Clickable stat chip highlight */
 .active-chip {
-  box-shadow: 0 0 0 2px #2563eb55, 0 2px 8px rgba(37,99,235,0.10);
+  box-shadow: 0 0 0 2px rgba(30, 107, 82, 0.4), 0 2px 8px rgba(30, 107, 82, 0.12);
   transform: translateY(-1px);
 }
 
@@ -1721,22 +1737,22 @@ button, input, select {
   border-radius: 7px;
   font-size: 0.8rem;
   font-weight: 700;
-  background: #2563eb;
+  background: #1e6b52;
   color: #ffffff;
   cursor: pointer;
 }
-.btn-assign-action:hover:not(:disabled) { background: #1d4ed8; }
+.btn-assign-action:hover:not(:disabled) { background: #16533f; }
 .btn-assign-action:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* table link mono */
 .table-link-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-weight: 600;
-  color: #2563eb;
+  color: #1e6b52;
   text-decoration: none;
   font-size: 0.82rem;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #f0fdf9;
+  border: 1px solid #a7f3d0;
   padding: 2px 7px;
   border-radius: 6px;
   display: inline-block;
@@ -1744,10 +1760,10 @@ button, input, select {
   transition: all 0.15s ease;
 }
 .table-link-mono:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
+  background: #e6f7f2;
+  border-color: #1e6b52;
   text-decoration: none;
-  color: #1d4ed8;
+  color: #16533f;
 }
 
 
@@ -1756,18 +1772,18 @@ button, input, select {
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid #a7f3d0;
   border-radius: 7px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #2563eb;
-  background: #eff6ff;
+  color: #1e6b52;
+  background: #f0fdf9;
   text-decoration: none;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
-.btn-table-action:hover { background: #dbeafe; border-color: #93c5fd; }
+.btn-table-action:hover { background: #e6f7f2; border-color: #1e6b52; color: #16533f; }
 
 .btn-table-action-purple {
   display: inline-flex;
@@ -1821,7 +1837,7 @@ button, input, select {
 .header-avatar-link:hover .header-avatar-circle,
 .header-avatar-circle:hover {
   transform: scale(1.08);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.35);
+  box-shadow: 0 0 0 3px rgba(30, 107, 82, 0.35);
   cursor: pointer;
 }
 

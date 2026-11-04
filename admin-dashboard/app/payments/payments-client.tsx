@@ -263,7 +263,7 @@ export function PaymentsClient({ payments = [] }: { payments: any[] }) {
                     {p.customerId ? (
                       <Link
                         href={`/customers/${p.customerId}`}
-                        style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                        style={{ color: '#1e6b52', fontWeight: 600, textDecoration: 'none' }}
                         title="View customer profile"
                       >
                         {p.customerName ?? 'Customer'}

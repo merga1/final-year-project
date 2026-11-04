@@ -142,7 +142,7 @@ export function DeviceDetailClient({
                   {device.customerId ? (
                     <Link
                       href={`/customers/${device.customerId}`}
-                      style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                      style={{ color: '#1e6b52', fontWeight: 600, textDecoration: 'none' }}
                       title="View Customer Profile"
                     >
                       {device.customerName ?? device.customerId}
@@ -244,7 +244,7 @@ export function DeviceDetailClient({
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="flow" name="Flow (L/min)" stroke="#0284c7" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="flow" name="Flow (L/min)" stroke="#1e6b52" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="turbidity" name="Turbidity (NTU)" stroke="#d97706" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>

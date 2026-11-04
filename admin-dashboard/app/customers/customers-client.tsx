@@ -255,7 +255,7 @@ export function CustomersClient({ customers }: { customers: any[] }) {
                               color: '#0f172a',
                               textDecoration: 'none',
                             }}
-                            onMouseEnter={e => (e.currentTarget.style.color = '#0284c7')}
+                            onMouseEnter={e => (e.currentTarget.style.color = '#1e6b52')}
                             onMouseLeave={e => (e.currentTarget.style.color = '#0f172a')}
                           >
                             {displayName}
@@ -284,18 +284,7 @@ export function CustomersClient({ customers }: { customers: any[] }) {
                       {deviceId ? (
                         <Link
                           href={`/devices/${deviceId}`}
-                          style={{
-                            display: 'inline-block',
-                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            color: '#0284c7',
-                            background: '#f0f9ff',
-                            border: '1px solid #bae6fd',
-                            padding: '3px 8px',
-                            borderRadius: 6,
-                            textDecoration: 'none',
-                          }}
+                          className="table-link-mono"
                         >
                           {deviceId}
                         </Link>

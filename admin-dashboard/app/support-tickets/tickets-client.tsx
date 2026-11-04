@@ -277,8 +277,8 @@ export function TicketsClient({
       {(selectedTech || selectedCust) && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8,
-          padding: '8px 16px', marginBottom: 16, fontSize: '0.88rem', color: '#1e40af',
+          background: '#f0fdf9', border: '1px solid #a7f3d0', borderRadius: 8,
+          padding: '8px 16px', marginBottom: 16, fontSize: '0.88rem', color: '#16533f',
         }}>
           <span>
             Filtering by: {selectedTech && <strong>Tech: {selectedTech.name ?? selectedTech.email}</strong>}
@@ -287,7 +287,7 @@ export function TicketsClient({
           </span>
           <button
             onClick={() => { setTechFilter(''); setCustomerFilter(''); setPage(1); }}
-            style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
+            style={{ background: 'none', border: 'none', color: '#1e6b52', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
           >
             Clear Filter ×
           </button>
@@ -484,7 +484,7 @@ export function TicketsClient({
                     {t.customerId ? (
                       <Link
                         href={`/customers/${t.customerId}`}
-                        style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                        style={{ color: '#1e6b52', fontWeight: 600, textDecoration: 'none' }}
                         title="View customer profile"
                       >
                         {t.customerName ?? 'Customer'}

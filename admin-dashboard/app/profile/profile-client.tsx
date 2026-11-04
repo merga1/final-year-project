@@ -92,7 +92,7 @@ export default function ProfileClient({
 
       {/* KPI Stats Strip */}
       <div className="stats-strip">
-        <div className="stat-chip stat-chip-blue">
+        <div className="stat-chip stat-chip-teal">
           <span className="stat-chip-val" style={{ fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
             {userName}
           </span>
@@ -122,14 +122,14 @@ export default function ProfileClient({
                 width: 48,
                 height: 48,
                 borderRadius: '50%',
-                backgroundColor: '#e0f2fe',
-                color: '#0284c7',
+                background: 'linear-gradient(135deg, #1e6b52 0%, #2a8a6b 100%)',
+                color: '#ffffff',
                 fontSize: '1.3rem',
                 fontWeight: 800,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '1px solid #bae6fd',
+                boxShadow: '0 2px 6px rgba(30, 107, 82, 0.25)',
               }}
             >
               {initial}
@@ -348,7 +348,7 @@ export default function ProfileClient({
                 borderRadius: 8,
                 fontWeight: 600,
                 fontSize: '0.88rem',
-                backgroundColor: '#0284c7',
+                backgroundColor: '#1e6b52',
                 color: '#ffffff',
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
