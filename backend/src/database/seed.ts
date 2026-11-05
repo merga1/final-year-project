@@ -2,6 +2,7 @@
  * Database seed script — populates demo data matching dashboard design.
  * Usage: npx ts-node -r tsconfig-paths/register src/database/seed.ts
  */
+import 'dotenv/config';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';

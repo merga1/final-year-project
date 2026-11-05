@@ -11,7 +11,8 @@ import 'screens/bills_screen.dart';
 import 'screens/support_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/notifications_screen.dart';
-import 'screens/field_jobs_screen.dart';
+import 'screens/technician_dashboard.dart';
+import 'services/technician_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +57,7 @@ class _AppRootState extends State<AppRoot> {
   final _apiClient = ApiClient();
   late final AuthService _auth;
   late final MobileRepository _repo;
+  late final TechnicianRepository _technicianRepo;
   bool _ready = false;
   bool _loggedIn = false;
   String _role = 'customer';
@@ -65,6 +67,7 @@ class _AppRootState extends State<AppRoot> {
     super.initState();
     _auth = AuthService(_apiClient);
     _repo = MobileRepository(_apiClient);
+    _technicianRepo = TechnicianRepository(_apiClient);
     _tryRestore();
   }
 
@@ -86,10 +89,15 @@ class _AppRootState extends State<AppRoot> {
     });
   }
 
-  void _onLogout() => setState(() {
+  void _onLogout() {
+    _auth.logout().whenComplete(() {
+      if (!mounted) return;
+      setState(() {
         _loggedIn = false;
         _role = 'customer';
       });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,42 +113,15 @@ class _AppRootState extends State<AppRoot> {
           });
     }
 
-    if (_role == 'field_tech') {
-      return FieldShell(repo: _repo, auth: _auth, onLogout: _onLogout);
+    if (_role == 'technician') {
+      return TechnicianShell(
+        repo: _technicianRepo,
+        auth: _auth,
+        onLogout: _onLogout,
+      );
     }
 
     return MainShell(repo: _repo, auth: _auth, onLogout: _onLogout);
-  }
-}
-
-class FieldShell extends StatelessWidget {
-  const FieldShell(
-      {super.key,
-      required this.repo,
-      required this.auth,
-      required this.onLogout});
-  final MobileRepository repo;
-  final AuthService auth;
-  final VoidCallback onLogout;
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Field jobs'),
-          bottom: const TabBar(tabs: [
-            Tab(text: 'Jobs'),
-            Tab(text: 'Profile'),
-          ]),
-        ),
-        body: TabBarView(children: [
-          FieldJobsScreen(repo: repo),
-          ProfileScreen(authService: auth, onLogout: onLogout),
-        ]),
-      ),
-    );
   }
 }
 

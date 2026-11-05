@@ -37,6 +37,7 @@ class AuthService {
     await prefs.setString(_roleKey, user['role'] as String? ?? 'customer');
     await prefs.setString(_userIdKey, user['sub']?.toString() ?? '');
     if (rememberMe) await prefs.setString(_tokenKey, token);
+    else await prefs.remove(_tokenKey);
     return true;
   }
 
@@ -81,6 +82,26 @@ class AuthService {
     await _client.post('/auth/forgot-password', {'email': email.trim()});
   }
 
+  Future<void> submitMeterRequest({
+    required String address,
+    required String phone,
+    String? details,
+  }) async {
+    final description = [
+      'Installation address: ${address.trim()}',
+      'Contact phone: ${phone.trim()}',
+      if (details != null && details.trim().isNotEmpty)
+        'Additional details: ${details.trim()}',
+    ].join('\n');
+    await _client.post('/api/mobile/support-tickets', {
+      'issue': 'Request a new water meter',
+      'type': 'Water Meter Request',
+      'priority': 'Medium',
+      'description': description,
+      'customerAddress': address.trim(),
+    });
+  }
+
   Future<void> changePassword(String oldPassword, String newPassword) async {
     await _client.post('/auth/change-password', {
       'oldPassword': oldPassword,
@@ -117,7 +138,12 @@ class AuthService {
       await _secureStorage.delete(key: _tokenKey);
     } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_nameKey);
+    await prefs.remove(_emailKey);
+    await prefs.remove(_meterIdKey);
+    await prefs.remove(_roleKey);
+    await prefs.remove(_userIdKey);
   }
 
   bool get isLoggedIn => _client.token != null;

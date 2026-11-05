@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { CustomersModule } from '../customers/customers.module';
 import { TechniciansModule } from '../technicians/technicians.module';
+import { DevicesModule } from '../devices/devices.module';
 
 const rawSecret = process.env.JWT_SECRET || 'smart_water_jwt_secret_2026_final_year';
 const JWT_SECRET = rawSecret.replace(/^\uFEFF/, '').trim();
@@ -15,6 +16,7 @@ const JWT_SECRET = rawSecret.replace(/^\uFEFF/, '').trim();
     PassportModule,
     CustomersModule,
     TechniciansModule,
+    DevicesModule,
     JwtModule.register({
       secret: JWT_SECRET,
       signOptions: { expiresIn: 604800 }, // 7 days

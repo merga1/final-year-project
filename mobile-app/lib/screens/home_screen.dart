@@ -150,6 +150,58 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         final home = snap.data!;
+        final hasMeter = home.meterId.isNotEmpty && home.meterId != 'Not assigned';
+        if (!hasMeter) {
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                const SizedBox(height: 24),
+                const Icon(Icons.water_drop_outlined,
+                    size: 56, color: Color(0xFF0284C7)),
+                const SizedBox(height: 16),
+                Text(
+                  'Welcome, ${home.customerName}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 23, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(18),
+                    child: Column(
+                      children: [
+                        Text(
+                          'No water meter is linked to your account yet.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Your meter request is available in Support Tickets. Once a meter is assigned, readings, water quality, and valve controls will appear here.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.badge_outlined,
+                        color: Color(0xFF0284C7)),
+                    title: const Text('Customer information'),
+                    subtitle: Text(home.customerEmail),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
         final isValveOpen = _valveOverride ?? (home.valveState == 'OPEN');
         final isOffline = home.deviceOffline || home.connectionStatus.toUpperCase() == 'OFFLINE';
 

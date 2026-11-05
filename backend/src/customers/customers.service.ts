@@ -26,6 +26,10 @@ export class CustomersService {
     return this.repo.findOneBy({ email: email.trim().toLowerCase() });
   }
 
+  async findByMeterId(meterId: string) {
+    return this.repo.findOneBy({ meterId: meterId.trim() });
+  }
+
   async create(data: Partial<Customer>) {
     const customer = this.repo.create({ ...data, email: data.email?.trim().toLowerCase() });
     return this.repo.save(customer);

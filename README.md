@@ -1,11 +1,12 @@
 # Smart Water Management Workspace
 
-This VS Code workspace organizes the project into three apps:
+This VS Code workspace organizes the project into two active user-facing apps and the backend:
 
-- `mobile-app`: Flutter customer app
-- `technician-app`: Flutter technician app
+- `mobile-app`: shared Flutter app for customers and technicians, with role-based dashboards
 - `admin-dashboard`: Next.js admin web dashboard
 - `backend`: Nest.js API and device ingestion server
+
+`technician-app` is the earlier standalone technician client. The current combined mobile experience is in `mobile-app`.
 
 The web dashboard and API are separate Node.js applications, so they intentionally
 keep separate `package.json` and lock files. The Flutter mobile app has its own
@@ -16,11 +17,13 @@ entry point, and deployment target.
 
 1. Start the Nest.js backend.
 2. Connect the Next.js admin dashboard to backend APIs.
-3. Connect the Flutter customer and technician apps to the same backend.
+3. Run the combined Flutter mobile app for customer and technician accounts.
 
 ## Current status
 
-This workspace includes the customer and technician mobile clients, the NestJS API, and the admin dashboard described by the SRS. Flutter SDK is required to run the mobile clients.
+This workspace includes a combined customer and technician mobile client, the NestJS API, and the admin dashboard described by the SRS. Flutter SDK is required to run the mobile app.
+
+For the backend architecture, API overview, workflow diagrams, and presentation script, see the [backend presentation guide](docs/backend-presentation-guide.md).
 
 ## Open the workspace in VS Code
 
@@ -59,21 +62,13 @@ cd admin-dashboard
 npm run test:smoke
 ```
 
-### Flutter mobile app
+### Flutter mobile app (customers and technicians)
 
 ```powershell
 cd mobile-app
 flutter pub get
 flutter test
 flutter run
-```
-
-### Flutter technician app
-
-```powershell
-cd technician-app
-flutter pub get
-  flutter run --dart-define=API_BASE_URL=http://YOUR_IP:4000
 ```
 
 The seeded technician account is `john.smith@tech.water` / `technician123` after running `npm run seed` in `backend`.

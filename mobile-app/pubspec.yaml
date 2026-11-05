@@ -1,5 +1,5 @@
 name: smart_water_mobile
-description: Customer mobile app for the smart water management system.
+description: Shared customer and technician mobile app for the smart water management system.
 publish_to: "none"
 
 version: 1.0.0+1

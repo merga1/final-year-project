@@ -2,7 +2,7 @@
 
 ## Planned architecture
 
-- `mobile-app` for customer-facing Flutter flows
+- `mobile-app` for shared customer and technician Flutter flows with role-based dashboards
 - `admin-dashboard` for administrator operations in Next.js
 - `backend` for APIs, alerts, readings, and role-based access in Nest.js
 - `shared` for JSON examples and contracts

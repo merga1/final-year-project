@@ -3,12 +3,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { CustomersService } from '../customers/customers.service';
 import { TechniciansService } from '../technicians/technicians.service';
+import { DevicesService } from '../devices/devices.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly customersService: CustomersService,
     private readonly techniciansService: TechniciansService,
+    private readonly devicesService: DevicesService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -75,13 +77,34 @@ export class AuthService {
     return { accessToken: this.jwtService.sign(payload), user: payload };
   }
 
-  async register(name: string, email: string, password: string, meterId?: string) {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    meterId?: string,
+    address?: string,
+  ) {
     // Prevent registering with reserved administrator emails or domains
     if (
       email.toLowerCase().endsWith('@admin.water') ||
       email.toLowerCase() === 'admin2@gmail.com'
     ) {
       throw new BadRequestException('Cannot register with reserved administrator email address');
+    }
+
+    const normalizedMeterId = meterId?.trim() || undefined;
+    let meterDevice: Awaited<ReturnType<DevicesService['findByMeterId']>> = null;
+    if (normalizedMeterId) {
+      meterDevice = await this.devicesService.findByMeterId(normalizedMeterId);
+      if (!meterDevice) {
+        throw new BadRequestException(
+          'Water meter number not found. Check the number or choose that you need a meter.',
+        );
+      }
+      const linkedCustomer = await this.customersService.findByMeterId(normalizedMeterId);
+      if (meterDevice.customerId || linkedCustomer) {
+        throw new ConflictException('This water meter is already linked to an account');
+      }
     }
 
     const existing = await this.customersService.findByEmail(email);
@@ -92,10 +115,17 @@ export class AuthService {
       name,
       email,
       passwordHash,
-      meterId,
+      meterId: normalizedMeterId,
+      address,
       role: 'customer',
       accountStatus: 'active',
     });
+
+    if (meterDevice && normalizedMeterId) {
+      await this.devicesService.updateByMeterId(normalizedMeterId, {
+        customerId: customer.id,
+      });
+    }
 
     const payload = {
       sub: customer.id,

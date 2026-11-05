@@ -22,8 +22,20 @@ export class AuthController {
 
   /** Customer self-registration via mobile app */
   @Post('register')
-  register(@Body() body: { name: string; email: string; password: string; meterId?: string }) {
-    return this.service.register(body.name, body.email, body.password, body.meterId);
+  register(@Body() body: {
+    name: string;
+    email: string;
+    password: string;
+    address?: string;
+    meterId?: string;
+  }) {
+    return this.service.register(
+      body.name,
+      body.email,
+      body.password,
+      body.meterId,
+      body.address,
+    );
   }
 
   /** Change password for logged in user */

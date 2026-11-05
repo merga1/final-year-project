@@ -68,9 +68,21 @@ class ApiClient {
   }
 
   void _checkStatus(http.Response res, String path) {
-    if (res.statusCode == 401) throw Exception('Unauthorized — please log in again');
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('HTTP ${res.statusCode} at $path');
+      String? message;
+      try {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) {
+          final value = decoded['message'];
+          if (value is String) message = value;
+          if (value is List) message = value.join(', ');
+        }
+      } catch (_) {}
+
+      if (res.statusCode == 401) {
+        throw Exception(message ?? 'Unauthorized — please log in again');
+      }
+      throw Exception(message ?? 'HTTP ${res.statusCode} at $path');
     }
   }
 }

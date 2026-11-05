@@ -1,7 +1,5 @@
-# AquaSense Technician App
+# Standalone Technician App (Legacy)
 
-This is the technician Flutter client described in the SRS. It authenticates technician accounts created by the admin, lists assigned tickets, supports accept/reject/resolve transitions, exposes read-only device diagnostics, and displays technician notifications.
+This folder contains the earlier standalone technician Flutter client. Technician accounts now sign in through the shared `mobile-app`, which opens the technician dashboard automatically based on the account role.
 
-The repository keeps the app source separate from the customer app while both clients use the same NestJS backend. Run `flutter pub get`, then `flutter run --dart-define=API_BASE_URL=http://YOUR_BACKEND:4000`.
-
-Seeded demo credentials are `john.smith@tech.water` / `technician123` after running the backend seed.
+The combined app continues to use the same NestJS API and supports assigned ticket management, read-only device diagnostics, and technician notifications.
