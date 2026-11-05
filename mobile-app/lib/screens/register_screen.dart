@@ -193,7 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         const Text(
-            'Send the water team your installation address and contact number. Your customer dashboard will be ready after you submit.'),
+            'Send your installation address and contact number to the admin team. An admin will review the request and choose a technician.'),
         const SizedBox(height: 20),
         _field(_address, 'Installation address'),
         const SizedBox(height: 12),

@@ -99,39 +99,31 @@ export class SupportTicketsService implements OnModuleInit {
   }
 
   async createCustomerTicket(data: Partial<SupportTicket>) {
-    const technician = await this.technicians.findLeastBusy().catch(() => null);
     const now = new Date();
     const ticket = this.repo.create({
       ...data,
-      status: technician ? 'in_progress' : 'pending',
+      status: 'pending',
       subject: (data as any).subject || data.issue || data.description || 'Customer Support',
-      technicianId: technician?.id,
-      technicianName: technician?.name,
-      assignedAt: technician ? now : undefined,
-      statusHistory: JSON.stringify([{ status: technician ? 'in_progress' : 'pending', at: now.toISOString() }]),
+      technicianId: null,
+      technicianName: null,
+      assignedAt: null,
+      statusHistory: JSON.stringify([{
+        status: 'pending',
+        at: now.toISOString(),
+        note: 'Submitted by customer; waiting for admin assignment',
+      }]),
     });
     const saved = await this.repo.save(ticket);
 
-    if (technician) {
-      await this.technicians.update(technician.id, { currentJobCount: (technician.currentJobCount || 0) + 1 }).catch(() => {});
+    if (saved.customerId) {
       await this.notifications.create({
-        userId: technician.id,
-        audience: 'technician',
-        type: 'ticket_assignment',
-        title: 'New ticket assigned',
-        message: `${saved.type}: ${saved.description ?? saved.issue}`,
+        userId: saved.customerId,
+        audience: 'customer',
+        type: 'ticket_received',
+        title: 'Request received',
+        message: 'Your request is in the admin queue. An admin will assign a technician.',
         relatedId: saved.id,
       }).catch(() => {});
-      if (saved.customerId) {
-        await this.notifications.create({
-          userId: saved.customerId,
-          audience: 'customer',
-          type: 'ticket_assignment',
-          title: 'Technician assigned',
-          message: `${technician.name} is assigned to your support ticket.`,
-          relatedId: saved.id,
-        }).catch(() => {});
-      }
     }
     return saved;
   }
@@ -142,10 +134,10 @@ export class SupportTicketsService implements OnModuleInit {
 
     const updatePayload: Partial<SupportTicket> = {};
 
-    // 1. Reassignment reason / notes handling
+    // 1. Record status and assignment changes in the ticket history
     const reasonText = data.reassignReason || data.reason || data.notes;
-    if (reasonText) {
-      updatePayload.notes = reasonText;
+    if (reasonText) updatePayload.notes = reasonText;
+    if (reasonText || data.status !== undefined || data.technicianId !== undefined) {
       let historyArr: any[] = [];
       try {
         if (before.statusHistory) {
@@ -155,11 +147,15 @@ export class SupportTicketsService implements OnModuleInit {
       } catch {
         historyArr = [{ entry: before.statusHistory }];
       }
-      historyArr.push({
+      const historyEntry: Record<string, unknown> = {
         status: data.status || before.status,
-        note: reasonText,
         at: new Date().toISOString(),
-      });
+      };
+      if (reasonText) historyEntry.note = reasonText;
+      if (data.technicianId !== undefined) {
+        historyEntry.technicianId = data.technicianId;
+      }
+      historyArr.push(historyEntry);
       updatePayload.statusHistory = JSON.stringify(historyArr);
     }
 

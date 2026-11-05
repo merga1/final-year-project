@@ -2,7 +2,7 @@
 
 This Flutter app serves both customers and technicians. They use the same sign-in screen; the role returned by the API opens the customer dashboard or the technician dashboard.
 
-Customer features include water usage, water quality, alerts, valve controls, bills, payments, support tickets, and a water meter request form during registration for customers who do not yet have a meter.
+Customer features include water usage, water quality, alerts, valve controls, bills, payments, support tickets, and a water meter request form during registration for customers who do not yet have a meter. Support requests enter the admin queue; an admin chooses the technician.
 
 Technician features include an assigned-work dashboard, ticket filtering and status updates, read-only device diagnostics, and notifications. Technician accounts are created by an administrator.
 

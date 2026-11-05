@@ -39,7 +39,7 @@ The application module that assembles the feature modules is [`src/app.module.ts
 | `devices` | Meter records, sensor ingestion and valve commands |
 | `readings` | Historical and daily sensor readings |
 | `alerts` | Sensor threshold alerts and admin acknowledgement |
-| `support-tickets` | Customer requests, technician assignment, ticket status and resolution |
+| `support-tickets` | Customer request queue, admin-selected technician assignment, ticket status and resolution |
 | `billing` | Customer bills and admin billing summaries |
 | `payments` | Payment records and the Chapa checkout handoff |
 | `notifications` | Per-account notifications and read status |
@@ -60,7 +60,8 @@ All routes use the server root as their base URL. The default local port is `400
 | `GET /api/mobile/home` | Signed-in customer | Loads the customer dashboard for the account's meter |
 | `POST /api/mobile/valve` | Signed-in customer | Requests a change to the linked meter's valve state |
 | `POST /api/devices/reading` | Device ingestion | Saves a reading, updates meter state, and checks thresholds |
-| `POST /api/mobile/support-tickets` | Customer | Creates a support or water meter request |
+| `POST /api/mobile/support-tickets` | Customer | Submits a support or water meter request to the admin queue |
+| `PATCH /api/admin/support-tickets/:id` | Admin | Assigns or reassigns a selected technician |
 | `GET /api/technician/home` | Technician | Returns assigned, accepted, and resolved work counts |
 | `GET /api/technician/tickets` | Technician | Lists work assigned to that technician; optional `status` filter |
 | `PATCH /api/technician/tickets/:id` | Assigned technician | Accepts, rejects, starts, or resolves a ticket |
@@ -86,11 +87,11 @@ During registration, the API checks that the meter number exists and is not alre
 
 ### Customer needs a meter
 
-The mobile app creates the customer account, then submits a `Water Meter Request` as a support ticket with the installation address and contact number. The support ticket service assigns it to an available technician when possible and creates notifications. The customer can track the request in Support Tickets.
+The mobile app creates the customer account, then submits a `Water Meter Request` as a support ticket with the installation address and contact number. The backend saves it as `pending` with no technician and notifies the customer that it is waiting for admin review. It appears in the admin Support Tickets queue as awaiting assignment.
 
 ### Technician completes a request
 
-The technician dashboard loads work assigned to the technician's ID. The technician can accept or reject an assigned ticket, then resolve accepted work with resolution notes. Ticket changes notify the customer.
+An admin reviews the ticket, chooses a technician in the admin dashboard, and assigns it. The assignment updates the technician's workload and notifies both the technician and customer. The technician dashboard only shows work assigned to that technician. The technician can accept or reject an assigned ticket, then resolve accepted work with resolution notes. Ticket changes notify the customer.
 
 ## Sensor ingestion and alerts
 

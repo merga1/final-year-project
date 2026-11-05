@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  open: 'Pending',
+  pending: 'Awaiting Admin',
+  open: 'Awaiting Admin',
   assigned: 'Assigned',
   accepted: 'In Progress',
   in_progress: 'In Progress',

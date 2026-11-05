@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Pagination } from '../../components/pagination';
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  open: 'Pending',
+  pending: 'Awaiting Admin',
+  open: 'Awaiting Admin',
   assigned: 'Assigned',
   accepted: 'In Progress',
   in_progress: 'In Progress',
@@ -230,7 +230,7 @@ export function TicketsClient({
         <div>
           <h2 className="section-main-title">Support Tickets</h2>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-            {filtered.length} of {scopedTickets.length} tickets shown &middot; {counts['pending'] ?? 0} pending assignment
+            {filtered.length} of {scopedTickets.length} tickets shown &middot; {counts['pending'] ?? 0} awaiting admin assignment
           </span>
         </div>
       </div>
@@ -271,7 +271,7 @@ export function TicketsClient({
           title="Filter Pending tickets"
         >
           <span className="stat-chip-val">{counts['pending'] ?? 0}</span>
-          <span className="stat-chip-label">Pending</span>
+          <span className="stat-chip-label">Awaiting Admin</span>
         </div>
       </div>
 
@@ -498,7 +498,7 @@ export function TicketsClient({
                   <td>
                     {isPending ? (
                       <span style={{ color: '#d97706', fontWeight: 600, fontSize: '0.82rem' }}>
-                        Unassigned
+                        Awaiting admin
                       </span>
                     ) : techDisplayName ? (
                       <span style={{ color: '#0f172a', fontWeight: 600, fontSize: '0.86rem' }}>

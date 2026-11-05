@@ -55,6 +55,7 @@ class SupportTicket {
     this.type = 'Sensor Issue',
     this.description = '',
     this.technicianId,
+    this.technicianName,
   });
 
   final String id;
@@ -65,6 +66,7 @@ class SupportTicket {
   final String type;
   final String description;
   final String? technicianId;
+  final String? technicianName;
 
   factory SupportTicket.fromJson(Map<String, dynamic> j) {
     return SupportTicket(
@@ -76,6 +78,7 @@ class SupportTicket {
       type: j['type'] as String? ?? 'Sensor Issue',
       description: j['description'] as String? ?? (j['issue'] as String? ?? ''),
       technicianId: j['technicianId'] as String?,
+      technicianName: j['technicianName'] as String?,
     );
   }
 }

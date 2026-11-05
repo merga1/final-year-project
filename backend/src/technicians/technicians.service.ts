@@ -75,13 +75,6 @@ export class TechniciansService {
     return this.repo.countBy({ status: status as any });
   }
 
-  findLeastBusy() {
-    return this.repo.findOne({
-      where: { status: 'on_duty', accountStatus: 'active' },
-      order: { currentJobCount: 'ASC', createdAt: 'ASC' },
-    });
-  }
-
   async updatePassword(id: string, passwordHash: string) {
     await this.findOne(id);
     await this.repo.update(id, { passwordHash });

@@ -93,15 +93,15 @@ sequenceDiagram
 
 The current demo thresholds are turbidity above `5 NTU`, flow above `30 L/min`, and battery below `15%`. These are configurable project rules, not universal water-quality standards. Water-quality and high-flow alerts notify the linked customer; low-battery readings currently create an alert without a customer notification.
 
-### C. Customer request to technician work
+### C. Customer request through admin assignment to technician work
 
 1. A customer creates a support ticket in the mobile app. A customer without a meter can submit a `Water Meter Request` with an address and contact number.
-2. `SupportTicketsService` saves the request and assigns it to an available technician when one is available.
-3. The backend sends notifications to the technician and customer.
-4. The technician reads only tickets assigned to their account, then accepts, rejects, or resolves the work.
-5. A status update is stored with its history and the customer is notified.
+2. `SupportTicketsService` saves the request as `pending` with no technician assigned. The customer receives a request-received notification.
+3. The admin sees the pending request in the admin Support Tickets queue and chooses a technician.
+4. The assignment updates the technician workload and notifies the technician and customer.
+5. The technician reads only tickets assigned to their account, then accepts, rejects, or resolves the work. Status updates are stored and the customer is notified.
 
-The customer and technician views are different role-based views of the same stored ticket.
+The customer, admin, and technician views are role-based views of the same stored ticket. The admin controls assignment; the backend does not auto-assign customer requests.
 
 ## 6. API routes to put on a slide
 
@@ -113,6 +113,8 @@ The customer and technician views are different role-based views of the same sto
 | `GET /api/mobile/home` | Customer's dashboard data | Authenticated |
 | `GET /api/mobile/readings/daily` | Customer's usage history | Authenticated |
 | `POST /api/mobile/support-tickets` | Customer support or meter request | Customer |
+| `GET /api/admin/support-tickets` | Review all customer requests and pending queue | Admin |
+| `PATCH /api/admin/support-tickets/:id` | Assign a selected technician | Admin |
 | `POST /api/mobile/valve` | Control linked meter valve | Authenticated customer |
 | `GET /api/technician/home` | Technician work summary | Technician |
 | `GET /api/technician/tickets` | List assigned tickets | Technician |
@@ -128,12 +130,12 @@ Admin routes also manage customers, technicians, devices, readings, alerts, tick
 2. **Architecture:** show the mobile app, admin dashboard, NestJS API, database, and meters.
 3. **Backend structure:** explain controllers, guards, services, entities, and feature modules.
 4. **Live data flow:** show a reading being stored and checked for thresholds.
-5. **Service workflow:** show a customer ticket being assigned and resolved by a technician.
+5. **Service workflow:** show a customer request entering the admin queue, the admin selecting a technician, and the technician resolving the ticket.
 6. **Security and current scope:** explain JWT roles and clearly state the remaining prototype work.
 
 ## 8. Short speaking script
 
-> “The backend is the shared API for the AquaSense mobile app, admin dashboard, and water meters. It is built with NestJS and TypeORM. Each feature has a controller for HTTP routes, a service for business rules, and entities for database records. When someone signs in, the API checks their password and returns a JWT with their role. The same mobile app then opens the customer or technician dashboard. Meters send readings to the device endpoint. The backend stores the reading, updates the device state, checks alert thresholds, and can notify the linked customer. Customer service requests are saved as tickets, assigned to technicians when possible, and updated through resolution. We use SQLite for local development and can connect to PostgreSQL through configuration.”
+> “The backend is the shared API for the AquaSense mobile app, admin dashboard, and water meters. It is built with NestJS and TypeORM. Each feature has a controller for HTTP routes, a service for business rules, and entities for database records. When someone signs in, the API checks their password and returns a JWT with their role. The same mobile app then opens the customer or technician dashboard. Meters send readings to the device endpoint. The backend stores the reading, updates the device state, checks alert thresholds, and can notify the linked customer. Customer support requests enter a pending admin queue. The admin chooses a technician, and the backend notifies the technician and customer before work proceeds through resolution. We use SQLite for local development and can connect to PostgreSQL through configuration.”
 
 ## 9. Likely questions and answers
 

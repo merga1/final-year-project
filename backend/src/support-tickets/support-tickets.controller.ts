@@ -54,7 +54,13 @@ export class SupportTicketsController {
     return this.service.createCustomerTicket({
       customerId: user.sub,
       customerName: user.name,
-      ...body,
+      type: body.type,
+      issue: body.issue,
+      subject: body.subject,
+      description: body.description,
+      priority: body.priority,
+      customerAddress: body.customerAddress,
+      deviceId: body.deviceId,
     });
   }
 

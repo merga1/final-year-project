@@ -72,7 +72,15 @@ class _SupportScreenState extends State<SupportScreen> {
                        final normalizedStatus = t.status.toLowerCase().replaceAll('_', ' ');
                        final isResolved = ['resolved', 'closed'].contains(normalizedStatus);
                       final title = t.type.isNotEmpty ? t.type : 'Sensor Issue';
-                       final techId = t.technicianId ?? 'Not assigned yet';
+                       final techLabel = t.technicianName ??
+                           (t.technicianId == null
+                               ? 'Waiting for admin assignment'
+                               : 'Technician assigned');
+                       final isAssigned = t.technicianId != null;
+                       final statusLabel =
+                           normalizedStatus == 'pending' || normalizedStatus == 'open'
+                           ? 'Awaiting admin assignment'
+                           : _titleCase(normalizedStatus);
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -118,7 +126,7 @@ class _SupportScreenState extends State<SupportScreen> {
                                     ),
                                   ),
                                   child: Text(
-                                     _titleCase(normalizedStatus),
+                                     statusLabel,
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
@@ -141,17 +149,18 @@ class _SupportScreenState extends State<SupportScreen> {
                             const SizedBox(height: 12),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.person_outline_rounded,
+                                Icon(
+                                  isAssigned
+                                      ? Icons.person_outline_rounded
+                                      : Icons.admin_panel_settings_outlined,
                                   size: 15,
                                   color: Color(0xFF64748B),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  techId,
+                                  techLabel,
                                   style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     color: Color(0xFF64748B),
                                   ),
                                 ),
@@ -274,6 +283,18 @@ class _CreateTicketScreenState extends State<_CreateTicketScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Your request will go to the admin team. An admin will review it and choose the technician.',
+                  style: TextStyle(color: Color(0xFF1E40AF), fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 20),
               const Text(
                 'Describe your issue',
                 style: TextStyle(
