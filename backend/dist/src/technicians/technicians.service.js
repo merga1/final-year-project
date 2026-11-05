@@ -35,11 +35,16 @@ let TechniciansService = class TechniciansService {
         return tech;
     }
     async create(dto) {
+        const email = dto.email.trim().toLowerCase();
+        const existing = await this.findByEmail(email);
+        if (existing) {
+            throw new common_1.ConflictException('A technician with this email address already exists');
+        }
         const name = `${dto.firstName.trim()} ${dto.lastName.trim()}`.trim();
         const tech = this.repo.create({
             ...dto,
             name: name || 'Technician',
-            email: dto.email.trim().toLowerCase(),
+            email,
             passwordHash: await bcrypt.hash(dto.password || 'technician123', 10),
             specialization: dto.specialization || 'No specialization',
             status: 'on_duty',

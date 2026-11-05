@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { navItems } from './navigation';
 import { LogoutButton } from './logout-button';
+import { HeaderProfileMenu } from './header-profile-menu';
 import { getServerUser } from '../lib/auth';
 
 type AdminShellProps = {
@@ -165,7 +166,11 @@ export async function AdminShell({
           </div>
 
           <div className="top-nav-right">
-            <div className="header-avatar-circle">{initial}</div>
+            <HeaderProfileMenu
+              userName={userName}
+              userEmail={userEmail}
+              initial={initial}
+            />
           </div>
         </header>
 

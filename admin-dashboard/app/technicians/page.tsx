@@ -14,14 +14,20 @@ export default async function TechniciansPage() {
       getSupportTickets(token).catch(() => []),
     ]);
 
-    // Enrich with open ticket count
-    const enriched = techs.map((tech: any) => ({
-      ...tech,
-      openTickets: tickets.filter(
-        (t: any) => t.technicianId === tech.id &&
-          ['assigned', 'accepted'].includes((t.status ?? '').toLowerCase())
-      ).length,
-    }));
+    // Enrich with open ticket count (any ticket that is not resolved, closed, or cancelled)
+    const enriched = (techs || []).map((tech: any) => {
+      const openCount = (tickets || []).filter(
+        (t: any) =>
+          t.technicianId === tech.id &&
+          !['resolved', 'closed', 'cancelled'].includes((t.status ?? '').toLowerCase())
+      ).length;
+
+      return {
+        ...tech,
+        openTickets: openCount,
+        openJobsCount: openCount,
+      };
+    });
 
     return (
       <AdminShell currentPath="/technicians" title="Technicians">

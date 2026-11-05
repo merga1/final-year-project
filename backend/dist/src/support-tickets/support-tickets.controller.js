@@ -26,6 +26,9 @@ let SupportTicketsController = class SupportTicketsController {
     findAll() {
         return this.service.findAll();
     }
+    createAdminTicket(body) {
+        return this.service.createAdminTicket(body);
+    }
     findOne(id) {
         return this.service.findOne(id);
     }
@@ -72,6 +75,15 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SupportTicketsController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Post)('api/admin/support-tickets'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('admin'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], SupportTicketsController.prototype, "createAdminTicket", null);
 __decorate([
     (0, common_1.Get)('api/admin/support-tickets/:id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

@@ -21,20 +21,93 @@ let NotificationsService = class NotificationsService {
     constructor(repo) {
         this.repo = repo;
     }
-    findForUser(userId, audience) {
-        return this.repo.find({
-            where: { userId, ...(audience ? { audience } : {}) },
-            order: { createdAt: 'DESC' },
-            take: 100,
-        });
+    async onModuleInit() {
+        try {
+            await this.repo.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'notifications') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'userId') THEN
+              IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'user_id') THEN
+                ALTER TABLE notifications ADD COLUMN "userId" varchar;
+                UPDATE notifications SET "userId" = user_id WHERE "userId" IS NULL;
+              ELSE
+                ALTER TABLE notifications ADD COLUMN "userId" varchar;
+              END IF;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'relatedId') THEN
+              IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'related_id') THEN
+                ALTER TABLE notifications ADD COLUMN "relatedId" varchar;
+                UPDATE notifications SET "relatedId" = related_id WHERE "relatedId" IS NULL;
+              ELSE
+                ALTER TABLE notifications ADD COLUMN "relatedId" varchar;
+              END IF;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'createdAt') THEN
+              IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'created_at') THEN
+                ALTER TABLE notifications ADD COLUMN "createdAt" timestamp DEFAULT now();
+                UPDATE notifications SET "createdAt" = created_at WHERE "createdAt" IS NULL;
+              ELSE
+                ALTER TABLE notifications ADD COLUMN "createdAt" timestamp DEFAULT now();
+              END IF;
+            END IF;
+          END IF;
+        END $$;
+      `);
+        }
+        catch {
+        }
     }
-    unreadCount(userId, audience) {
-        return this.repo.count({
-            where: { userId, read: false, ...(audience ? { audience } : {}) },
-        });
+    async findForUser(userId, audience) {
+        try {
+            return await this.repo.find({
+                where: { userId, ...(audience ? { audience } : {}) },
+                order: { createdAt: 'DESC' },
+                take: 100,
+            });
+        }
+        catch {
+            try {
+                return await this.repo.query(`SELECT * FROM notifications WHERE (user_id = $1 OR "userId" = $1) ${audience ? 'AND audience = $2' : ''} ORDER BY id DESC LIMIT 100`, audience ? [userId, audience] : [userId]);
+            }
+            catch {
+                return [];
+            }
+        }
     }
-    create(data) {
-        return this.repo.save(this.repo.create(data));
+    async unreadCount(userId, audience) {
+        try {
+            return await this.repo.count({
+                where: { userId, read: false, ...(audience ? { audience } : {}) },
+            });
+        }
+        catch {
+            return 0;
+        }
+    }
+    async create(data) {
+        try {
+            return await this.repo.save(this.repo.create(data));
+        }
+        catch (err) {
+            console.warn('NotificationsService.create default insert failed:', (err === null || err === void 0 ? void 0 : err.message) || err);
+            try {
+                const id = data.id || require('crypto').randomUUID();
+                const userId = data.userId || data.user_id || '';
+                const audience = data.audience || 'customer';
+                const type = data.type || 'general';
+                const title = data.title || '';
+                const message = data.message || '';
+                const relatedId = data.relatedId || data.related_id || null;
+                await this.repo.query(`INSERT INTO notifications (id, user_id, audience, type, title, message, related_id, read)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, false)
+           ON CONFLICT DO NOTHING`, [id, userId, audience, type, title, message, relatedId]);
+            }
+            catch (fallbackErr) {
+                console.warn('NotificationsService fallback insert also failed (non-fatal):', (fallbackErr === null || fallbackErr === void 0 ? void 0 : fallbackErr.message) || fallbackErr);
+            }
+            return null;
+        }
     }
     async markRead(id, userId) {
         const notification = await this.repo.findOneBy({ id, userId });

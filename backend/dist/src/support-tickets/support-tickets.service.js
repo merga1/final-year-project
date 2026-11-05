@@ -25,6 +25,23 @@ let SupportTicketsService = class SupportTicketsService {
         this.notifications = notifications;
         this.technicians = technicians;
     }
+    async onModuleInit() {
+        try {
+            await this.repo.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'support_tickets' AND column_name = 'subject'
+          ) THEN
+            ALTER TABLE support_tickets ALTER COLUMN subject DROP NOT NULL;
+          END IF;
+        END $$;
+      `).catch(() => { });
+        }
+        catch {
+        }
+    }
     findAll() {
         return this.repo.find({ order: { createdAt: 'DESC' } });
     }
@@ -50,24 +67,60 @@ let SupportTicketsService = class SupportTicketsService {
         return ticket;
     }
     create(data) {
-        const ticket = this.repo.create(data);
+        const ticket = this.repo.create({
+            ...data,
+            subject: data.subject || data.issue || data.description || 'Support Ticket',
+        });
         return this.repo.save(ticket);
     }
-    async createCustomerTicket(data) {
+    async createAdminTicket(data) {
         var _a;
-        const technician = await this.technicians.findLeastBusy();
+        let technicianName = data.technicianName;
+        if (data.technicianId && !technicianName) {
+            const tech = await this.technicians.findOne(data.technicianId).catch(() => null);
+            if (tech)
+                technicianName = tech.name;
+        }
+        const status = data.technicianId ? 'assigned' : (data.status || 'pending');
         const now = new Date();
         const ticket = this.repo.create({
             ...data,
-            status: technician ? 'assigned' : 'pending',
+            status,
+            subject: data.subject || data.issue || data.description || 'Alert Escalation',
+            technicianName: technicianName || null,
+            assignedAt: data.technicianId ? now : null,
+            statusHistory: JSON.stringify([{ status, at: now.toISOString(), note: 'Created by Admin from Alert dispatch' }]),
+        });
+        const saved = await this.repo.save(ticket);
+        if (data.technicianId) {
+            await this.technicians.update(data.technicianId, { currentJobCount: () => 'currentJobCount + 1' }).catch(() => { });
+            await this.notifications.create({
+                userId: data.technicianId,
+                audience: 'technician',
+                type: 'ticket_assignment',
+                title: 'New ticket assigned from Alert',
+                message: `${saved.type}: ${(_a = saved.description) !== null && _a !== void 0 ? _a : saved.issue}`,
+                relatedId: saved.id,
+            }).catch(() => { });
+        }
+        return saved;
+    }
+    async createCustomerTicket(data) {
+        var _a;
+        const technician = await this.technicians.findLeastBusy().catch(() => null);
+        const now = new Date();
+        const ticket = this.repo.create({
+            ...data,
+            status: technician ? 'in_progress' : 'pending',
+            subject: data.subject || data.issue || data.description || 'Customer Support',
             technicianId: technician === null || technician === void 0 ? void 0 : technician.id,
             technicianName: technician === null || technician === void 0 ? void 0 : technician.name,
             assignedAt: technician ? now : undefined,
-            statusHistory: JSON.stringify([{ status: technician ? 'assigned' : 'pending', at: now.toISOString() }]),
+            statusHistory: JSON.stringify([{ status: technician ? 'in_progress' : 'pending', at: now.toISOString() }]),
         });
         const saved = await this.repo.save(ticket);
         if (technician) {
-            await this.technicians.update(technician.id, { currentJobCount: technician.currentJobCount + 1 });
+            await this.technicians.update(technician.id, { currentJobCount: (technician.currentJobCount || 0) + 1 }).catch(() => { });
             await this.notifications.create({
                 userId: technician.id,
                 audience: 'technician',
@@ -75,15 +128,17 @@ let SupportTicketsService = class SupportTicketsService {
                 title: 'New ticket assigned',
                 message: `${saved.type}: ${(_a = saved.description) !== null && _a !== void 0 ? _a : saved.issue}`,
                 relatedId: saved.id,
-            });
-            await this.notifications.create({
-                userId: saved.customerId,
-                audience: 'customer',
-                type: 'ticket_assignment',
-                title: 'Technician assigned',
-                message: `${technician.name} is assigned to your support ticket.`,
-                relatedId: saved.id,
-            });
+            }).catch(() => { });
+            if (saved.customerId) {
+                await this.notifications.create({
+                    userId: saved.customerId,
+                    audience: 'customer',
+                    type: 'ticket_assignment',
+                    title: 'Technician assigned',
+                    message: `${technician.name} is assigned to your support ticket.`,
+                    relatedId: saved.id,
+                }).catch(() => { });
+            }
         }
         return saved;
     }
@@ -92,29 +147,125 @@ let SupportTicketsService = class SupportTicketsService {
         const before = await this.repo.findOneBy({ id });
         if (!before)
             throw new common_1.NotFoundException('Ticket not found');
-        await this.repo.update(id, data);
+        const updatePayload = {};
+        const reasonText = data.reassignReason || data.reason || data.notes;
+        if (reasonText) {
+            updatePayload.notes = reasonText;
+            let historyArr = [];
+            try {
+                if (before.statusHistory) {
+                    historyArr = JSON.parse(before.statusHistory);
+                    if (!Array.isArray(historyArr))
+                        historyArr = [{ entry: before.statusHistory }];
+                }
+            }
+            catch {
+                historyArr = [{ entry: before.statusHistory }];
+            }
+            historyArr.push({
+                status: data.status || before.status,
+                note: reasonText,
+                at: new Date().toISOString(),
+            });
+            updatePayload.statusHistory = JSON.stringify(historyArr);
+        }
+        if (data.technicianId !== undefined) {
+            updatePayload.technicianId = data.technicianId;
+            if (data.technicianId) {
+                try {
+                    const newTech = await this.technicians.findOne(data.technicianId).catch(() => null);
+                    if (newTech) {
+                        updatePayload.technicianName = newTech.name;
+                        updatePayload.assignedAt = new Date();
+                        if (before.technicianId !== data.technicianId) {
+                            await this.technicians.update(newTech.id, {
+                                currentJobCount: (newTech.currentJobCount || 0) + 1,
+                            }).catch(() => null);
+                        }
+                    }
+                }
+                catch (techErr) {
+                    console.warn('Could not load technician details:', techErr);
+                }
+                if (before.technicianId && before.technicianId !== data.technicianId) {
+                    try {
+                        const oldTech = await this.technicians.findOne(before.technicianId).catch(() => null);
+                        if (oldTech && (oldTech.currentJobCount || 0) > 0) {
+                            await this.technicians.update(oldTech.id, {
+                                currentJobCount: Math.max(0, oldTech.currentJobCount - 1),
+                            }).catch(() => null);
+                        }
+                    }
+                    catch {
+                    }
+                }
+            }
+            else {
+                updatePayload.technicianName = null;
+                updatePayload.assignedAt = null;
+            }
+        }
+        else if (data.technicianName !== undefined) {
+            updatePayload.technicianName = data.technicianName;
+        }
+        if (data.status !== undefined) {
+            updatePayload.status = data.status;
+            if (data.status === 'resolved' && !before.resolvedAt) {
+                updatePayload.resolvedAt = new Date();
+            }
+            if (data.status === 'accepted' && !before.acceptedAt) {
+                updatePayload.acceptedAt = new Date();
+            }
+        }
+        if (data.priority !== undefined)
+            updatePayload.priority = data.priority;
+        if (data.type !== undefined)
+            updatePayload.type = data.type;
+        if (data.issue !== undefined)
+            updatePayload.issue = data.issue;
+        if (data.subject !== undefined)
+            updatePayload.subject = data.subject;
+        if (data.description !== undefined)
+            updatePayload.description = data.description;
+        if (data.progressNotes !== undefined)
+            updatePayload.progressNotes = data.progressNotes;
+        if (data.rejectionReason !== undefined)
+            updatePayload.rejectionReason = data.rejectionReason;
+        if (data.customerAddress !== undefined)
+            updatePayload.customerAddress = data.customerAddress;
+        if (data.deviceId !== undefined)
+            updatePayload.deviceId = data.deviceId;
+        await this.repo.update(id, updatePayload);
         const after = await this.repo.findOneBy({ id });
         if (after && (data.technicianId || data.status) && after.customerId) {
-            await this.notifications.create({
-                userId: after.customerId,
-                audience: 'customer',
-                type: data.technicianId ? 'ticket_assignment' : 'ticket_status',
-                title: data.technicianId ? 'Ticket updated' : 'Ticket status updated',
-                message: data.technicianId
-                    ? `${(_a = after.technicianName) !== null && _a !== void 0 ? _a : 'A technician'} is assigned to your ticket.`
-                    : `Your ticket is now ${after.status}.`,
-                relatedId: after.id,
-            });
+            try {
+                await this.notifications.create({
+                    userId: after.customerId,
+                    audience: 'customer',
+                    type: data.technicianId ? 'ticket_assignment' : 'ticket_status',
+                    title: data.technicianId ? 'Ticket updated' : 'Ticket status updated',
+                    message: data.technicianId
+                        ? `${(_a = after.technicianName) !== null && _a !== void 0 ? _a : 'A technician'} is assigned to your ticket.`
+                        : `Your ticket is now ${after.status}.`,
+                    relatedId: after.id,
+                }).catch(() => { });
+            }
+            catch {
+            }
         }
         if ((after === null || after === void 0 ? void 0 : after.technicianId) && data.technicianId) {
-            await this.notifications.create({
-                userId: after.technicianId,
-                audience: 'technician',
-                type: 'ticket_assignment',
-                title: 'Ticket assigned',
-                message: `${after.type}: ${(_b = after.description) !== null && _b !== void 0 ? _b : after.issue}`,
-                relatedId: after.id,
-            });
+            try {
+                await this.notifications.create({
+                    userId: after.technicianId,
+                    audience: 'technician',
+                    type: 'ticket_assignment',
+                    title: 'Ticket assigned',
+                    message: `${after.type}: ${(_b = after.description) !== null && _b !== void 0 ? _b : after.issue}`,
+                    relatedId: after.id,
+                }).catch(() => { });
+            }
+            catch {
+            }
         }
         return after;
     }
@@ -154,7 +305,7 @@ let SupportTicketsService = class SupportTicketsService {
             ticket.status = 'closed';
         }
         else if (requested === 'accepted' || requested === 'in_progress') {
-            ticket.status = requested === 'accepted' ? 'accepted' : 'in_progress';
+            ticket.status = 'in_progress';
             ticket.acceptedAt = (_d = ticket.acceptedAt) !== null && _d !== void 0 ? _d : now;
             if ((_e = data.progressNotes) === null || _e === void 0 ? void 0 : _e.trim())
                 ticket.progressNotes = data.progressNotes.trim();
@@ -162,7 +313,15 @@ let SupportTicketsService = class SupportTicketsService {
         else {
             throw new common_1.BadRequestException('Unsupported ticket status transition');
         }
-        const history = ticket.statusHistory ? JSON.parse(ticket.statusHistory) : [];
+        let history = [];
+        try {
+            history = ticket.statusHistory ? JSON.parse(ticket.statusHistory) : [];
+            if (!Array.isArray(history))
+                history = [{ entry: ticket.statusHistory }];
+        }
+        catch {
+            history = [{ entry: ticket.statusHistory }];
+        }
         history.push({ status: ticket.status, at: now.toISOString(), by: technicianId });
         ticket.statusHistory = JSON.stringify(history);
         const saved = await this.repo.save(ticket);
@@ -173,7 +332,7 @@ let SupportTicketsService = class SupportTicketsService {
             title: 'Support ticket updated',
             message: `Your ticket is now ${saved.status}.`,
             relatedId: saved.id,
-        });
+        }).catch(() => { });
         return saved;
     }
     async decrementWorkload(technicianId, completed) {
@@ -186,6 +345,11 @@ let SupportTicketsService = class SupportTicketsService {
     }
     count() {
         return this.repo.count();
+    }
+    countOpen() {
+        return this.repo.createQueryBuilder('ticket')
+            .where('ticket.status NOT IN (:...done)', { done: ['resolved', 'closed', 'cancelled'] })
+            .getCount();
     }
     countByStatus(status) {
         return this.repo.countBy({ status: status });

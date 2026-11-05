@@ -44,7 +44,7 @@ let AppService = class AppService {
             this.devices.count(),
             this.devices.countByConnectivity('ONLINE'),
             this.tickets.count(),
-            this.tickets.countByStatus('open'),
+            this.tickets.countOpen(),
             this.alerts.countCriticalToday(),
             this.technicians.count(),
             this.technicians.findTop(5),

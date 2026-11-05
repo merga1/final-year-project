@@ -5,12 +5,16 @@
   --text-muted: #64748b;
   --text-sub: #94a3b8;
   --border-color: #e2e8f0;
-  --primary-blue: #0284c7;
-  --primary-blue-hover: #0369a1;
-  --active-nav-bg: #bae6fd;
-  --active-nav-text: #0369a1;
-  --avatar-bg: #7dd3fc;
-  --avatar-text: #0369a1;
+  /* AquaSense Brand Palette matching Logo (#1e6b52 Teal & #cc7a42 Warm Amber) */
+  --brand-primary: #1e6b52;
+  --brand-primary-hover: #16533f;
+  --brand-accent-amber: #cc7a42;
+  --primary-blue: #1e6b52;
+  --primary-blue-hover: #16533f;
+  --active-nav-bg: #e6f7f2;
+  --active-nav-text: #1e6b52;
+  --avatar-bg: #e6f7f2;
+  --avatar-text: #1e6b52;
   --radius-card: 16px;
   --radius-input: 10px;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -51,19 +55,26 @@ button, input, select {
 /* ── Sidebar ─────────────────────────────────────────────── */
 .sidebar-container {
   width: 240px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
   background: #ffffff;
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 20px 16px;
+  padding: 16px 14px;
   flex-shrink: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 50;
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px 24px 8px;
+  padding: 4px 8px 16px 8px;
+  flex-shrink: 0;
 }
 
 .brand-logo-wrap {
@@ -95,17 +106,19 @@ button, input, select {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
   font-weight: 600;
   color: #475569;
   transition: background 0.15s, color 0.15s;
@@ -129,8 +142,9 @@ button, input, select {
 
 .sidebar-footer {
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .user-profile-badge {
@@ -254,16 +268,18 @@ button, input, select {
 }
 
 .header-avatar-circle {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--avatar-bg);
-  color: var(--avatar-text);
+  background: linear-gradient(135deg, #1e6b52 0%, #2a8a6b 100%);
+  color: #ffffff;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+  box-shadow: 0 1px 3px rgba(30, 107, 82, 0.2);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
 /* ── Page Content Area ───────────────────────────────────── */
@@ -452,7 +468,7 @@ button, input, select {
 }
 
 .btn-primary-blue {
-  background: #0284c7;
+  background: #1e6b52;
   color: #ffffff;
   border: none;
   padding: 10px 18px;
@@ -467,7 +483,7 @@ button, input, select {
 }
 
 .btn-primary-blue:hover {
-  background: #0369a1;
+  background: #16533f;
 }
 
 .btn-outline-gray {
@@ -814,7 +830,7 @@ button, input, select {
 }
 
 .btn-change-password:hover {
-  background: #0284c7;
+  background: #16533f;
 }
 
 .dashboard-global-footer {
@@ -926,7 +942,7 @@ button, input, select {
 }
 
 .login-btn {
-  background: #0284c7;
+  background: #1e6b52;
   color: #ffffff;
   border: none;
   padding: 12px;
@@ -939,7 +955,7 @@ button, input, select {
 }
 
 .login-btn:hover {
-  background: #0369a1;
+  background: #16533f;
 }
 
 .login-hint {
@@ -986,8 +1002,9 @@ button, input, select {
 /* ── Role Badge ──────────────────────────────────────────── */
 .role-badge {
   display: inline-block;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: rgba(30, 107, 82, 0.12);
+  color: #1e6b52;
+  border: 1px solid rgba(30, 107, 82, 0.25);
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1011,12 +1028,20 @@ button, input, select {
   flex-direction: column;
   gap: 4px;
   border: 1px solid transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.stat-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.stat-chip-teal   { background: #f0fdf9; border-color: #a7f3d0; color: #1e6b52; }
+.stat-chip-teal .stat-chip-val { color: #1e6b52; }
 .stat-chip-red    { background: #fef2f2; border-color: #fecaca; }
 .stat-chip-amber  { background: #fffbeb; border-color: #fde68a; }
 .stat-chip-green  { background: #ecfdf5; border-color: #a7f3d0; }
-.stat-chip-blue   { background: #eff6ff; border-color: #bfdbfe; }
+.stat-chip-blue   { background: #f0fdf9; border-color: #99f6e4; color: #1e6b52; }
 .stat-chip-muted  { background: #f1f5f9; border-color: #e2e8f0; }
 
 .stat-chip-val {
@@ -1108,7 +1133,7 @@ button, input, select {
 
 /* ── Acknowledge Button ──────────────────────────────────── */
 .btn-ack {
-  background: #0284c7;
+  background: #1e6b52;
   color: #fff;
   border: none;
   padding: 5px 12px;
@@ -1120,7 +1145,7 @@ button, input, select {
   transition: background 0.15s;
 }
 
-.btn-ack:hover    { background: #0369a1; }
+.btn-ack:hover    { background: #16533f; }
 .btn-ack:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ── Filter Tabs ─────────────────────────────────────────── */
@@ -1146,7 +1171,7 @@ button, input, select {
 }
 
 .filter-tab:hover      { background: #f8fafc; color: #0f172a; }
-.filter-tab.active     { background: #0284c7; border-color: #0284c7; color: #ffffff; }
+.filter-tab.active     { background: #1e6b52; border-color: #1e6b52; color: #ffffff; }
 
 .filter-tab-count {
   background: rgba(0,0,0,0.08);
@@ -1232,7 +1257,7 @@ button, input, select {
 .link-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.82rem;
-  color: #0284c7;
+  color: #1e6b52;
   font-weight: 700;
   text-decoration: none;
 }
@@ -1251,7 +1276,7 @@ button, input, select {
   transition: color 0.15s;
 }
 
-.back-link:hover { color: #0284c7; }
+.back-link:hover { color: #1e6b52; }
 
 .detail-two-col {
   display: grid;
@@ -1490,8 +1515,9 @@ button, input, select {
 /* ── Role Badge ──────────────────────────────────────────── */
 .role-badge {
   display: inline-block;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: rgba(30, 107, 82, 0.12);
+  color: #1e6b52;
+  border: 1px solid rgba(30, 107, 82, 0.25);
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1535,7 +1561,7 @@ button, input, select {
   gap: 6px;
 }
 .tab-pill:hover       { background: #e2e8f0; color: #1e293b; }
-.tab-pill.active      { background: #ffffff; color: #2563eb; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.tab-pill.active      { background: #ffffff; color: #1e6b52; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 
 .tab-count-bubble {
   display: inline-flex;
@@ -1551,8 +1577,8 @@ button, input, select {
   color: #475569;
 }
 .tab-pill.active .tab-count-bubble {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #e6f7f2;
+  color: #1e6b52;
 }
 
 .filter-select {
@@ -1567,7 +1593,7 @@ button, input, select {
   outline: none;
   transition: border-color 0.15s;
 }
-.filter-select:focus  { border-color: #93c5fd; }
+.filter-select:focus  { border-color: #a7f3d0; }
 .filter-select:hover  { border-color: #cbd5e1; }
 
 .filter-clear-btn {
@@ -1585,7 +1611,7 @@ button, input, select {
 
 /* Clickable stat chip highlight */
 .active-chip {
-  box-shadow: 0 0 0 2px #2563eb55, 0 2px 8px rgba(37,99,235,0.10);
+  box-shadow: 0 0 0 2px rgba(30, 107, 82, 0.4), 0 2px 8px rgba(30, 107, 82, 0.12);
   transform: translateY(-1px);
 }
 
@@ -1711,22 +1737,34 @@ button, input, select {
   border-radius: 7px;
   font-size: 0.8rem;
   font-weight: 700;
-  background: #2563eb;
+  background: #1e6b52;
   color: #ffffff;
   cursor: pointer;
 }
-.btn-assign-action:hover:not(:disabled) { background: #1d4ed8; }
+.btn-assign-action:hover:not(:disabled) { background: #16533f; }
 .btn-assign-action:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* table link mono */
 .table-link-mono {
-  font-family: 'Courier New', Courier, monospace;
-  font-weight: 700;
-  color: #2563eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 600;
+  color: #1e6b52;
   text-decoration: none;
-  font-size: 0.87rem;
+  font-size: 0.82rem;
+  background: #f0fdf9;
+  border: 1px solid #a7f3d0;
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: inline-block;
+  letter-spacing: -0.01em;
+  transition: all 0.15s ease;
 }
-.table-link-mono:hover { text-decoration: underline; }
+.table-link-mono:hover {
+  background: #e6f7f2;
+  border-color: #1e6b52;
+  text-decoration: none;
+  color: #16533f;
+}
 
 
 /* ── Table Action Buttons ─────────────────────────────────── */
@@ -1734,18 +1772,18 @@ button, input, select {
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid #a7f3d0;
   border-radius: 7px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #2563eb;
-  background: #eff6ff;
+  color: #1e6b52;
+  background: #f0fdf9;
   text-decoration: none;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
-.btn-table-action:hover { background: #dbeafe; border-color: #93c5fd; }
+.btn-table-action:hover { background: #e6f7f2; border-color: #1e6b52; color: #16533f; }
 
 .btn-table-action-purple {
   display: inline-flex;
@@ -1763,3 +1801,153 @@ button, input, select {
   white-space: nowrap;
 }
 .btn-table-action-purple:hover { background: #ede9fe; border-color: #c4b5fd; }
+
+/* ── Overview Interactive Rows ────────────────────────────── */
+.overview-interactive-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease;
+}
+.overview-interactive-row:hover {
+  background: #f1f5f9;
+}
+.overview-interactive-row.alert-unack {
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+}
+.overview-interactive-row.alert-unack:hover {
+  background: #fef3c7;
+}
+.overview-interactive-row.alert-ack {
+  border-left: 3px solid transparent;
+}
+
+/* ── Header Avatar Link ── */
+.header-avatar-link {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+.header-avatar-link:hover .header-avatar-circle,
+.header-avatar-circle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(30, 107, 82, 0.35);
+  cursor: pointer;
+}
+
+/* ── Standardized Table Toolbar (Search, Filter, Pagination) ── */
+.table-toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.table-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 270px;
+  flex-grow: 0;
+}
+
+@media (max-width: 768px) {
+  .table-toolbar-right {
+    width: 100%;
+    min-width: 100%;
+  }
+}
+
+/* ── Standardized Reusable Modal Architecture ─────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 580px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2), 0 1px 3px rgba(15, 23, 42, 0.05);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  animation: modalFadeIn 0.16s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+}
+
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color 0.15s;
+}
+
+.modal-close-btn:hover {
+  color: #0f172a;
+}
+
+.modal-body {
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(85vh - 130px);
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+}

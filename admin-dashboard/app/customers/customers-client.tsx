@@ -2,6 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Pagination } from '../../components/pagination';
+
+function formatName(name: string | undefined | null): string {
+  if (!name) return 'Customer';
+  return name
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
 
 function StatusBadge({ status }: { status?: string }) {
   const s = (status ?? 'active').toLowerCase();
@@ -15,6 +26,8 @@ export function CustomersClient({ customers }: { customers: any[] }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [meterFilter, setMeterFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const getStatus = (c: any) => (c.accountStatus ?? c.status ?? 'active').toLowerCase();
 
@@ -32,11 +45,30 @@ export function CustomersClient({ customers }: { customers: any[] }) {
 
     if (!search) return true;
     const q = search.toLowerCase();
-    const name = (c.name ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`).toLowerCase();
+    const rawName = c.name ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`;
+    const formatted = formatName(rawName).toLowerCase();
     const email = (c.email ?? '').toLowerCase();
+    const phone = (c.phone ?? c.phoneNumber ?? '').toLowerCase();
     const deviceId = (c.meterId ?? c.deviceId ?? '').toLowerCase();
-    return name.includes(q) || email.includes(q) || deviceId.includes(q);
+    return formatted.includes(q) || email.includes(q) || phone.includes(q) || deviceId.includes(q);
   });
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleStatusFilter(s: string) {
+    setStatusFilter(s);
+    setPage(1);
+  }
+
+  function handleMeterFilter(m: string) {
+    setMeterFilter(m);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   return (
     <div className="section-container">
@@ -44,18 +76,20 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         <div>
           <h2 className="section-main-title">Customers</h2>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-            {filtered.length} of {customers.length} customers shown
+            {filtered.length} of {customers.length} registered customers shown
           </span>
         </div>
-        <Link href="/customers/new" className="btn-primary-blue">+ Add Customer</Link>
+        <Link href="/customers/new" className="btn-primary-blue">
+          + Add Customer
+        </Link>
       </div>
 
-      {/* Clickable Stat Chips */}
+      {/* Interactive KPI Stat Cards */}
       <div className="stats-strip">
         <div
           className={`stat-chip stat-chip-blue ${statusFilter === 'all' ? 'active-chip' : ''}`}
-          style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter('all')}
+          style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+          onClick={() => handleStatusFilter('all')}
           title="Click to view all customers"
         >
           <span className="stat-chip-val">{customers.length}</span>
@@ -63,8 +97,8 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         </div>
         <div
           className={`stat-chip stat-chip-green ${statusFilter === 'active' ? 'active-chip' : ''}`}
-          style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
+          style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+          onClick={() => handleStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
           title="Filter active customers"
         >
           <span className="stat-chip-val">{active}</span>
@@ -72,8 +106,8 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         </div>
         <div
           className={`stat-chip stat-chip-red ${statusFilter === 'suspended' ? 'active-chip' : ''}`}
-          style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'suspended' ? 'all' : 'suspended')}
+          style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+          onClick={() => handleStatusFilter(statusFilter === 'suspended' ? 'all' : 'suspended')}
           title="Filter suspended customers"
         >
           <span className="stat-chip-val">{suspended}</span>
@@ -81,8 +115,8 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         </div>
         <div
           className={`stat-chip stat-chip-amber ${statusFilter === 'pending' ? 'active-chip' : ''}`}
-          style={{ cursor: 'pointer' }}
-          onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
+          style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+          onClick={() => handleStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
           title="Filter pending activation"
         >
           <span className="stat-chip-val">{pending}</span>
@@ -90,117 +124,216 @@ export function CustomersClient({ customers }: { customers: any[] }) {
         </div>
       </div>
 
-      {/* Filter Controls Row */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        {/* Status Tabs */}
-        <div className="tab-pill-group">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'active', label: `Active (${active})` },
-            { id: 'suspended', label: `Suspended (${suspended})` },
-            { id: 'pending', label: `Pending (${pending})` },
-          ].map(t => (
+      {/* Standardized Table Toolbar (Filters & Search) */}
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          {/* Status Filter Tabs */}
+          <div className="filter-tabs">
+            {[
+              { id: 'all', label: 'All', count: customers.length },
+              { id: 'active', label: 'Active', count: active },
+              { id: 'suspended', label: 'Suspended', count: suspended },
+              { id: 'pending', label: 'Pending', count: pending },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`filter-tab ${statusFilter === t.id ? 'active' : ''}`}
+                onClick={() => handleStatusFilter(t.id)}
+              >
+                {t.label}
+                <span className="filter-tab-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Meter Assignment Filter */}
+          <select
+            value={meterFilter}
+            onChange={e => handleMeterFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 160 }}
+          >
+            <option value="all">All Meter Status</option>
+            <option value="metered">Assigned Meter Only</option>
+            <option value="unmetered">No Meter Linked</option>
+          </select>
+
+          {(statusFilter !== 'all' || meterFilter !== 'all' || search) && (
             <button
-              key={t.id}
-              className={`tab-pill ${statusFilter === t.id ? 'active' : ''}`}
-              onClick={() => setStatusFilter(t.id)}
+              type="button"
+              className="filter-clear-btn"
+              onClick={() => {
+                setStatusFilter('all');
+                setMeterFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
             >
-              {t.label}
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Meter Assignment Filter */}
-        <select
-          value={meterFilter}
-          onChange={e => setMeterFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 160 }}
-        >
-          <option value="all">All Meter Status</option>
-          <option value="metered">Assigned Meter Only</option>
-          <option value="unmetered">No Meter Linked</option>
-        </select>
-
-        {(statusFilter !== 'all' || meterFilter !== 'all' || search) && (
-          <button
-            className="filter-clear-btn"
-            onClick={() => { setStatusFilter('all'); setMeterFilter('all'); setSearch(''); }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="search-bar-wrap" style={{ marginBottom: 16 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search by customer name, email, or meter/device ID..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>x</button>
-        )}
-      </div>
-
-      <div className="table-card">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Device ID</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '32px' }}>
-                  No customers found matching current filters.
-                </td>
-              </tr>
+        {/* Search Bar */}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search customers..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>
+                &times;
+              </button>
             )}
-            {filtered.map(c => {
-              const name = c.name ?? (`${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || 'Customer');
-              const deviceId = c.meterId ?? c.deviceId ?? null;
-              const status = getStatus(c);
-              return (
-                <tr key={c.id}>
-                  <td style={{ fontWeight: 700, color: '#0f172a' }}>{name}</td>
-                  <td className="text-muted-sm">{c.email ?? '—'}</td>
-                  <td>
-                    {deviceId ? (
-                      <Link href={`/devices/${deviceId}`} className="table-link-mono">
-                        {deviceId}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-sm">—</span>
-                    )}
-                  </td>
-                  <td><StatusBadge status={status} /></td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <Link href={`/customers/${c.id}`} className="btn-table-action">
-                        View
-                      </Link>
-                      <Link href={`/support-tickets?customerId=${c.id}`} className="btn-table-action-purple">
-                        Tickets
-                      </Link>
-                    </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Customer Data Table */}
+      <div className="table-card">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Contact</th>
+                <th>Device ID</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '36px' }}>
+                    No customers found matching current filters.
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+              {paginated.map(c => {
+                const rawName = c.name ?? (`${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || 'Customer');
+                const displayName = formatName(rawName);
+                const initial = displayName.charAt(0).toUpperCase();
+                const deviceId = c.meterId ?? c.deviceId ?? null;
+                const status = getStatus(c);
+
+                return (
+                  <tr key={c.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            background: '#e0f2fe',
+                            color: '#0369a1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {initial}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <Link
+                            href={`/customers/${c.id}`}
+                            style={{
+                              fontWeight: 700,
+                              color: '#0f172a',
+                              textDecoration: 'none',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.color = '#1e6b52')}
+                            onMouseLeave={e => (e.currentTarget.style.color = '#0f172a')}
+                          >
+                            {displayName}
+                          </Link>
+                          {c.address && (
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {c.address}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: '0.85rem', color: '#334155' }}>
+                          {c.email ?? '—'}
+                        </span>
+                        {c.phone && (
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            {c.phone}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      {deviceId ? (
+                        <Link
+                          href={`/devices/${deviceId}`}
+                          className="table-link-mono"
+                        >
+                          {deviceId}
+                        </Link>
+                      ) : (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            fontSize: '0.75rem',
+                            color: '#94a3b8',
+                            background: '#f1f5f9',
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                          }}
+                        >
+                          No meter linked
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <StatusBadge status={status} />
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <Link href={`/customers/${c.id}`} className="btn-table-action">
+                          View
+                        </Link>
+                        <Link
+                          href={`/support-tickets?customerId=${c.id}`}
+                          className="btn-table-action-purple"
+                        >
+                          Tickets
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="customers"
+        />
       </div>
     </div>
   );

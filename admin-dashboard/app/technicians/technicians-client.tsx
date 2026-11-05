@@ -1,13 +1,41 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Pagination } from '../../components/pagination';
+
+function toTitleCase(str: string) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function getInitials(name: string) {
+  if (!name) return 'TC';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 function DutyBadge({ status }: { status: string }) {
   const on = (status ?? '').toLowerCase() === 'on_duty' || (status ?? '').toLowerCase() === 'onduty';
   return (
     <span className={`status-badge ${on ? 'status-ok' : 'status-muted'}`}>
+      <span
+        style={{
+          display: 'inline-block',
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          backgroundColor: on ? '#16a34a' : '#94a3b8',
+          marginRight: 6,
+        }}
+      />
       {on ? 'On Duty' : 'Off Duty'}
     </span>
   );
@@ -32,27 +60,51 @@ export function TechniciansClient({
   const [dutyFilter, setDutyFilter] = useState('all');
   const [jobFilter, setJobFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const onDutyCount = technicians.filter(t => (t.status ?? '').toLowerCase() === 'on_duty' || (t.status ?? '').toLowerCase() === 'onduty').length;
+  const onDutyCount = technicians.filter(
+    t => (t.status ?? '').toLowerCase() === 'on_duty' || (t.status ?? '').toLowerCase() === 'onduty'
+  ).length;
   const offDutyCount = technicians.length - onDutyCount;
-  const totalOpen = technicians.reduce((acc, t) => acc + (t.openJobsCount ?? 0), 0);
+  const totalOpen = technicians.reduce((acc, t) => acc + (t.openJobsCount ?? t.openTickets ?? 0), 0);
 
   const filtered = technicians.filter(t => {
     const isOn = (t.status ?? '').toLowerCase() === 'on_duty' || (t.status ?? '').toLowerCase() === 'onduty';
     if (dutyFilter === 'on_duty' && !isOn) return false;
     if (dutyFilter === 'off_duty' && isOn) return false;
 
-    const openJobs = t.openJobsCount ?? 0;
+    const openJobs = t.openJobsCount ?? t.openTickets ?? 0;
     if (jobFilter === 'has_jobs' && openJobs === 0) return false;
     if (jobFilter === 'available' && openJobs > 0) return false;
 
     if (!search) return true;
     const q = search.toLowerCase();
-    const name = (t.name ?? `${t.firstName ?? ''} ${t.lastName ?? ''}`).toLowerCase();
+    const rawName = t.name ?? `${t.firstName ?? ''} ${t.lastName ?? ''}`;
+    const name = rawName.toLowerCase();
     const email = (t.email ?? '').toLowerCase();
+    const phone = (t.phone ?? '').toLowerCase();
     const spec = (t.specialization ?? '').toLowerCase();
-    return name.includes(q) || email.includes(q) || spec.includes(q);
+    const zone = (t.zone ?? '').toLowerCase();
+    return name.includes(q) || email.includes(q) || phone.includes(q) || spec.includes(q) || zone.includes(q);
   });
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  function handleDutyFilter(d: string) {
+    setDutyFilter(d);
+    setPage(1);
+  }
+
+  function handleJobFilter(j: string) {
+    setJobFilter(j);
+    setPage(1);
+  }
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   async function handleToggleStatus(tech: any) {
     const isCurrentlyOn = (tech.status ?? '').toLowerCase() === 'on_duty' || (tech.status ?? '').toLowerCase() === 'onduty';
@@ -70,7 +122,7 @@ export function TechniciansClient({
       if (!res.ok) throw new Error('Failed');
       router.refresh();
     } catch {
-      setError('Could not update status. Please try again.');
+      setError('Could not update technician duty status. Please try again.');
     } finally {
       setTogglingId(null);
     }
@@ -92,7 +144,7 @@ export function TechniciansClient({
         <div
           className={`stat-chip stat-chip-blue ${dutyFilter === 'all' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setDutyFilter('all')}
+          onClick={() => handleDutyFilter('all')}
           title="Click to view all technicians"
         >
           <span className="stat-chip-val">{technicians.length}</span>
@@ -101,7 +153,7 @@ export function TechniciansClient({
         <div
           className={`stat-chip stat-chip-green ${dutyFilter === 'on_duty' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setDutyFilter(dutyFilter === 'on_duty' ? 'all' : 'on_duty')}
+          onClick={() => handleDutyFilter(dutyFilter === 'on_duty' ? 'all' : 'on_duty')}
           title="Filter On Duty technicians"
         >
           <span className="stat-chip-val">{onDutyCount}</span>
@@ -110,7 +162,7 @@ export function TechniciansClient({
         <div
           className={`stat-chip stat-chip-muted ${dutyFilter === 'off_duty' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setDutyFilter(dutyFilter === 'off_duty' ? 'all' : 'off_duty')}
+          onClick={() => handleDutyFilter(dutyFilter === 'off_duty' ? 'all' : 'off_duty')}
           title="Filter Off Duty technicians"
         >
           <span className="stat-chip-val">{offDutyCount}</span>
@@ -119,7 +171,7 @@ export function TechniciansClient({
         <div
           className={`stat-chip stat-chip-amber ${jobFilter === 'has_jobs' ? 'active-chip' : ''}`}
           style={{ cursor: 'pointer' }}
-          onClick={() => setJobFilter(jobFilter === 'has_jobs' ? 'all' : 'has_jobs')}
+          onClick={() => handleJobFilter(jobFilter === 'has_jobs' ? 'all' : 'has_jobs')}
           title="Filter technicians with active jobs"
         >
           <span className="stat-chip-val">{totalOpen}</span>
@@ -129,68 +181,79 @@ export function TechniciansClient({
 
       {error && <div className="form-error-alert">{error}</div>}
 
-      {/* Filter Row */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        <div className="tab-pill-group">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'on_duty', label: `On Duty (${onDutyCount})` },
-            { id: 'off_duty', label: `Off Duty (${offDutyCount})` },
-          ].map(t => (
+      {/* Standardized Table Toolbar (Filters & Search) */}
+      <div className="table-toolbar-row">
+        <div className="table-toolbar-left">
+          <div className="filter-tabs">
+            {[
+              { id: 'all', label: 'All', count: technicians.length },
+              { id: 'on_duty', label: 'On Duty', count: onDutyCount },
+              { id: 'off_duty', label: 'Off Duty', count: offDutyCount },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`filter-tab ${dutyFilter === t.id ? 'active' : ''}`}
+                onClick={() => handleDutyFilter(t.id)}
+              >
+                {t.label}
+                <span className="filter-tab-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={jobFilter}
+            onChange={e => handleJobFilter(e.target.value)}
+            className="filter-select"
+            style={{ minWidth: 160 }}
+          >
+            <option value="all">All Workloads</option>
+            <option value="has_jobs">Active Jobs &gt; 0</option>
+            <option value="available">Available (0 Jobs)</option>
+          </select>
+
+          {(dutyFilter !== 'all' || jobFilter !== 'all' || search) && (
             <button
-              key={t.id}
-              className={`tab-pill ${dutyFilter === t.id ? 'active' : ''}`}
-              onClick={() => setDutyFilter(t.id)}
+              type="button"
+              className="filter-clear-btn"
+              onClick={() => {
+                setDutyFilter('all');
+                setJobFilter('all');
+                setSearch('');
+                setPage(1);
+              }}
             >
-              {t.label}
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        <select
-          value={jobFilter}
-          onChange={e => setJobFilter(e.target.value)}
-          className="filter-select"
-          style={{ minWidth: 160 }}
-        >
-          <option value="all">All Workloads</option>
-          <option value="has_jobs">Active Jobs &gt; 0</option>
-          <option value="available">Available (0 Jobs)</option>
-        </select>
-
-        {(dutyFilter !== 'all' || jobFilter !== 'all' || search) && (
-          <button
-            className="filter-clear-btn"
-            onClick={() => { setDutyFilter('all'); setJobFilter('all'); setSearch(''); }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="search-bar-wrap" style={{ marginBottom: 16 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search by name, email, or specialization..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="search-clear" onClick={() => setSearch('')}>x</button>
-        )}
+        <div className="table-toolbar-right">
+          <div className="search-bar-wrap" style={{ width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search technicians..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => handleSearch('')}>×</button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="table-card">
         <table className="data-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
+              <th>Technician</th>
+              <th>Contact</th>
               <th>Specialization</th>
               <th>Status</th>
               <th>Open Jobs</th>
@@ -205,20 +268,104 @@ export function TechniciansClient({
                 </td>
               </tr>
             )}
-            {filtered.map(tech => {
+            {paginated.map(tech => {
               const isOn = (tech.status ?? '').toLowerCase() === 'on_duty' || (tech.status ?? '').toLowerCase() === 'onduty';
-              const name = tech.name ?? (`${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim() || 'Technician');
-              const openJobs = tech.openJobsCount ?? 0;
+              const rawName = tech.name ?? (`${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim() || 'Technician');
+              const displayName = toTitleCase(rawName);
+              const initials = getInitials(displayName);
+              const openJobs = tech.openJobsCount ?? tech.openTickets ?? 0;
+              const hasSpec = tech.specialization && tech.specialization.toLowerCase() !== 'no specialization';
+
               return (
                 <tr key={tech.id}>
-                  <td style={{ fontWeight: 700, color: '#0f172a' }}>{name}</td>
-                  <td className="text-muted-sm">{tech.email ?? '—'}</td>
-                  <td className="text-muted-sm">{tech.specialization ?? 'General Field Service'}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                          border: '1.5px solid #bfdbfe',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          color: '#1d4ed8',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initials}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                          {displayName}
+                        </div>
+                        {tech.zone && (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              color: '#64748b',
+                              background: '#f1f5f9',
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {tech.zone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={{ fontSize: '0.85rem', color: '#1e293b' }}>
+                        {tech.email || '—'}
+                      </span>
+                      {tech.phone ? (
+                        <span style={{ fontSize: '0.78rem', color: '#64748b', fontFamily: 'ui-monospace, monospace' }}>
+                          {tech.phone}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No phone listed</span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    {hasSpec ? (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          color: '#334155',
+                        }}
+                      >
+                        {tech.specialization}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                        General Field Service
+                      </span>
+                    )}
+                  </td>
                   <td><DutyBadge status={tech.status} /></td>
                   <td>
-                    <span className={`count-badge ${openJobs > 0 ? 'count-badge-amber' : 'count-badge-muted'}`}>
-                      {openJobs}
-                    </span>
+                    <Link
+                      href={`/support-tickets?techId=${tech.id}`}
+                      style={{ textDecoration: 'none' }}
+                      title={`View ${displayName}'s assigned tickets`}
+                    >
+                      <span className={`count-badge ${openJobs > 0 ? 'count-badge-amber' : 'count-badge-muted'}`} style={{ cursor: 'pointer' }}>
+                        {openJobs}
+                      </span>
+                    </Link>
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -232,7 +379,7 @@ export function TechniciansClient({
                       <Link
                         href={`/support-tickets?techId=${tech.id}`}
                         className="btn-table-action-purple"
-                        title={`View ${name}'s tickets`}
+                        title={`View ${displayName}'s tickets`}
                       >
                         Tickets
                       </Link>
@@ -243,6 +390,15 @@ export function TechniciansClient({
             })}
           </tbody>
         </table>
+
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="technicians"
+        />
       </div>
     </div>
   );

@@ -16,5 +16,4 @@ export const navItems: NavItem[] = [
   { href: '/billing',           label: 'Billing',          iconName: 'billing' },
   { href: '/payments',          label: 'Payments',         iconName: 'payments' },
   { href: '/audit',             label: 'Audit Log',        iconName: 'audit' },
-  { href: '/profile',           label: 'Profile',          iconName: 'profile' },
 ];

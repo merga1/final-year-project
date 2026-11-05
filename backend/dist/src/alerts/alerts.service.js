@@ -37,9 +37,7 @@ let AlertsService = class AlertsService {
         return this.repo.countBy({ acknowledged: false });
     }
     countCriticalToday() {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return this.repo.count({ where: { severity: 'critical', createdAt: (0, typeorm_2.MoreThan)(today) } });
+        return this.repo.count({ where: { severity: 'critical', acknowledged: false } });
     }
     async acknowledge(id, adminName) {
         await this.repo.update(id, { acknowledged: true, acknowledgedBy: adminName });

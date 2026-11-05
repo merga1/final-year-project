@@ -1,0 +1,106 @@
+name: Auto Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'admin-dashboard/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if backend changed
+        id: check_changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            CHANGED=$(git diff --name-only HEAD^ HEAD | grep -E '^backend/' || true)
+            if [ -n "$CHANGED" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies & build backend
+        if: steps.check_changes.outputs.changed == 'true'
+        working-directory: backend
+        run: |
+          npm ci || npm install
+          npm run build
+
+      - name: Deploy backend to Vercel
+        if: steps.check_changes.outputs.changed == 'true'
+        working-directory: backend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
+        run: |
+          CLEAN_TOKEN=$(printf '%s' "$VERCEL_TOKEN" | sed $'s/\xef\xbb\xbf//g' | tr -d '\r\n[:space:]')
+          npx vercel deploy --prod --yes --token="$CLEAN_TOKEN"
+
+  deploy-frontend:
+    name: Deploy Admin Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if admin-dashboard changed
+        id: check_changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            CHANGED=$(git diff --name-only HEAD^ HEAD | grep -E '^admin-dashboard/' || true)
+            if [ -n "$CHANGED" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies & build frontend
+        if: steps.check_changes.outputs.changed == 'true'
+        working-directory: admin-dashboard
+        run: |
+          npm ci || npm install
+          npm run build
+
+      - name: Deploy admin-dashboard to Vercel
+        if: steps.check_changes.outputs.changed == 'true'
+        working-directory: admin-dashboard
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+        run: |
+          CLEAN_TOKEN=$(printf '%s' "$VERCEL_TOKEN" | sed $'s/\xef\xbb\xbf//g' | tr -d '\r\n[:space:]')
+          npx vercel deploy --prod --yes --token="$CLEAN_TOKEN"

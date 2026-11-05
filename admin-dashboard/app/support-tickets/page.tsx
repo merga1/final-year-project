@@ -4,6 +4,16 @@ import { getSupportTickets, getTechnicians, getCustomers } from '../../lib/admin
 import { getServerToken } from '../../lib/auth';
 import { TicketsClient } from './tickets-client';
 
+function toTitleCase(str: string) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 export default async function SupportTicketsPage({
   searchParams,
 }: {
@@ -21,10 +31,32 @@ export default async function SupportTicketsPage({
       getCustomers(token).catch(() => []),
     ]);
 
+    const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
+    const techMap = new Map((technicians || []).map((t: any) => [t.id, t]));
+
+    const enriched = (tickets || []).map((ticket: any) => {
+      const cust = ticket.customerId ? customerMap.get(ticket.customerId) : null;
+      let realCustName = cust?.name || (cust?.firstName ? `${cust.firstName} ${cust.lastName}` : null);
+      if (!realCustName && ticket.customerName && ticket.customerName !== 'Customer') {
+        realCustName = ticket.customerName;
+      }
+
+      const tech = ticket.technicianId ? techMap.get(ticket.technicianId) : null;
+      const realTechName = tech
+        ? (tech.name ?? `${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim())
+        : ticket.technicianName;
+
+      return {
+        ...ticket,
+        customerName: realCustName ? toTitleCase(realCustName) : 'Customer',
+        technicianName: realTechName,
+      };
+    });
+
     return (
       <AdminShell currentPath="/support-tickets" title="Support Tickets">
         <TicketsClient
-          tickets={tickets}
+          tickets={enriched}
           technicians={technicians}
           customers={customers}
           token={token}

@@ -30,7 +30,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         <div style={{ padding: 40, textAlign: 'center' }}>
           <h2 style={{ color: '#dc2626', marginBottom: 12 }}>Failed to load customer</h2>
           <p style={{ color: '#64748b', marginBottom: 24 }}>{e.message ?? 'An unexpected error occurred.'}</p>
-          <a href="/customers" style={{ color: '#2563eb', textDecoration: 'underline' }}>← Back to Customers</a>
+          <a href="/customers" style={{ color: '#1e6b52', textDecoration: 'underline' }}>← Back to Customers</a>
         </div>
       </AdminShell>
     );

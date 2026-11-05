@@ -18,6 +18,13 @@ export class SupportTicketsController {
     return this.service.findAll();
   }
 
+  @Post('api/admin/support-tickets')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  createAdminTicket(@Body() body: any) {
+    return this.service.createAdminTicket(body);
+  }
+
   @Get('api/admin/support-tickets/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

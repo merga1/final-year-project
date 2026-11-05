@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -14,6 +14,13 @@ export class BillingController {
   @Roles('admin')
   findAll() {
     return this.service.findAll();
+  }
+
+  @Patch('api/admin/billing/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  update(@Param('id') id: string, @Body() body: any) {
+    return this.service.update(id, body);
   }
 
   @Get('api/mobile/bills')

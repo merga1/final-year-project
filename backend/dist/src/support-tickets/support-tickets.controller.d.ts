@@ -3,6 +3,7 @@ export declare class SupportTicketsController {
     private readonly service;
     constructor(service: SupportTicketsService);
     findAll(): Promise<import("./support-ticket.entity").SupportTicket[]>;
+    createAdminTicket(body: any): Promise<import("./support-ticket.entity").SupportTicket>;
     findOne(id: string): Promise<import("./support-ticket.entity").SupportTicket>;
     update(id: string, body: any): Promise<import("./support-ticket.entity").SupportTicket | null>;
     getMobileTickets(user: any): Promise<import("./support-ticket.entity").SupportTicket[]>;

@@ -23,7 +23,7 @@ let CustomersService = class CustomersService {
         this.repo = repo;
     }
     findAll() {
-        return this.repo.find({ order: { createdAt: 'DESC' } });
+        return this.repo.find({ where: { role: (0, typeorm_2.Not)('admin') }, order: { createdAt: 'DESC' } });
     }
     async findOne(id) {
         const customer = await this.repo.findOneBy({ id });
@@ -79,10 +79,10 @@ let CustomersService = class CustomersService {
         return this.findOne(id);
     }
     count() {
-        return this.repo.count();
+        return this.repo.count({ where: { role: (0, typeorm_2.Not)('admin') } });
     }
     countByStatus(status) {
-        return this.repo.countBy({ accountStatus: status });
+        return this.repo.countBy({ role: (0, typeorm_2.Not)('admin'), accountStatus: status });
     }
 };
 exports.CustomersService = CustomersService;

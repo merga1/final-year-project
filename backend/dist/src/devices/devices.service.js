@@ -36,6 +36,12 @@ let DevicesService = class DevicesService {
         return this.repo.findOneBy({ meterId });
     }
     async create(data) {
+        if (data.meterId) {
+            const existing = await this.findByMeterId(data.meterId);
+            if (existing) {
+                throw new common_1.ConflictException(`Device with Meter ID '${data.meterId}' already exists`);
+            }
+        }
         const device = this.repo.create(data);
         return this.repo.save(device);
     }

@@ -392,8 +392,8 @@ async function seed() {
   // Seed Bills & Payments
   const billRepo = ds.getRepository(Bill);
   await billRepo.save([
-    billRepo.create({ customerId: c1.id, customerName: c1.name, usageLiters: 4800, amountEtb: 420, status: 'pending', periodStart: '2026-08-01', periodEnd: '2026-08-31', dueDate: '2026-09-19' }),
-    billRepo.create({ customerId: c2.id, customerName: c2.name, usageLiters: 6200, amountEtb: 544, status: 'paid', periodStart: '2026-08-01', periodEnd: '2026-08-31', dueDate: '2026-09-11' }),
+    billRepo.create({ customerId: c1.id, customerName: c1.name, usageLiters: 4800, amountEtb: 420, status: 'pending', periodStart: '2026-08-01', periodEnd: '2026-08-31', dueDate: '2026-09-05' }),
+    billRepo.create({ customerId: c2.id, customerName: c2.name, usageLiters: 6200, amountEtb: 544, status: 'paid', periodStart: '2026-08-01', periodEnd: '2026-08-31', dueDate: '2026-09-05' }),
   ]);
 
   const paymentRepo = ds.getRepository(Payment);

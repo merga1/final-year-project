@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Device } from './device.entity';
@@ -28,6 +28,12 @@ export class DevicesService {
   }
 
   async create(data: Partial<Device>) {
+    if (data.meterId) {
+      const existing = await this.findByMeterId(data.meterId);
+      if (existing) {
+        throw new ConflictException(`Device with Meter ID '${data.meterId}' already exists`);
+      }
+    }
     const device = this.repo.create(data);
     return this.repo.save(device);
   }
