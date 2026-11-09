@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Customer } from './customer.entity';
+import { DevicesService } from '../devices/devices.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 
@@ -11,6 +12,7 @@ export class CustomersService {
   constructor(
     @InjectRepository(Customer)
     private readonly repo: Repository<Customer>,
+    private readonly devices: DevicesService,
   ) {}
 
   findAll() {
@@ -39,6 +41,12 @@ export class CustomersService {
   async updatePasswordHash(id: string, passwordHash: string) {
     await this.findOne(id);
     await this.repo.update(id, { passwordHash });
+  }
+
+  /** Used to roll back a pending self-registration if the request fails. */
+  async remove(id: string) {
+    await this.findOne(id);
+    await this.repo.delete(id);
   }
 
   async createFromAdmin(dto: CreateCustomerDto) {
@@ -78,7 +86,30 @@ export class CustomersService {
       const taken = await this.findByEmail(data.email);
       if (taken && taken.id !== id) throw new ConflictException('Email already registered');
     }
-    if (dto.meterId !== undefined) data.meterId = dto.meterId.trim() || undefined;
+    if (dto.meterId !== undefined) {
+      const newMeterId = dto.meterId.trim();
+      if (newMeterId) {
+        const device = await this.devices.findByMeterId(newMeterId);
+        if (!device) {
+          throw new BadRequestException(
+            `Water meter ${newMeterId} not found. Register the device first.`,
+          );
+        }
+        const linked = await this.findByMeterId(newMeterId);
+        if (linked && linked.id !== id) {
+          throw new ConflictException('This water meter is already linked to another account');
+        }
+        if (existing.meterId && existing.meterId !== newMeterId) {
+          await this.devices.unassignCustomer(existing.meterId);
+        }
+        await this.devices.updateByMeterId(newMeterId, { customerId: id });
+        // Linking a meter is the admin's approval action.
+        if (dto.accountStatus === undefined) data.accountStatus = 'active';
+      } else if (existing.meterId) {
+        await this.devices.unassignCustomer(existing.meterId);
+      }
+      data.meterId = newMeterId || undefined;
+    }
     if (Object.keys(data).length) await this.repo.update(id, data);
     return this.findOne(id);
   }

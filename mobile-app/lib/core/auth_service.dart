@@ -16,15 +16,21 @@ class AuthService {
   AuthService(this._client, {FlutterSecureStorage? secureStorage})
       : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
-  Future<bool> login(String email, String password, {bool rememberMe = true}) async {
+  Future<bool> login(
+    String email,
+    String password, {
+    bool rememberMe = true,
+    String? role,
+  }) async {
     if (email.trim().isEmpty || !email.contains('@')) {
       throw Exception('Enter a valid email address');
     }
     if (password.isEmpty) throw Exception('Enter your password');
 
-    final data = await _client.post('/auth/login', {
+    final data = await _client.post('/auth/login', <String, dynamic>{
       'email': email.trim(),
       'password': password,
+      if (role != null) 'role': role,
     });
     final token = data['accessToken'] as String;
     final user = Map<String, dynamic>.from(data['user'] as Map);
@@ -82,23 +88,24 @@ class AuthService {
     await _client.post('/auth/forgot-password', {'email': email.trim()});
   }
 
-  Future<void> submitMeterRequest({
+  /// Creates a pending customer account and queues a water-meter request.
+  /// No session is stored; the customer logs in after admin approval.
+  Future<void> registerMeterRequest({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
     required String address,
     required String phone,
     String? details,
   }) async {
-    final description = [
-      'Installation address: ${address.trim()}',
-      'Contact phone: ${phone.trim()}',
-      if (details != null && details.trim().isNotEmpty)
-        'Additional details: ${details.trim()}',
-    ].join('\n');
-    await _client.post('/api/mobile/support-tickets', {
-      'issue': 'Request a new water meter',
-      'type': 'Water Meter Request',
-      'priority': 'Medium',
-      'description': description,
-      'customerAddress': address.trim(),
+    await _client.post('/auth/register-meter-request', {
+      'name': '${firstName.trim()} ${lastName.trim()}',
+      'email': email.trim(),
+      'password': password,
+      'address': address.trim(),
+      'phone': phone.trim(),
+      if (details != null && details.trim().isNotEmpty) 'details': details.trim(),
     });
   }
 

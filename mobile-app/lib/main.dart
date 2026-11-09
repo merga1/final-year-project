@@ -6,6 +6,7 @@ import 'core/api_client.dart';
 import 'core/auth_service.dart';
 import 'models/mobile_repository.dart';
 import 'screens/login_screen.dart';
+import 'screens/role_select_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/support_screen.dart';
@@ -62,6 +63,9 @@ class _AppRootState extends State<AppRoot> {
   bool _loggedIn = false;
   String _role = 'customer';
 
+  /// Which portal the user picked on the role selection screen.
+  String? _portalRole;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +99,7 @@ class _AppRootState extends State<AppRoot> {
       setState(() {
         _loggedIn = false;
         _role = 'customer';
+        _portalRole = null;
       });
     });
   }
@@ -106,11 +111,20 @@ class _AppRootState extends State<AppRoot> {
     }
 
     if (!_loggedIn) {
+      final portalRole = _portalRole;
+      if (portalRole == null) {
+        return RoleSelectScreen(
+          onSelectRole: (role) => setState(() => _portalRole = role),
+        );
+      }
       return LoginScreen(
-          authService: _auth,
-          onLogin: () {
-            _onLogin();
-          });
+        authService: _auth,
+        portalRole: portalRole,
+        onBack: () => setState(() => _portalRole = null),
+        onLogin: () {
+          _onLogin();
+        },
+      );
     }
 
     if (_role == 'technician') {

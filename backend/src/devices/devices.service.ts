@@ -60,6 +60,16 @@ export class DevicesService {
     return this.repo.findOneBy({ meterId });
   }
 
+  /** Removes the customer link from a meter (e.g. when an admin moves it). */
+  async unassignCustomer(meterId: string) {
+    await this.repo
+      .createQueryBuilder()
+      .update(Device)
+      .set({ customerId: null } as any)
+      .where('meterId = :meterId', { meterId })
+      .execute();
+  }
+
   /**
    * Demo behaviour: the valve command is recorded and confirmed immediately.
    * With real hardware the command would stay `pending` until the meter acknowledges it.

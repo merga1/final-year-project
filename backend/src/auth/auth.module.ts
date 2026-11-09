@@ -7,6 +7,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { CustomersModule } from '../customers/customers.module';
 import { TechniciansModule } from '../technicians/technicians.module';
 import { DevicesModule } from '../devices/devices.module';
+import { SupportTicketsModule } from '../support-tickets/support-tickets.module';
 import { getJwtSecret, JWT_EXPIRES_IN_SECONDS } from '../config/env';
 
 @Module({
@@ -15,6 +16,7 @@ import { getJwtSecret, JWT_EXPIRES_IN_SECONDS } from '../config/env';
     CustomersModule,
     TechniciansModule,
     DevicesModule,
+    SupportTicketsModule,
     JwtModule.register({
       secret: getJwtSecret(),
       signOptions: { expiresIn: JWT_EXPIRES_IN_SECONDS },

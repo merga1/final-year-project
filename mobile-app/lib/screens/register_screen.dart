@@ -8,10 +8,17 @@ class RegisterScreen extends StatefulWidget {
     super.key,
     required this.authService,
     required this.onRegistered,
+    required this.onMeterRequestSubmitted,
   });
 
   final AuthService authService;
+
+  /// Called when the customer created an account with a meter number and can
+  /// go straight to the customer dashboard.
   final VoidCallback onRegistered;
+
+  /// Called after a customer without a meter submits the meter request.
+  final VoidCallback onMeterRequestSubmitted;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -52,6 +59,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    // A customer without a meter does not get an account yet. The account is
+    // created together with the meter request in step 2, so abandoning the
+    // request never leaves an unusable half-registered account behind.
+    if (_hasMeter == false) {
+      setState(() {
+        _requestMode = true;
+        _error = null;
+      });
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -63,14 +81,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _email.text,
         password: _password.text,
         address: _address.text.trim(),
-        meterId: _hasMeter == true ? _meterId.text.trim() : null,
+        meterId: _meterId.text.trim(),
       );
-
-      if (_hasMeter == true) {
-        widget.onRegistered();
-      } else if (mounted) {
-        setState(() => _requestMode = true);
-      }
+      widget.onRegistered();
     } catch (error) {
       if (mounted) {
         setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
@@ -95,12 +108,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _error = null;
     });
     try {
-      await widget.authService.submitMeterRequest(
+      await widget.authService.registerMeterRequest(
+        firstName: _first.text,
+        lastName: _last.text,
+        email: _email.text,
+        password: _password.text,
         address: _address.text,
         phone: _phone.text,
         details: _requestDetails.text,
       );
-      if (mounted) widget.onRegistered();
+      if (mounted) widget.onMeterRequestSubmitted();
     } catch (error) {
       if (mounted) {
         setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
@@ -141,7 +158,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(_requestMode ? 'Submit meter request' : 'Create account'),
+                  : Text(_requestMode
+                      ? 'Submit meter request'
+                      : _hasMeter == false
+                          ? 'Continue to meter request'
+                          : 'Create account'),
             ),
           ],
         ),
@@ -154,7 +175,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         const Text(
-            'Create your account, then we’ll open the right dashboard for you.'),
+            'Create your customer account. If you already have a water meter number, we will link it and open your dashboard immediately.'),
         const SizedBox(height: 20),
         Row(children: [
           Expanded(child: _field(_first, 'First name')),
@@ -178,7 +199,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _meterChoice(
           value: false,
           title: 'No, I need a water meter',
-          subtitle: 'Create the account and open a meter request form.',
+          subtitle:
+              'Create the account, then send a request to the administrator.',
         ),
         if (_hasMeter == true) ...[
           const SizedBox(height: 12),
@@ -193,7 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         const Text(
-            'Send your installation address and contact number to the admin team. An admin will review the request and choose a technician.'),
+            'Step 2 of 2 — send your installation details to the administrator. After the meter is approved you can log in with your email and password.'),
         const SizedBox(height: 20),
         _field(_address, 'Installation address'),
         const SizedBox(height: 12),

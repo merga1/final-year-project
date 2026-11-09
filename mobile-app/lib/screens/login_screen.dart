@@ -9,10 +9,16 @@ class LoginScreen extends StatefulWidget {
     super.key,
     required this.authService,
     required this.onLogin,
+    required this.portalRole,
+    required this.onBack,
   });
 
   final AuthService authService;
   final VoidCallback onLogin;
+
+  /// `customer` or `technician` — chosen on the previous screen.
+  final String portalRole;
+  final VoidCallback onBack;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -26,6 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _rememberMe = true;
 
+  bool get _isTechnician => widget.portalRole == 'technician';
+
+  String get _roleLabel => _isTechnician ? 'Technician' : 'Customer';
+
   Future<void> _login() async {
     setState(() {
       _loading = true;
@@ -36,7 +46,24 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
         rememberMe: _rememberMe,
+        role: widget.portalRole,
       );
+
+      // Extra safety in case an older backend ignores the requested role.
+      final user = await widget.authService.getStoredUser();
+      final actualRole = user['role'] ?? 'customer';
+      if (actualRole != widget.portalRole) {
+        await widget.authService.logout();
+        setState(() {
+          _error = actualRole == 'technician'
+              ? 'This is a technician account. Go back and choose Technician.'
+              : actualRole == 'admin'
+                  ? 'Administrator accounts use the web dashboard.'
+                  : 'This is a customer account. Go back and choose Customer.';
+        });
+        return;
+      }
+
       widget.onLogin();
     } catch (e) {
       setState(() {
@@ -45,6 +72,33 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _showMeterRequestSubmitted() async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Color(0xFF2E8B57)),
+            SizedBox(width: 8),
+            Expanded(child: Text('Meter request submitted')),
+          ],
+        ),
+        content: const Text(
+          'Your customer account has been created and your request is now with '
+          'the administrator.\n\nOnce a water meter is approved and linked to '
+          'your account, log in here with your email and password to open your '
+          'customer dashboard.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Back to login'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _forgotPassword() async {
@@ -172,7 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black87),
-          onPressed: () {},
+          onPressed: widget.onBack,
         ),
         actions: [
           IconButton(
@@ -198,10 +252,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 28),
-              const Text(
-                'Login',
+              Text(
+                '$_roleLabel Login',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF0F172A),
@@ -209,7 +263,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Customers and technicians use the same app. Your role opens the right dashboard.',
+                _isTechnician
+                    ? 'Sign in to see the field jobs assigned to you.'
+                    : 'Sign in to check your usage, bills and meter details.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
@@ -383,40 +439,46 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // Don't have an account? Sign up
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Don't have an account? ",
-                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => RegisterScreen(
-                            authService: widget.authService,
-                            onRegistered: () {
-                              Navigator.pop(context);
-                              widget.onLogin();
-                            },
+              // Customer self-registration. Technician accounts are created by
+              // an administrator and cannot be self-registered from the app.
+              if (!_isTechnician)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Don't have an account? ",
+                      style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RegisterScreen(
+                              authService: widget.authService,
+                              onRegistered: () {
+                                Navigator.pop(context);
+                                widget.onLogin();
+                              },
+                              onMeterRequestSubmitted: () {
+                                Navigator.pop(context);
+                                _showMeterRequestSubmitted();
+                              },
+                            ),
                           ),
+                        );
+                      },
+                      child: const Text(
+                        'Sign up',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0284C7),
                         ),
-                      );
-                    },
-                    child: const Text(
-                      'Sign up',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0284C7),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
               const SizedBox(height: 48),
 
