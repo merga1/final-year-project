@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { SupportTicket } from './support-ticket.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TechniciansService } from '../technicians/technicians.service';
@@ -41,9 +41,22 @@ export class SupportTicketsService {
     return ticket;
   }
 
+  /**
+   * The mobile dashboard groups several raw statuses under one chip:
+   * "Assigned" = assigned/open/pending, "Accepted" = accepted/in_progress.
+   * This matches the counts returned by `getTechnicianHome`.
+   */
+  private statusGroup(status?: string): string[] | undefined {
+    if (!status) return undefined;
+    if (status === 'assigned') return ['assigned', 'open', 'pending'];
+    if (status === 'accepted') return ['accepted', 'in_progress'];
+    return [status];
+  }
+
   findByTechnician(technicianId: string, status?: string) {
+    const group = this.statusGroup(status);
     return this.repo.find({
-      where: { technicianId, ...(status ? { status: status as any } : {}) },
+      where: { technicianId, ...(group ? { status: In(group) as any } : {}) },
       order: { createdAt: 'DESC' },
     });
   }

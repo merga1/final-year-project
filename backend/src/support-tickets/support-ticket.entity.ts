@@ -1,6 +1,10 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn,
 } from 'typeorm';
+import { getDatabaseUrl } from '../config/env';
+
+// PostgreSQL uses `timestamp`; the local SQLite fallback needs `datetime`.
+const timestampType: 'timestamp' | 'datetime' = getDatabaseUrl() ? 'timestamp' : 'datetime';
 
 export type TicketPriority = 'High' | 'Medium' | 'Low';
 export type TicketStatus = 'pending' | 'open' | 'assigned' | 'accepted' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
@@ -58,7 +62,7 @@ export class SupportTicket {
   @Column({ nullable: true })
   deviceId: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: timestampType, nullable: true })
   assignedAt: Date | null;
 
   @Column({ nullable: true })
