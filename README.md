@@ -6,7 +6,7 @@ This VS Code workspace organizes the project into two active user-facing apps an
 - `admin-dashboard`: Next.js admin web dashboard
 - `backend`: Nest.js API and device ingestion server
 
-`technician-app` is the earlier standalone technician client. The current combined mobile experience is in `mobile-app`.
+The earlier standalone `technician-app` client has been retired; the combined mobile experience is in `mobile-app`.
 
 The web dashboard and API are separate Node.js applications, so they intentionally
 keep separate `package.json` and lock files. The Flutter mobile app has its own
@@ -72,6 +72,13 @@ flutter run
 ```
 
 The seeded technician account is `john.smith@tech.water` / `technician123` after running `npm run seed` in `backend`.
+
+The mobile app opens with a **Customer / Technician** choice:
+
+- **Technician** → technician login → technician dashboard with their assigned jobs.
+- **Customer with credentials** → customer login → customer dashboard.
+- **Customer with an existing meter, first time in the app** → Sign up → “Yes, I have a meter number” → enter the meter number → customer dashboard.
+- **Customer without a meter** → Sign up → “No, I need a water meter” → meter request form. The account stays **pending** until an admin registers a device and links it to the customer. After that, the customer logs in normally.
 
 If the mobile app runs on an Android emulator, the default backend base URL is already set to `http://10.0.2.2:4000`.
 For another device or platform, pass a custom backend URL:

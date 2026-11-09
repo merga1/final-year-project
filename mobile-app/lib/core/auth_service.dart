@@ -42,8 +42,11 @@ class AuthService {
     await prefs.setString(_meterIdKey, user['meterId'] as String? ?? '');
     await prefs.setString(_roleKey, user['role'] as String? ?? 'customer');
     await prefs.setString(_userIdKey, user['sub']?.toString() ?? '');
-    if (rememberMe) await prefs.setString(_tokenKey, token);
-    else await prefs.remove(_tokenKey);
+    if (rememberMe) {
+      await prefs.setString(_tokenKey, token);
+    } else {
+      await prefs.remove(_tokenKey);
+    }
     return true;
   }
 
@@ -119,7 +122,11 @@ class AuthService {
   Future<bool> tryRestoreSession() async {
     String? token;
     try {
-      token = await _secureStorage.read(key: _tokenKey);
+      // The secure-storage plugin is not available on every platform (for
+      // example in unit tests), so never let session restore block startup.
+      token = await _secureStorage
+          .read(key: _tokenKey)
+          .timeout(const Duration(seconds: 2));
     } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     token ??= prefs.getString(_tokenKey);

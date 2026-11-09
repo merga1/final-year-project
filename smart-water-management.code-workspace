@@ -9,10 +9,6 @@
       "path": "mobile-app"
     },
     {
-      "name": "technician-app",
-      "path": "technician-app"
-    },
-    {
       "name": "admin-dashboard",
       "path": "admin-dashboard"
     },

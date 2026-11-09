@@ -118,14 +118,18 @@ export class SupportTicketsService {
     const saved = await this.repo.save(ticket);
 
     if (saved.customerId) {
-      await this.notifications.create({
-        userId: saved.customerId,
-        audience: 'customer',
-        type: 'ticket_received',
-        title: 'Request received',
-        message: 'Your request is in the admin queue. An admin will assign a technician.',
-        relatedId: saved.id,
-      });
+      try {
+        await this.notifications.create({
+          userId: saved.customerId,
+          audience: 'customer',
+          type: 'ticket_received',
+          title: 'Request received',
+          message: 'Your request is in the admin queue. An admin will assign a technician.',
+          relatedId: saved.id,
+        });
+      } catch {
+        // Notifications are non-fatal; the ticket itself was saved.
+      }
     }
     return saved;
   }
