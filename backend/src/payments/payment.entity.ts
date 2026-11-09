@@ -3,7 +3,7 @@ import {
 } from 'typeorm';
 
 export type PaymentStatus = 'verified' | 'pending' | 'failed' | 'disputed';
-export type PaymentMethod = 'chapa' | 'chappa' | 'bank_transfer' | 'mobile_payment' | 'cash';
+export type PaymentMethod = 'chapa' | 'bank_transfer' | 'mobile_payment' | 'cash';
 
 @Entity('payments')
 export class Payment {
@@ -22,7 +22,7 @@ export class Payment {
   @Column({ type: 'real' })
   amount: number;
 
-  @Column({ default: 'chappa' })
+  @Column({ default: 'chapa' })
   method: PaymentMethod;
 
   @Column({ nullable: true })

@@ -13,6 +13,7 @@
 
 const API_URL = process.env.API_URL || 'http://localhost:4000/api/devices/reading';
 const INTERVAL_SECONDS = 60; // 1 minute interval for demo
+const DEVICE_API_KEY = process.env.DEVICE_API_KEY || ''; // must match the backend's DEVICE_API_KEY
 
 // Active meters to simulate
 const SIMULATED_METERS = [
@@ -101,7 +102,10 @@ async function sendReading(meter) {
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(DEVICE_API_KEY ? { 'x-device-key': DEVICE_API_KEY } : {}),
+      },
       body: JSON.stringify(payload),
     });
 

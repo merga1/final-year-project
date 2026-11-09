@@ -3,7 +3,7 @@ import {
 } from 'typeorm';
 
 export type TicketPriority = 'High' | 'Medium' | 'Low';
-export type TicketStatus = 'pending' | 'open' | 'assigned' | 'accepted' | 'in_progress' | 'resolved' | 'closed' | 'Pending';
+export type TicketStatus = 'pending' | 'open' | 'assigned' | 'accepted' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
 
 @Entity('support_tickets')
 export class SupportTicket {

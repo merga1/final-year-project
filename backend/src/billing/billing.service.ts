@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Bill } from './bill.entity';
+import { UpdateBillDto } from './dto/update-bill.dto';
 
 export const DEFAULT_GRACE_PERIOD_DAYS = 5;
 
@@ -12,26 +13,11 @@ export function calculateDueDate(periodEnd: Date | string, graceDays = DEFAULT_G
 }
 
 @Injectable()
-export class BillingService implements OnModuleInit {
+export class BillingService {
   constructor(
     @InjectRepository(Bill)
     private readonly repo: Repository<Bill>,
   ) {}
-
-  async onModuleInit() {
-    try {
-      // Automatically adjust existing bills to the new 5-day grace period policy
-      // e.g. November 30 cycle -> Due Date December 5 (5 days grace period)
-      await this.repo.query(`
-        UPDATE bills 
-        SET "dueDate" = '2026-12-05T07:25:52.952Z' 
-        WHERE ("periodEnd" LIKE '%2026-11-30%' OR "periodEnd" LIKE '%2026-11-30T%')
-          AND "dueDate" LIKE '%2026-12-15%'
-      `).catch(() => {});
-    } catch {
-      // non-fatal
-    }
-  }
 
   findAll() {
     return this.repo.find({ order: { createdAt: 'DESC' } });
@@ -52,16 +38,17 @@ export class BillingService implements OnModuleInit {
     return this.repo.save(bill);
   }
 
-  async update(id: string, data: Partial<Bill>) {
+  async update(id: string, data: UpdateBillDto) {
     await this.findOne(id);
-    await this.repo.update(id, data);
+    if (Object.keys(data).length) await this.repo.update(id, data);
     return this.findOne(id);
   }
 
   /**
    * Generates bill from cumulative meter readings:
    * Net Consumption (Liters) = Current Cumulative Reading - Previous Period Cumulative Reading
-   * Amount (ETB) = Net Consumption * Tariff Rate
+   * Amount (ETB) = Net Consumption * Tariff Rate / 100  (rate = ETB per 100 liters)
+   * Not yet called by a route or scheduler: it is the building block for the monthly billing job.
    * Due Date = Period End + 5 Days Grace Period
    */
   async generateFromCumulativeReadings(params: {
@@ -106,7 +93,7 @@ export class BillingService implements OnModuleInit {
       .select('SUM(b.amountEtb)', 'total')
       .where('b.status = :status', { status: 'paid' })
       .getRawOne();
-    return Math.round(result?.total ?? 0);
+    return Math.round(Number(result?.total ?? 0));
   }
 
   async totalPending(): Promise<number> {
@@ -115,6 +102,6 @@ export class BillingService implements OnModuleInit {
       .select('SUM(b.amountEtb)', 'total')
       .where('b.status != :status', { status: 'paid' })
       .getRawOne();
-    return Math.round(result?.total ?? 0);
+    return Math.round(Number(result?.total ?? 0));
   }
 }

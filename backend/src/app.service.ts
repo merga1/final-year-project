@@ -8,6 +8,9 @@ import { PaymentsService } from './payments/payments.service';
 import { ReadingsService } from './readings/readings.service';
 import { TechniciansService } from './technicians/technicians.service';
 
+/** 420 -> 'ETB 420', 12500 -> 'ETB 12.5K' */
+const formatEtb = (n: number) => (n >= 1000 ? `ETB ${(n / 1000).toFixed(1)}K` : `ETB ${Math.round(n)}`);
+
 @Injectable()
 export class AppService {
   constructor(
@@ -46,7 +49,7 @@ export class AppService {
       this.devices.countByConnectivity('ONLINE'),
       this.tickets.count(),
       this.tickets.countOpen(),
-      this.alerts.countCriticalToday(),
+      this.alerts.countOpenCritical(),
       this.technicians.count(),
       this.technicians.findTop(5),
       this.billing.countByStatus('pending'),
@@ -55,8 +58,8 @@ export class AppService {
       this.payments.countByStatus('pending'),
       this.billing.totalCollected(),
       this.billing.totalPending(),
-      this.devices.findAll().then(d => d.slice(0, 5)),
-      this.tickets.findAll().then(t => t.slice(0, 5)),
+      this.devices.findRecent(5),
+      this.tickets.findRecent(5),
     ]);
 
     return {
@@ -85,8 +88,8 @@ export class AppService {
         { label: 'Overdue Bills', value: String(overdueCount) },
         { label: 'Verified Today', value: String(verifiedToday) },
         { label: 'Pending Payments', value: String(pendingPayments) },
-        { label: 'Collected (ETB)', value: `ETB ${(totalCollected / 1000).toFixed(0)}K` },
-        { label: 'Pending (ETB)', value: `ETB ${(totalPending / 1000).toFixed(0)}K` },
+        { label: 'Collected (ETB)', value: formatEtb(totalCollected) },
+        { label: 'Pending (ETB)', value: formatEtb(totalPending) },
       ],
       recentDevices: recentDevices.map(d => ({
         id: d.meterId,
@@ -108,6 +111,15 @@ export class AppService {
     const customer = await this.customers.findOne(userId);
     const device = meterId ? await this.devices.findByMeterId(meterId) : null;
     const latestReading = meterId ? await this.readings.findLatestByMeterId(meterId) : null;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
+    const [dailyUsage, monthlyUsage] = meterId
+      ? await Promise.all([
+          this.readings.usageSince(meterId, startOfToday),
+          this.readings.usageSince(meterId, startOfMonth),
+        ])
+      : [0, 0];
     const myBills = await this.billing.findByCustomer(userId);
     const pendingBill = myBills.find(b => b.status === 'pending');
 
@@ -149,14 +161,14 @@ export class AppService {
       meterId: device?.meterId ?? meterId ?? 'Not assigned',
       flowRateLpm: latestReading?.flowRateLpm ?? 0.0,
       turbidityNtu: latestReading?.turbidityNtu ?? 0.0,
-      monthlyConsumptionLiters: latestReading?.totalUsageLiters ?? 0,
-      dailyConsumptionLiters: latestReading?.totalUsageLiters ?? 0,
+      monthlyConsumptionLiters: monthlyUsage,
+      dailyConsumptionLiters: dailyUsage,
       waterQualityStatus: latestReading ? (latestReading.turbidityNtu <= 5 ? 'Safe' : latestReading.turbidityNtu <= 15 ? 'Warning' : 'Contaminated') : 'Unknown',
       lastUpdatedAt: latestTimestamp,
       deviceOffline: isOffline,
       valveState: device?.valveState ?? 'N/A',
       cards,
-      alerts: await this.alerts.findByMeterId(meterId ?? ''),
+      alerts: meterId ? await this.alerts.findByMeterId(meterId) : [],
       updatedAt: new Date().toISOString(),
     };
   }
@@ -177,7 +189,7 @@ export class AppService {
     const device = ticket.deviceId
       ? await this.devices.findOne(ticket.deviceId)
       : ticket.customerId
-        ? await this.devices.findAll().then((items) => items.find((item) => item.customerId === ticket.customerId))
+        ? await this.devices.findByCustomerId(ticket.customerId)
         : null;
     const meterId = device?.meterId;
     const [reading, alerts] = meterId

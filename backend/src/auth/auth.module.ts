@@ -7,9 +7,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { CustomersModule } from '../customers/customers.module';
 import { TechniciansModule } from '../technicians/technicians.module';
 import { DevicesModule } from '../devices/devices.module';
-
-const rawSecret = process.env.JWT_SECRET || 'smart_water_jwt_secret_2026_final_year';
-const JWT_SECRET = rawSecret.replace(/^\uFEFF/, '').trim();
+import { getJwtSecret, JWT_EXPIRES_IN_SECONDS } from '../config/env';
 
 @Module({
   imports: [
@@ -18,8 +16,8 @@ const JWT_SECRET = rawSecret.replace(/^\uFEFF/, '').trim();
     TechniciansModule,
     DevicesModule,
     JwtModule.register({
-      secret: JWT_SECRET,
-      signOptions: { expiresIn: 604800 }, // 7 days
+      secret: getJwtSecret(),
+      signOptions: { expiresIn: JWT_EXPIRES_IN_SECONDS },
     }),
   ],
   controllers: [AuthController],

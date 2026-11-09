@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { TechniciansService } from './technicians.service';
 import { CreateTechnicianDto } from './dto/create-technician.dto';
+import { UpdateTechnicianDto } from './dto/update-technician.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -27,7 +28,7 @@ export class TechniciansController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: Partial<CreateTechnicianDto>) {
-    return this.service.update(id, body);
+  update(@Param('id') id: string, @Body() body: UpdateTechnicianDto) {
+    return this.service.updateFromAdmin(id, body);
   }
 }

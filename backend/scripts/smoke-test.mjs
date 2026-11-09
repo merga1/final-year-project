@@ -53,4 +53,32 @@ const technicianLogin = await postJson('/auth/login', {
 const technicianHome = await getAuthed('/api/technician/home', technicianLogin.accessToken);
 assert.equal(typeof technicianHome.assigned, 'number');
 
+// Role protection: a customer must not reach admin routes
+const forbidden = await fetch(`${baseUrl}/api/admin/overview`, {
+  headers: { Authorization: `Bearer ${customerLogin.accessToken}` },
+});
+assert.equal(forbidden.status, 403, 'Customer token must be rejected on admin routes');
+
+// Input validation: bad login payload is a 400, not a server error
+const badLogin = await fetch(`${baseUrl}/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({}),
+});
+assert.equal(badLogin.status, 400);
+
+// Telemetry ingestion (send the device key when the backend requires one)
+const reading = await fetch(`${baseUrl}/api/devices/reading`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    ...(process.env.DEVICE_API_KEY ? { 'x-device-key': process.env.DEVICE_API_KEY } : {}),
+  },
+  body: JSON.stringify({
+    meterId: 'ESP32-001', flowRateLpm: 12, totalUsageLiters: 99999,
+    turbidityNtu: 1.5, valveState: 'OPEN', connectivity: 'ONLINE', batteryPercent: 90,
+  }),
+});
+assert.equal(reading.status, 201, 'Reading ingestion should return 201');
+
 console.log('Backend smoke test passed.');

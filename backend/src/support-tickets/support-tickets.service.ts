@@ -1,12 +1,15 @@
-import { Injectable, BadRequestException, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SupportTicket } from './support-ticket.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TechniciansService } from '../technicians/technicians.service';
+import {
+  AdminCreateTicketDto, AdminUpdateTicketDto, TechnicianTransitionDto,
+} from './dto/ticket.dto';
 
 @Injectable()
-export class SupportTicketsService implements OnModuleInit {
+export class SupportTicketsService {
   constructor(
     @InjectRepository(SupportTicket)
     private readonly repo: Repository<SupportTicket>,
@@ -14,26 +17,12 @@ export class SupportTicketsService implements OnModuleInit {
     private readonly technicians: TechniciansService,
   ) {}
 
-  async onModuleInit() {
-    try {
-      await this.repo.query(`
-        DO $$
-        BEGIN
-          IF EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name = 'support_tickets' AND column_name = 'subject'
-          ) THEN
-            ALTER TABLE support_tickets ALTER COLUMN subject DROP NOT NULL;
-          END IF;
-        END $$;
-      `).catch(() => {});
-    } catch {
-      // non-fatal
-    }
-  }
-
   findAll() {
     return this.repo.find({ order: { createdAt: 'DESC' } });
+  }
+
+  findRecent(limit: number) {
+    return this.repo.find({ order: { createdAt: 'DESC' }, take: limit });
   }
 
   async findOne(id: string) {
@@ -44,6 +33,12 @@ export class SupportTicketsService implements OnModuleInit {
 
   findByCustomer(customerId: string) {
     return this.repo.find({ where: { customerId }, order: { createdAt: 'DESC' } });
+  }
+
+  async findOneForCustomer(id: string, customerId: string) {
+    const ticket = await this.repo.findOneBy({ id, customerId });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    return ticket;
   }
 
   findByTechnician(technicianId: string, status?: string) {
@@ -59,41 +54,41 @@ export class SupportTicketsService implements OnModuleInit {
     return ticket;
   }
 
-  create(data: Partial<SupportTicket>) {
-    const ticket = this.repo.create({
-      ...data,
-      subject: (data as any).subject || data.issue || data.description || 'Support Ticket',
-    });
-    return this.repo.save(ticket);
-  }
-
-  async createAdminTicket(data: any) {
-    let technicianName = data.technicianName;
-    if (data.technicianId && !technicianName) {
-      const tech = await this.technicians.findOne(data.technicianId).catch(() => null);
-      if (tech) technicianName = tech.name;
+  async createAdminTicket(dto: AdminCreateTicketDto) {
+    let technicianName = dto.technicianName;
+    if (dto.technicianId && !technicianName) {
+      technicianName = (await this.technicians.findOne(dto.technicianId).catch(() => null))?.name;
     }
-    const status = data.technicianId ? 'assigned' : (data.status || 'pending');
+    const status = (dto.technicianId ? 'assigned' : dto.status || 'pending') as SupportTicket['status'];
     const now = new Date();
-    const ticket = this.repo.create({
-      ...data,
-      status,
-      subject: data.subject || data.issue || data.description || 'Alert Escalation',
-      technicianName: technicianName || null,
-      assignedAt: data.technicianId ? now : null,
-      statusHistory: JSON.stringify([{ status, at: now.toISOString(), note: 'Created by Admin from Alert dispatch' }]),
-    } as Partial<SupportTicket>);
-    const saved: SupportTicket = await this.repo.save(ticket);
-    if (data.technicianId) {
-      await this.technicians.update(data.technicianId, { currentJobCount: () => 'currentJobCount + 1' } as any).catch(() => {});
+    const saved = await this.repo.save(
+      this.repo.create({
+        customerId: dto.customerId,
+        customerName: dto.customerName,
+        type: dto.type,
+        issue: dto.issue,
+        description: dto.description,
+        priority: dto.priority,
+        customerAddress: dto.customerAddress,
+        deviceId: dto.deviceId,
+        status,
+        subject: dto.subject || dto.issue || dto.description || 'Alert Escalation',
+        technicianId: dto.technicianId ?? null,
+        technicianName: technicianName ?? null,
+        assignedAt: dto.technicianId ? now : null,
+        statusHistory: JSON.stringify([{ status, at: now.toISOString(), note: 'Created by Admin from Alert dispatch' }]),
+      }),
+    );
+    if (dto.technicianId) {
+      await this.adjustWorkload(dto.technicianId, +1);
       await this.notifications.create({
-        userId: data.technicianId,
+        userId: dto.technicianId,
         audience: 'technician',
         type: 'ticket_assignment',
         title: 'New ticket assigned from Alert',
         message: `${saved.type}: ${saved.description ?? saved.issue}`,
         relatedId: saved.id,
-      }).catch(() => {});
+      });
     }
     return saved;
   }
@@ -101,9 +96,16 @@ export class SupportTicketsService implements OnModuleInit {
   async createCustomerTicket(data: Partial<SupportTicket>) {
     const now = new Date();
     const ticket = this.repo.create({
-      ...data,
+      customerId: data.customerId,
+      customerName: data.customerName,
+      type: data.type,
+      issue: data.issue,
+      description: data.description,
+      priority: data.priority,
+      customerAddress: data.customerAddress,
+      deviceId: data.deviceId,
       status: 'pending',
-      subject: (data as any).subject || data.issue || data.description || 'Customer Support',
+      subject: data.subject || data.issue || data.description || 'Customer Support',
       technicianId: null,
       technicianName: null,
       assignedAt: null,
@@ -123,12 +125,12 @@ export class SupportTicketsService implements OnModuleInit {
         title: 'Request received',
         message: 'Your request is in the admin queue. An admin will assign a technician.',
         relatedId: saved.id,
-      }).catch(() => {});
+      });
     }
     return saved;
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: AdminUpdateTicketDto) {
     const before = await this.repo.findOneBy({ id });
     if (!before) throw new NotFoundException('Ticket not found');
 
@@ -168,11 +170,8 @@ export class SupportTicketsService implements OnModuleInit {
           if (newTech) {
             updatePayload.technicianName = newTech.name;
             updatePayload.assignedAt = new Date();
-            // Increment workload if reassigned or newly assigned to this technician
             if (before.technicianId !== data.technicianId) {
-              await this.technicians.update(newTech.id, {
-                currentJobCount: (newTech.currentJobCount || 0) + 1,
-              }).catch(() => null);
+              await this.adjustWorkload(newTech.id, +1);
             }
           }
         } catch (techErr) {
@@ -181,16 +180,7 @@ export class SupportTicketsService implements OnModuleInit {
 
         // Decrement workload for previous technician if reassigned
         if (before.technicianId && before.technicianId !== data.technicianId) {
-          try {
-            const oldTech = await this.technicians.findOne(before.technicianId).catch(() => null);
-            if (oldTech && (oldTech.currentJobCount || 0) > 0) {
-              await this.technicians.update(oldTech.id, {
-                currentJobCount: Math.max(0, oldTech.currentJobCount - 1),
-              }).catch(() => null);
-            }
-          } catch {
-            // non-fatal
-          }
+          await this.adjustWorkload(before.technicianId, -1);
         }
       } else {
         updatePayload.technicianName = null;
@@ -202,7 +192,7 @@ export class SupportTicketsService implements OnModuleInit {
 
     // 3. Status handling
     if (data.status !== undefined) {
-      updatePayload.status = data.status;
+      updatePayload.status = data.status as SupportTicket['status'];
       if (data.status === 'resolved' && !before.resolvedAt) {
         updatePayload.resolvedAt = new Date();
       }
@@ -265,7 +255,7 @@ export class SupportTicketsService implements OnModuleInit {
   async transitionForTechnician(
     id: string,
     technicianId: string,
-    data: { status: string; notes?: string; progressNotes?: string; rejectionReason?: string },
+    data: TechnicianTransitionDto,
   ) {
     const ticket = await this.findOneForTechnician(id, technicianId);
     const requested = data.status.toLowerCase();
@@ -319,8 +309,17 @@ export class SupportTicketsService implements OnModuleInit {
       title: 'Support ticket updated',
       message: `Your ticket is now ${saved.status}.`,
       relatedId: saved.id,
-    }).catch(() => {});
+    });
     return saved;
+  }
+
+  /** Keeps technician.currentJobCount in step with assignments (never below zero). */
+  private async adjustWorkload(technicianId: string, delta: number) {
+    const tech = await this.technicians.findOne(technicianId).catch(() => null);
+    if (!tech) return;
+    await this.technicians
+      .update(technicianId, { currentJobCount: Math.max(0, (tech.currentJobCount ?? 0) + delta) })
+      .catch(() => null);
   }
 
   private async decrementWorkload(technicianId: string, completed: boolean) {

@@ -7,10 +7,10 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "build": "nest build",
-    "lint": "eslint \"src/**/*.ts\" --fix",
-    "test:smoke": "node scripts/smoke-test.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.build.json",
     "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
-    "simulate:meters": "node scripts/meter-simulator.mjs"
+    "simulate:meters": "node scripts/meter-simulator.mjs",
+    "test:smoke": "node scripts/smoke-test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "11.0.1",

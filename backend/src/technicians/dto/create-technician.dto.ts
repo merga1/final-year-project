@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateTechnicianDto {
   @IsNotEmpty()
@@ -12,9 +12,9 @@ export class CreateTechnicianDto {
   @IsEmail()
   email: string;
 
-  @IsOptional()
   @IsString()
-  password?: string;
+  @MinLength(6)
+  password: string;
 
   @IsOptional()
   @IsString()

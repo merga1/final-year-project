@@ -1,9 +1,12 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Query, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { SupportTicketsService } from './support-tickets.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import {
+  AdminCreateTicketDto, AdminUpdateTicketDto, CreateCustomerTicketDto, TechnicianTransitionDto,
+} from './dto/ticket.dto';
 
 @Controller()
 export class SupportTicketsController {
@@ -21,7 +24,7 @@ export class SupportTicketsController {
   @Post('api/admin/support-tickets')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  createAdminTicket(@Body() body: any) {
+  createAdminTicket(@Body() body: AdminCreateTicketDto) {
     return this.service.createAdminTicket(body);
   }
 
@@ -35,14 +38,14 @@ export class SupportTicketsController {
   @Patch('api/admin/support-tickets/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  update(@Param('id') id: string, @Body() body: any) {
+  update(@Param('id') id: string, @Body() body: AdminUpdateTicketDto) {
     return this.service.update(id, body);
   }
 
   // ── Customer mobile endpoints ─────────────────────────────────────────────────
 
   @Get('api/mobile/support-tickets')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   getMobileTickets(@CurrentUser() user: any) {
     return this.service.findByCustomer(user.sub);
   }
@@ -50,17 +53,11 @@ export class SupportTicketsController {
   @Post('api/mobile/support-tickets')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('customer')
-  createTicket(@CurrentUser() user: any, @Body() body: any) {
+  createTicket(@CurrentUser() user: any, @Body() body: CreateCustomerTicketDto) {
     return this.service.createCustomerTicket({
+      ...body,
       customerId: user.sub,
       customerName: user.name,
-      type: body.type,
-      issue: body.issue,
-      subject: body.subject,
-      description: body.description,
-      priority: body.priority,
-      customerAddress: body.customerAddress,
-      deviceId: body.deviceId,
     });
   }
 
@@ -68,11 +65,7 @@ export class SupportTicketsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('customer')
   getCustomerTicket(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.service.findByCustomer(user.sub).then((tickets) => {
-      const ticket = tickets.find((item) => item.id === id);
-      if (!ticket) throw new NotFoundException('Ticket not found');
-      return ticket;
-    });
+    return this.service.findOneForCustomer(id, user.sub);
   }
 
   // ── Technician endpoints ──────────────────────────────────────────────────────
@@ -94,7 +87,7 @@ export class SupportTicketsController {
   @Patch('api/technician/tickets/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('technician')
-  updateTechnicianTicket(@CurrentUser() user: any, @Param('id') id: string, @Body() body: any) {
+  updateTechnicianTicket(@CurrentUser() user: any, @Param('id') id: string, @Body() body: TechnicianTransitionDto) {
     return this.service.transitionForTechnician(id, user.technicianId ?? user.sub, body);
   }
 }

@@ -18,27 +18,35 @@ import { SupportTicket } from '../support-tickets/support-ticket.entity';
 import { Technician } from '../technicians/technician.entity';
 import { Notification } from '../notifications/notification.entity';
 import { ValveCommand } from '../devices/valve-command.entity';
+import { AuditLog } from '../audit/audit-log.entity';
+import { getDatabaseUrl } from '../config/env';
 
-const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const dbUrl = getDatabaseUrl();
+const ENTITIES = [Customer, Device, DeviceReading, Bill, Payment, Alert, SupportTicket, Technician, Notification, ValveCommand, AuditLog];
 
 const ds = new DataSource(
   dbUrl
     ? {
         type: 'postgres',
         url: dbUrl,
-        entities: [Customer, Device, DeviceReading, Bill, Payment, Alert, SupportTicket, Technician, Notification, ValveCommand],
+        entities: ENTITIES,
         synchronize: true,
         ssl: { rejectUnauthorized: false },
       }
     : {
         type: 'better-sqlite3',
         database: path.resolve(__dirname, '../../water.sqlite'),
-        entities: [Customer, Device, DeviceReading, Bill, Payment, Alert, SupportTicket, Technician, Notification, ValveCommand],
+        entities: ENTITIES,
         synchronize: true,
       },
 );
 
 async function seed() {
+  // The seed wipes the demo tables, so never let it touch a hosted database by accident.
+  if (dbUrl && process.env.SEED_CONFIRM !== 'yes') {
+    console.error('Refusing to seed a PostgreSQL database. Set SEED_CONFIRM=yes if you are sure.');
+    process.exit(1);
+  }
   await ds.initialize();
   console.log('🌱 Seeding database...');
 
@@ -58,6 +66,7 @@ async function seed() {
   await ds.query('DELETE FROM devices');
   await ds.query('DELETE FROM technicians');
   await ds.query('DELETE FROM customers');
+  await ds.query('DELETE FROM audit_logs');
 
   // Seed Admin Accounts
   const admin1 = await customerRepo.save(customerRepo.create({
@@ -324,7 +333,7 @@ async function seed() {
       issue: 'Sensor reading discrepancy',
       description: 'what',
       priority: 'Medium',
-      status: 'Pending',
+      status: 'pending',
     }),
     ticketRepo.create({
       id: '67f7de29-dc4d-1ecc-7052-d2a100000002',
@@ -348,7 +357,7 @@ async function seed() {
       issue: 'Flow rate fluctuation',
       description: 'asd',
       priority: 'Low',
-      status: 'Pending',
+      status: 'pending',
     }),
     ticketRepo.create({
       id: '67f7e099-dc4d-1ecc-7052-d2bc00000004',
@@ -388,6 +397,50 @@ async function seed() {
     }));
   }
   console.log('✅ Seeded 12 support tickets (matching screenshot count)');
+
+  // Seed 7 days of readings (2 per day per meter) so the dashboard charts have data.
+  const readingRepo = ds.getRepository(DeviceReading);
+  const meters = [
+    { meterId: 'ESP32-001', base: 12000, dailyDelta: 2400 },
+    { meterId: 'ESP32-018', base: 8500, dailyDelta: 1950 },
+    { meterId: 'ESP32-042', base: 14800, dailyDelta: 2850 },
+    { meterId: 'ESP32-005', base: 6000, dailyDelta: 2200 },
+  ];
+  const history: DeviceReading[] = [];
+  for (let d = 6; d >= 0; d--) {
+    const dayIndex = 6 - d;
+    for (const m of meters) {
+      const startUsage = m.base + dayIndex * m.dailyDelta;
+      for (const [hour, minute, share] of [[8, 30, 0.4], [19, 45, 1]] as const) {
+        const at = new Date();
+        at.setDate(at.getDate() - d);
+        at.setHours(hour, minute, 0, 0);
+        if (at > new Date()) continue; // do not seed readings in the future
+        history.push(readingRepo.create({
+          deviceId: m.meterId,
+          meterId: m.meterId,
+          flowRateLpm: Number((15 + Math.random() * 6).toFixed(1)),
+          totalUsageLiters: Math.round(startUsage + m.dailyDelta * share),
+          turbidityNtu: Number((1.6 + Math.random() * 0.8).toFixed(2)),
+          valveState: 'OPEN',
+          connectivity: 'ONLINE',
+          batteryPercent: Math.max(70, 95 - dayIndex),
+          timestamp: at,
+        }));
+      }
+    }
+  }
+  await readingRepo.save(history);
+  console.log(`✅ Seeded ${history.length} historical readings`);
+
+  // Sample audit entries
+  const auditRepo = ds.getRepository(AuditLog);
+  const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000);
+  await auditRepo.save([
+    auditRepo.create({ actor: 'System Admin (admin@admin.water)', action: 'DEVICE_ACTIVATION', category: 'DEVICE', targetEntity: 'ESP32-001', details: 'Device activated and reporting.', status: 'SUCCESS', createdAt: minutesAgo(12) }),
+    auditRepo.create({ actor: 'Yo 2 (admin2@gmail.com)', action: 'TICKET_ASSIGNED', category: 'TICKET', targetEntity: 'Support ticket', details: 'Ticket assigned to a technician.', status: 'SUCCESS', createdAt: minutesAgo(45) }),
+    auditRepo.create({ actor: 'System (Safety Watchdog)', action: 'ALARM_TRIGGERED', category: 'DEVICE', targetEntity: 'ESP32-042', details: 'High flow rate threshold exceeded.', status: 'WARNING', createdAt: minutesAgo(90) }),
+  ]);
 
   // Seed Bills & Payments
   const billRepo = ds.getRepository(Bill);

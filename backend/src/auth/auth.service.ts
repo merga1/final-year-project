@@ -5,6 +5,8 @@ import { CustomersService } from '../customers/customers.service';
 import { TechniciansService } from '../technicians/technicians.service';
 import { DevicesService } from '../devices/devices.service';
 
+const INVALID = 'Invalid credentials';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -14,158 +16,103 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string) {
-    const customer = await this.customersService.findByEmail(email);
-    if (!customer) throw new UnauthorizedException('Invalid credentials');
-
-    const valid = await bcrypt.compare(password, customer.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
-
-    return customer;
-  }
-
-  async loginCustomer(email: string, password: string) {
-    const customer = await this.validateUser(email, password);
-    const payload = {
-      sub: customer.id,
-      email: customer.email,
-      name: customer.name,
-      role: customer.role || 'customer',
-      meterId: customer.meterId,
-    };
+  private sign(payload: Record<string, unknown>) {
     return { accessToken: this.jwtService.sign(payload), user: payload };
   }
 
-  async loginAdmin(email: string, password: string) {
+  /** Customers/admins are looked up first, technicians second. The role comes only from the database. */
+  async login(email: string, password: string) {
     const customer = await this.customersService.findByEmail(email);
-    if (!customer) {
-      const technician = await this.techniciansService.findByEmail(email);
-      if (!technician?.passwordHash || technician.accountStatus !== 'active') {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-      const validTechnician = await bcrypt.compare(password, technician.passwordHash);
-      if (!validTechnician) throw new UnauthorizedException('Invalid credentials');
-      const payload = {
-        sub: technician.id,
-        technicianId: technician.id,
-        email: technician.email,
-        name: technician.name,
-        role: 'technician',
-        meterId: undefined,
-      };
-      return { accessToken: this.jwtService.sign(payload), user: payload };
+    if (customer) {
+      if (!(await bcrypt.compare(password, customer.passwordHash))) throw new UnauthorizedException(INVALID);
+      if (customer.accountStatus === 'suspended') throw new UnauthorizedException('This account is suspended');
+      return this.sign({
+        sub: customer.id,
+        email: customer.email,
+        name: customer.name,
+        role: customer.role || 'customer',
+        meterId: customer.meterId,
+      });
     }
 
-    const valid = await bcrypt.compare(password, customer.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
-
-    // Admin authorization check: explicit admin role or designated admin emails
-    const isAdmin =
-      customer.role === 'admin' ||
-      customer.email === 'admin2@gmail.com' ||
-      customer.email === 'admin@admin.water';
-
-    const role = isAdmin ? 'admin' : customer.role || 'customer';
-
-    const payload = {
-      sub: customer.id,
-      email: customer.email,
-      name: customer.name,
-      role,
-      meterId: customer.meterId,
-    };
-    return { accessToken: this.jwtService.sign(payload), user: payload };
+    const technician = await this.techniciansService.findByEmail(email);
+    if (!technician?.passwordHash || technician.accountStatus !== 'active') {
+      throw new UnauthorizedException(INVALID);
+    }
+    if (!(await bcrypt.compare(password, technician.passwordHash))) throw new UnauthorizedException(INVALID);
+    return this.sign({
+      sub: technician.id,
+      technicianId: technician.id,
+      email: technician.email,
+      name: technician.name,
+      role: 'technician',
+    });
   }
 
-  async register(
-    name: string,
-    email: string,
-    password: string,
-    meterId?: string,
-    address?: string,
-  ) {
-    // Prevent registering with reserved administrator emails or domains
+  async register(name: string, email: string, password: string, meterId?: string, address?: string) {
+    const normalizedEmail = email.trim().toLowerCase();
     if (
-      email.toLowerCase().endsWith('@admin.water') ||
-      email.toLowerCase() === 'admin2@gmail.com'
+      (await this.customersService.findByEmail(normalizedEmail)) ||
+      (await this.techniciansService.findByEmail(normalizedEmail))
     ) {
-      throw new BadRequestException('Cannot register with reserved administrator email address');
+      throw new ConflictException('Email already registered');
     }
 
     const normalizedMeterId = meterId?.trim() || undefined;
-    let meterDevice: Awaited<ReturnType<DevicesService['findByMeterId']>> = null;
     if (normalizedMeterId) {
-      meterDevice = await this.devicesService.findByMeterId(normalizedMeterId);
-      if (!meterDevice) {
-        throw new BadRequestException(
-          'Water meter number not found. Check the number or choose that you need a meter.',
-        );
+      const device = await this.devicesService.findByMeterId(normalizedMeterId);
+      if (!device) {
+        throw new BadRequestException('Water meter number not found. Check the number or request a new meter.');
       }
-      const linkedCustomer = await this.customersService.findByMeterId(normalizedMeterId);
-      if (meterDevice.customerId || linkedCustomer) {
+      const linked = await this.customersService.findByMeterId(normalizedMeterId);
+      if (device.customerId || linked) {
         throw new ConflictException('This water meter is already linked to an account');
       }
     }
 
-    const existing = await this.customersService.findByEmail(email);
-    if (existing) throw new ConflictException('Email already registered');
-
-    const passwordHash = await bcrypt.hash(password, 10);
     const customer = await this.customersService.create({
-      name,
-      email,
-      passwordHash,
+      name: name.trim(),
+      email: normalizedEmail,
+      passwordHash: await bcrypt.hash(password, 10),
       meterId: normalizedMeterId,
       address,
       role: 'customer',
       accountStatus: 'active',
     });
 
-    if (meterDevice && normalizedMeterId) {
-      await this.devicesService.updateByMeterId(normalizedMeterId, {
-        customerId: customer.id,
-      });
+    if (normalizedMeterId) {
+      await this.devicesService.updateByMeterId(normalizedMeterId, { customerId: customer.id });
     }
 
-    const payload = {
+    return this.sign({
       sub: customer.id,
       email: customer.email,
       name: customer.name,
       role: 'customer',
       meterId: customer.meterId,
-    };
-    return { accessToken: this.jwtService.sign(payload), user: payload };
+    });
   }
 
   async changePassword(userId: string, oldPass: string, newPass: string) {
-    if (!newPass || newPass.length < 6) {
-      throw new BadRequestException('New password must be at least 6 characters long');
-    }
-
     const customer = await this.customersService.findOne(userId).catch(() => null);
     const technician = customer ? null : await this.techniciansService.findOne(userId).catch(() => null);
     const user = customer ?? technician;
     if (!user?.passwordHash) throw new UnauthorizedException('Account not found');
-    const valid = await bcrypt.compare(oldPass, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('Incorrect current password');
+    if (!(await bcrypt.compare(oldPass, user.passwordHash))) {
+      throw new UnauthorizedException('Incorrect current password');
+    }
 
     const passwordHash = await bcrypt.hash(newPass, 10);
-    if (customer) {
-      await this.customersService.updatePasswordHash(userId, passwordHash);
-    } else {
-      await this.techniciansService.updatePassword(userId, passwordHash);
-    }
+    if (customer) await this.customersService.updatePasswordHash(userId, passwordHash);
+    else await this.techniciansService.updatePassword(userId, passwordHash);
     return { success: true, message: 'Password updated successfully' };
   }
 
-  async forgotPassword(email: string) {
-    const normalized = email.trim().toLowerCase();
-    const known = await this.customersService.findByEmail(normalized) ?? await this.techniciansService.findByEmail(normalized);
-    // Do not reveal whether an account exists. A production deployment should
-    // enqueue an email/SMS reset token here.
-    return {
-      success: true,
-      message: known ? 'If the account exists, reset instructions will be sent shortly.' : 'If the account exists, reset instructions will be sent shortly.',
-    };
+  /**
+   * Always returns the same response so account existence is not revealed.
+   * A production system would email/SMS a reset token here (not implemented).
+   */
+  async forgotPassword(_email: string) {
+    return { success: true, message: 'If the account exists, reset instructions will be sent shortly.' };
   }
 }

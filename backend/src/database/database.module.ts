@@ -1,8 +1,25 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { getDatabaseUrl } from '../config/env';
 
-const rawDbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-const dbUrl = rawDbUrl ? rawDbUrl.replace(/^\uFEFF/, '').trim() : undefined;
+/**
+ * DB_SSL (PostgreSQL only):
+ *   disable  - no TLS
+ *   require  - TLS without certificate verification (default; works with most hosted DBs)
+ *   verify   - TLS with full certificate verification (recommended when the host CA is trusted)
+ */
+function pgSsl() {
+  switch ((process.env.DB_SSL || 'require').toLowerCase()) {
+    case 'disable':
+      return false;
+    case 'verify':
+      return { rejectUnauthorized: true };
+    default:
+      return { rejectUnauthorized: false };
+  }
+}
+
+const dbUrl = getDatabaseUrl();
 
 @Module({
   imports: [
@@ -11,15 +28,16 @@ const dbUrl = rawDbUrl ? rawDbUrl.replace(/^\uFEFF/, '').trim() : undefined;
         ? {
             type: 'postgres',
             url: dbUrl,
-            entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-            synchronize: false,
-            ssl: { rejectUnauthorized: false },
+            autoLoadEntities: true,
+            // Production schema changes should be deliberate: set DB_SYNC=true once to create tables.
+            synchronize: process.env.DB_SYNC === 'true',
+            ssl: pgSsl(),
             logging: false,
           }
         : {
             type: 'better-sqlite3',
             database: process.env.DB_PATH || './water.sqlite',
-            entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+            autoLoadEntities: true,
             synchronize: true,
             logging: false,
           },

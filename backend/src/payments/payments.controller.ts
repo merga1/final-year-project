@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
+import { CreateChapaPaymentDto, CreatePaymentDto } from './dto/payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -18,12 +19,8 @@ export class PaymentsController {
 
   @Post('api/mobile/payments')
   @UseGuards(JwtAuthGuard)
-  createPayment(@CurrentUser() user: any, @Body() body: any) {
-    return this.service.create({
-      customerId: user.sub,
-      customerName: user.name,
-      ...body,
-    });
+  createPayment(@CurrentUser() user: any, @Body() body: CreatePaymentDto) {
+    return this.service.createForCustomer({ id: user.sub, name: user.name }, body);
   }
 
   @Get('api/mobile/payments')
@@ -34,13 +31,7 @@ export class PaymentsController {
 
   @Post('api/mobile/payments/chapa')
   @UseGuards(JwtAuthGuard)
-  createChapaPayment(@CurrentUser() user: any, @Body() body: any) {
-    return this.service.createChapaPayment({
-      billId: body.billId,
-      amount: Number(body.amount ?? 0),
-      customerId: user.sub,
-      customerName: user.name,
-      reference: body.reference,
-    });
+  createChapaPayment(@CurrentUser() user: any, @Body() body: CreateChapaPaymentDto) {
+    return this.service.createChapaPayment({ id: user.sub, name: user.name }, body);
   }
 }

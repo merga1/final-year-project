@@ -40,12 +40,13 @@ export class ReadingsController {
   @Get('api/mobile/readings')
   @UseGuards(JwtAuthGuard)
   getMobileReadings(@CurrentUser() user: any) {
-    return this.service.findByMeterId(user.meterId ?? '', 20);
+    // A customer without a meter must never fall through to "all meters".
+    return user.meterId ? this.service.findByMeterId(user.meterId, 20) : [];
   }
 
   @Get('api/mobile/readings/daily')
   @UseGuards(JwtAuthGuard)
   getMobileDailyUsage(@CurrentUser() user: any) {
-    return this.service.getDailyUsage(user.meterId);
+    return user.meterId ? this.service.getDailyUsage(user.meterId) : [];
   }
 }

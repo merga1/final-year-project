@@ -2,6 +2,7 @@ import { Controller, Get, Patch, Param, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { NotificationAudience } from './notification.entity';
 
 @Controller('api/notifications')
 @UseGuards(JwtAuthGuard)
@@ -10,7 +11,8 @@ export class NotificationsController {
 
   @Get()
   async list(@CurrentUser() user: any) {
-    const audience = user.role === 'technician' ? 'technician' : user.role === 'admin' ? 'admin' : 'customer';
+    const audience: NotificationAudience =
+      user.role === 'technician' ? 'technician' : user.role === 'admin' ? 'admin' : 'customer';
     const [items, unread] = await Promise.all([
       this.service.findForUser(user.sub, audience),
       this.service.unreadCount(user.sub, audience),

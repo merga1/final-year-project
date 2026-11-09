@@ -4,6 +4,7 @@ import { Repository, Not } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Customer } from './customer.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
+import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 @Injectable()
 export class CustomersService {
@@ -55,7 +56,7 @@ export class CustomersService {
       passwordHash,
       dateOfBirth: dto.dateOfBirth,
       address: dto.address,
-      meterId: dto.meterId,
+      meterId: dto.meterId?.trim() || undefined,
       zone: dto.zone || 'Zone A',
       accountStatus: 'active',
       role: 'customer',
@@ -64,16 +65,21 @@ export class CustomersService {
     return this.repo.save(customer);
   }
 
-  async update(id: string, data: Partial<Customer>) {
-    await this.findOne(id);
-    if (data.firstName || data.lastName) {
-      const existing = await this.findOne(id);
-      const first = data.firstName ?? existing.firstName ?? '';
-      const last = data.lastName ?? existing.lastName ?? '';
-      data.name = `${first} ${last}`.trim();
+  async update(id: string, dto: UpdateCustomerDto) {
+    const existing = await this.findOne(id);
+    const data: Partial<Customer> = { ...dto };
+    if (dto.firstName !== undefined || dto.lastName !== undefined) {
+      const first = dto.firstName ?? existing.firstName ?? '';
+      const last = dto.lastName ?? existing.lastName ?? '';
+      data.name = `${first} ${last}`.trim() || existing.name;
     }
-    if (data.email) data.email = data.email.trim().toLowerCase();
-    await this.repo.update(id, data);
+    if (dto.email) {
+      data.email = dto.email.trim().toLowerCase();
+      const taken = await this.findByEmail(data.email);
+      if (taken && taken.id !== id) throw new ConflictException('Email already registered');
+    }
+    if (dto.meterId !== undefined) data.meterId = dto.meterId.trim() || undefined;
+    if (Object.keys(data).length) await this.repo.update(id, data);
     return this.findOne(id);
   }
 

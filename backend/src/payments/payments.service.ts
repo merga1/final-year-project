@@ -1,8 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Payment } from './payment.entity';
+import { Payment, PaymentMethod } from './payment.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BillingService } from '../billing/billing.service';
+import { CreateChapaPaymentDto, CreatePaymentDto } from './dto/payment.dto';
+
+interface Payer {
+  id: string;
+  name: string;
+}
 
 @Injectable()
 export class PaymentsService {
@@ -10,6 +17,7 @@ export class PaymentsService {
     @InjectRepository(Payment)
     private readonly repo: Repository<Payment>,
     private readonly notifications: NotificationsService,
+    private readonly billing: BillingService,
   ) {}
 
   findAll() {
@@ -20,18 +28,43 @@ export class PaymentsService {
     return this.repo.find({ where: { customerId }, order: { createdAt: 'DESC' } });
   }
 
-  create(data: Partial<Payment>) {
-    const payment = this.repo.create(data);
-    return this.repo.save(payment);
+  /**
+   * Resolves the amount to charge. When a bill is referenced it must belong to
+   * the payer and be unpaid, and the bill's own amount is used (never the client's).
+   */
+  private async resolveAmount(payer: Payer, dto: { billId?: string; amount?: number }) {
+    if (dto.billId) {
+      const bill = await this.billing.findOne(dto.billId);
+      if (bill.customerId !== payer.id) throw new ForbiddenException('This bill belongs to another customer');
+      if (bill.status === 'paid') throw new BadRequestException('This bill is already paid');
+      return bill.amountEtb;
+    }
+    if (!dto.amount) throw new BadRequestException('Provide a billId or an amount');
+    return dto.amount;
   }
 
-  async createChapaPayment(data: Partial<Payment>) {
-    const payment = await this.repo.save(this.repo.create({
-      ...data,
-      method: 'chapa',
-      status: 'pending',
-      reference: data.reference ?? `CHAPA-${Date.now()}`,
-    }));
+  /** Customers can only create PENDING payments; verification is an admin/gateway action. */
+  private async createPending(payer: Payer, dto: { billId?: string; amount?: number; reference?: string }, method: PaymentMethod) {
+    const amount = await this.resolveAmount(payer, dto);
+    return this.repo.save(
+      this.repo.create({
+        billId: dto.billId,
+        customerId: payer.id,
+        customerName: payer.name,
+        amount,
+        method,
+        status: 'pending',
+        reference: dto.reference ?? `${method.toUpperCase()}-${Date.now()}`,
+      }),
+    );
+  }
+
+  createForCustomer(payer: Payer, dto: CreatePaymentDto) {
+    return this.createPending(payer, dto, dto.method ?? 'chapa');
+  }
+
+  async createChapaPayment(payer: Payer, dto: CreateChapaPaymentDto) {
+    const payment = await this.createPending(payer, dto, 'chapa');
     await this.notifications.create({
       userId: payment.customerId,
       audience: 'customer',
@@ -40,10 +73,11 @@ export class PaymentsService {
       message: `Your Chapa payment of ETB ${payment.amount.toFixed(2)} is pending confirmation.`,
       relatedId: payment.id,
     });
+    const checkoutUrl = process.env.CHAPA_CHECKOUT_URL ?? null;
     return {
       payment,
-      checkoutUrl: process.env.CHAPA_CHECKOUT_URL ?? null,
-      message: process.env.CHAPA_CHECKOUT_URL
+      checkoutUrl,
+      message: checkoutUrl
         ? 'Continue in the secure Chapa checkout.'
         : 'Chapa checkout is not configured in this environment. The payment was saved as pending.',
     };

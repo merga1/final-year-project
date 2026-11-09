@@ -1,7 +1,8 @@
 node_modules
-.vercel
-water.sqlite
+dist
+*.tsbuildinfo
+*.log
 .env
 .env.local
-
+water.sqlite
 .vercel

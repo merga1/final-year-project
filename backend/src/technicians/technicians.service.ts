@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Technician } from './technician.entity';
 import { CreateTechnicianDto } from './dto/create-technician.dto';
+import { UpdateTechnicianDto } from './dto/update-technician.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -33,13 +34,18 @@ export class TechniciansService {
       throw new ConflictException('A technician with this email address already exists');
     }
 
-    const name = `${dto.firstName.trim()} ${dto.lastName.trim()}`.trim();
     const tech = this.repo.create({
-      ...dto,
-      name: name || 'Technician',
+      firstName: dto.firstName.trim(),
+      lastName: dto.lastName.trim(),
+      name: `${dto.firstName.trim()} ${dto.lastName.trim()}`.trim() || 'Technician',
       email,
-      passwordHash: await bcrypt.hash(dto.password || 'technician123', 10),
+      passwordHash: await bcrypt.hash(dto.password, 10),
+      phone: dto.phone,
+      hireDate: dto.hireDate,
+      address: dto.address,
       specialization: dto.specialization || 'No specialization',
+      qualifications: dto.qualifications,
+      zone: dto.zone || 'Zone A',
       status: 'on_duty',
       accountStatus: 'active',
       currentJobCount: 0,
@@ -48,15 +54,23 @@ export class TechniciansService {
     return this.repo.save(tech);
   }
 
+  /** Admin edits from the dashboard (validated fields only; password is re-hashed). */
+  async updateFromAdmin(id: string, dto: UpdateTechnicianDto) {
+    const { password, ...rest } = dto;
+    const data: Partial<Technician> = { ...rest };
+    if (password) data.passwordHash = await bcrypt.hash(password, 10);
+    return this.update(id, data);
+  }
+
+  /** Internal update (also used by the ticket workflow for job counters). */
   async update(id: string, data: Partial<Technician>) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
     if (data.firstName || data.lastName) {
-      const existing = await this.findOne(id);
       const first = data.firstName ?? existing.firstName ?? '';
       const last = data.lastName ?? existing.lastName ?? '';
-      data.name = `${first} ${last}`.trim();
+      data.name = `${first} ${last}`.trim() || existing.name;
     }
-    await this.repo.update(id, data);
+    if (Object.keys(data).length) await this.repo.update(id, data);
     return this.findOne(id);
   }
 

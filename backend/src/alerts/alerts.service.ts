@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { Alert, AlertType, AlertSeverity } from './alert.entity';
@@ -30,11 +30,13 @@ export class AlertsService {
     return this.repo.countBy({ acknowledged: false });
   }
 
-  countCriticalToday() {
+  countOpenCritical() {
     return this.repo.count({ where: { severity: 'critical', acknowledged: false } });
   }
 
   async acknowledge(id: string, adminName: string) {
+    const alert = await this.repo.findOneBy({ id });
+    if (!alert) throw new NotFoundException(`Alert ${id} not found`);
     await this.repo.update(id, { acknowledged: true, acknowledgedBy: adminName });
     return this.repo.findOneBy({ id });
   }
@@ -45,23 +47,23 @@ export class AlertsService {
   }
 
   /**
-   * Creates an alert only if no alert of the same type+device was created
-   * within the last 30 minutes (prevents spam).
+   * Creates an alert unless an unacknowledged alert of the same type for this
+   * meter was already raised in the last 30 minutes (prevents alert spam).
+   * Returns the new alert, or null when skipped.
    */
   async createIfNotRecent(
     meterId: string, deviceId: string,
     type: AlertType, message: string, severity: AlertSeverity,
   ) {
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    const existing = await this.repo.findOne({
-      where: { meterId, type, acknowledged: false },
-      order: { createdAt: 'DESC' },
+    const recent = await this.repo.findOne({
+      where: {
+        meterId,
+        type,
+        acknowledged: false,
+        createdAt: MoreThan(new Date(Date.now() - 30 * 60 * 1000)),
+      },
     });
-
-    if (existing && existing.createdAt > thirtyMinutesAgo) {
-      return null; // skip, too recent
-    }
-
+    if (recent) return null;
     return this.create({ meterId, deviceId, type, message, severity });
   }
 }

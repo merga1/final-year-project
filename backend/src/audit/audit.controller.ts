@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards, Query } from '@nestjs/common';
 import { AuditService } from './audit.service';
+import { CreateAuditLogDto } from './dto/create-audit-log.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -12,16 +13,13 @@ export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   @Get()
-  async getAuditLogs(@Query('limit') limit?: string) {
-    const lim = limit ? parseInt(limit, 10) : 100;
-    return this.auditService.findAll(lim);
+  getAuditLogs(@Query('limit') limit?: string) {
+    const parsed = parseInt(limit ?? '', 10);
+    return this.auditService.findAll(Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 500) : 100);
   }
 
   @Post()
-  async createAuditLog(
-    @CurrentUser() user: any,
-    @Body() body: { action: string; category?: string; targetEntity: string; details: string; status?: 'SUCCESS' | 'FAILED' | 'WARNING' },
-  ) {
+  createAuditLog(@CurrentUser() user: any, @Body() body: CreateAuditLogDto) {
     const actor = user?.name ? `${user.name} (${user.email})` : user?.email ?? 'Admin';
     return this.auditService.create({
       actor,

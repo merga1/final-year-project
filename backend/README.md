@@ -1,143 +1,76 @@
 # Smart Water Management API
 
-The backend is a TypeScript API built with NestJS. It connects the AquaSense mobile app, the admin dashboard, and smart water meter devices to the same data store.
+NestJS (TypeScript) backend for the AquaSense system. One API serves the customer/technician mobile app, the admin dashboard, and the ESP32 smart water meters.
 
-For a presentation-ready walkthrough, see [Backend Presentation Guide](../docs/backend-presentation-guide.md).
+## Quick start
 
-## What the backend does
+```bash
+npm ci
+cp .env.example .env        # then edit JWT_SECRET (and DEVICE_API_KEY if you use one)
+npm run start:dev           # http://localhost:4000, SQLite file created automatically
+npm run seed                # (new terminal) demo accounts + data - wipes the demo tables
+npm run simulate:meters     # (optional) fake meters posting a reading every 60 s
+npm run test:smoke          # end-to-end checks against the running, seeded API
+```
 
-- Authenticates customers, technicians, and administrators.
-- Stores customers, technicians, devices, readings, bills, payments, support tickets, alerts, and notifications.
-- Receives meter readings and checks them against alert thresholds.
-- Serves customer and technician dashboards with data for the signed-in account.
-- Tracks support work from customer request through technician assignment and resolution.
-- Provides admin routes for managing records and viewing system-wide information.
+Demo accounts (created by `npm run seed`):
 
-## How a request is handled
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `admin2@gmail.com` | `admin123` |
+| Customer | `mikiasylmer7362@gmail.com` | `customer123` |
+| Technician | `john.smith@tech.water` | `technician123` |
+
+## Architecture
 
 ```text
-Mobile app / admin dashboard / meter
-                 ↓ HTTP request
-              Controller
-                 ↓ guards and input validation
-               Service
-                 ↓ TypeORM repository
-       SQLite (local) or PostgreSQL
+Mobile app / Admin dashboard / ESP32 meter
+              | HTTP
+        Controller   (routes, JwtAuthGuard + RolesGuard, DTO validation)
+              |
+        Service      (business rules)
+              |
+        TypeORM repository -> SQLite (local) or PostgreSQL (production)
 ```
 
-Controllers define the HTTP routes. Guards check a login token and, where required, the account role. Services contain the application rules. TypeORM entities describe the tables stored in the database. The global validation pipe handles DTO classes where they are used; it does not automatically validate every inline or `any` request body.
-
-The application module that assembles the feature modules is [`src/app.module.ts`](src/app.module.ts). The server startup and global validation pipe setup are in [`src/main.ts`](src/main.ts).
-
-## Main feature modules
-
-| Module | Responsibility |
+| Folder | Responsibility |
 | --- | --- |
-| `auth` | Login, customer registration, password changes, JWT creation and validation |
-| `customers` | Customer records and admin customer management |
-| `technicians` | Technician records, assignments, workload and admin technician management |
-| `devices` | Meter records, sensor ingestion and valve commands |
-| `readings` | Historical and daily sensor readings |
-| `alerts` | Sensor threshold alerts and admin acknowledgement |
-| `support-tickets` | Customer request queue, admin-selected technician assignment, ticket status and resolution |
-| `billing` | Customer bills and admin billing summaries |
-| `payments` | Payment records and the Chapa checkout handoff |
-| `notifications` | Per-account notifications and read status |
-| `audit` | Admin audit log records |
+| `src/auth` | Login, registration, password change, JWT strategy, guards, `@Roles`, `@CurrentUser` |
+| `src/customers`, `src/technicians` | Accounts and admin management |
+| `src/devices` | Meters, valve commands, telemetry ingestion + threshold alerts |
+| `src/readings` | Reading history and chart aggregations |
+| `src/alerts` | Alert list and acknowledgement |
+| `src/support-tickets` | Request -> admin assigns -> technician accepts/resolves |
+| `src/billing`, `src/payments` | Bills and pending payments (Chapa hand-off) |
+| `src/notifications`, `src/audit` | Per-user notifications, admin audit log |
+| `src/config/env.ts` | The only place environment variables are read and validated |
+| `src/app.config.ts` | CORS + global ValidationPipe, shared by `main.ts` and `api/index.js` |
+| `src/database` | Database module and seed script |
 
-Most feature folders contain a controller, service, and entity. For example, `devices.controller.ts` handles device HTTP requests, `devices.service.ts` contains database operations, and `device.entity.ts` defines the device table.
+## Key rules
 
-## Important API routes
+- **Roles come only from the database.** Admin routes need `role = admin`; there are no special-cased emails.
+- **Device ingestion** (`POST /api/devices/reading`) requires the `x-device-key` header matching `DEVICE_API_KEY`. If the variable is unset it is open in development and *rejected* in production.
+- **Alerts** are raised when turbidity > 5 NTU, flow > 30 L/min or battery < 15 % (`src/devices/devices.constants.ts`); the same alert type is not repeated for 30 minutes.
+- **Payments** created by customers are always `pending`; a referenced bill must belong to the caller and the bill's own amount is charged.
+- **Every request body** is validated by a DTO class (`whitelist: true` removes unknown fields).
 
-All routes use the server root as their base URL. The default local port is `4000`.
+## Database
 
-| Route | Access | Purpose |
-| --- | --- | --- |
-| `GET /health` | Public | Confirms the API is running |
-| `POST /auth/login` | Public | Signs in a customer or technician and returns a JWT plus role |
-| `POST /auth/register` | Public | Creates a customer account; can link an available meter |
-| `POST /auth/change-password` | Signed-in user | Changes the current account password |
-| `GET /api/mobile/home` | Signed-in customer | Loads the customer dashboard for the account's meter |
-| `POST /api/mobile/valve` | Signed-in customer | Requests a change to the linked meter's valve state |
-| `POST /api/devices/reading` | Device ingestion | Saves a reading, updates meter state, and checks thresholds |
-| `POST /api/mobile/support-tickets` | Customer | Submits a support or water meter request to the admin queue |
-| `PATCH /api/admin/support-tickets/:id` | Admin | Assigns or reassigns a selected technician |
-| `GET /api/technician/home` | Technician | Returns assigned, accepted, and resolved work counts |
-| `GET /api/technician/tickets` | Technician | Lists work assigned to that technician; optional `status` filter |
-| `PATCH /api/technician/tickets/:id` | Assigned technician | Accepts, rejects, starts, or resolves a ticket |
-| `GET /api/admin/overview` | Admin | Loads system-wide dashboard data |
-| `GET /api/admin/devices` | Admin | Lists registered meters |
-| `GET /api/admin/support-tickets` | Admin | Lists customer support requests |
+- `DATABASE_URL` (or `POSTGRES_URL`) set -> PostgreSQL. Tables are created only when `DB_SYNC=true` (set it once, then remove it). `DB_SSL` = `disable | require | verify`.
+- Not set -> SQLite file at `DB_PATH` (default `./water.sqlite`), schema auto-synchronised.
+- `npm run seed` refuses to run against PostgreSQL unless `SEED_CONFIRM=yes`.
 
-Other admin routes manage customers, technicians, bills, payments, readings, alerts, devices, and audit logs. Customer routes also cover bills, payments, readings, notifications, and support ticket history. Technician routes cover their notifications and ticket device diagnostics.
+## Deployment (Vercel)
 
-## Authentication and roles
+`vercel.json` routes everything to `api/index.js`, which loads the compiled app from `dist/`. Serverless has no persistent disk, so **a PostgreSQL `DATABASE_URL` is required**. Set `NODE_ENV=production`, `JWT_SECRET`, `DEVICE_API_KEY` and `CORS_ORIGINS` in the project settings.
 
-`POST /auth/login` searches customer accounts first and technician accounts second. The password is checked with bcrypt. On success, the API signs a JWT that includes the account ID (`sub`), email, name, and role. Customer tokens also include the linked `meterId`; technician tokens include `technicianId`.
+## Known limitations (prototype)
 
-Protected controllers use `JwtAuthGuard`. Routes restricted to a role also use `RolesGuard` and the `@Roles(...)` decorator. The `@CurrentUser()` decorator gives a controller the verified user information from the token.
-
-The unified mobile app reads the returned role to choose the customer dashboard or technician dashboard. Technician accounts are created by an administrator, not through customer self-registration.
-
-## Meter and ticket workflows
-
-### Customer already has a meter
-
-During registration, the API checks that the meter number exists and is not already linked to an account. It creates the customer record and links the device to that customer. The JWT then carries the meter number used by customer dashboard and reading routes.
-
-### Customer needs a meter
-
-The mobile app creates the customer account, then submits a `Water Meter Request` as a support ticket with the installation address and contact number. The backend saves it as `pending` with no technician and notifies the customer that it is waiting for admin review. It appears in the admin Support Tickets queue as awaiting assignment.
-
-### Technician completes a request
-
-An admin reviews the ticket, chooses a technician in the admin dashboard, and assigns it. The assignment updates the technician's workload and notifies both the technician and customer. The technician dashboard only shows work assigned to that technician. The technician can accept or reject an assigned ticket, then resolve accepted work with resolution notes. Ticket changes notify the customer.
-
-## Sensor ingestion and alerts
-
-The meter simulator or a device sends a reading to `POST /api/devices/reading`. The API stores the reading and updates the meter's latest connectivity, valve state, battery level, and last-seen time. It creates alerts when turbidity is above `5 NTU`, flow is above `30 L/min`, or battery is below `15%`. Water-quality and high-flow alerts can also notify the linked customer.
-
-The thresholds are demo application values in [`src/devices/devices.controller.ts`](src/devices/devices.controller.ts), not a claim that every installation should use the same operational limits.
-
-## Database setup
-
-The database configuration is in [`src/database/database.module.ts`](src/database/database.module.ts):
-
-- If `DATABASE_URL` or `POSTGRES_URL` is set, the backend connects to PostgreSQL. Schema synchronization is disabled in this mode.
-- If neither variable is set, the backend uses `better-sqlite3` and `DB_PATH`, defaulting to `./water.sqlite`. TypeORM schema synchronization is enabled in this local mode.
-
-Copy `.env.example` to `.env` for reference. For SQLite development, leave `DATABASE_URL` and `POSTGRES_URL` unset. Set a real `JWT_SECRET` before deploying.
-
-## Run locally
-
-From the `backend` directory:
-
-```powershell
-npm ci
-npm run start:dev
-```
-
-The API listens on port `4000` by default. Set `PORT` to change it. To load sample accounts and data into a disposable local database, open another terminal in `backend` and run:
-
-```powershell
-npm run seed
-```
-
-The seed script deletes existing records from the demo tables before inserting sample data. Do not run it against a database with data you need to keep.
-
-To simulate meter readings, run `npm run simulate:meters`. With the API running and seeded, run `npm run test:smoke` to exercise health, admin, customer, and technician paths.
-
-Seeded presentation accounts include:
-
-- Admin: `admin2@gmail.com` / `admin123`
-- Customer: `mikiasylmer7362@gmail.com` / `customer123`
-- Technician: `john.smith@tech.water` / `technician123`
-
-## Prototype notes to explain accurately
-
-- The meter ingestion route currently has no device API-key guard or DTO payload validation. Its controller comment explicitly marks device authentication as a real-deployment requirement.
-- Forgot-password currently returns a generic response; it does not issue or deliver a reset token.
-- Chapa payment records are saved as pending. A checkout URL is returned only when `CHAPA_CHECKOUT_URL` is configured; this backend does not show a payment callback/verification flow.
-- The JWT module has a development fallback secret. Production must set a strong `JWT_SECRET`.
-- The PostgreSQL connection currently disables certificate verification. Review that TLS setting for the production host.
-- CORS currently allows requests from any origin; restrict origins to the deployed clients for production.
+- Forgot-password returns a generic message; no reset token is sent.
+- Chapa payments stay `pending`; there is no callback/verification endpoint yet.
+- Valve commands are confirmed immediately (no real device acknowledgement).
+- `BillingService.generateFromCumulativeReadings` exists but no route/scheduler calls it yet.
+- No automated unit tests; `npm run test:smoke` is the only check.
+- `socket.io` / `@nestjs/websockets` / `@nestjs/platform-socket.io` are installed but unused; remove with
+  `npm uninstall socket.io @nestjs/websockets @nestjs/platform-socket.io`.
