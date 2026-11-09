@@ -136,15 +136,6 @@ class MobileRepository {
         .toList();
   }
 
-  Future<List<Map<String, dynamic>>> fetchInvoices() async {
-    final list = await _client.get('/api/mobile/invoices') as List<dynamic>;
-    return list.cast<Map<String, dynamic>>();
-  }
-
-  Future<void> disputeInvoice(String id, String note) async {
-    await _client.post('/api/mobile/invoices/$id/dispute', {'note': note});
-  }
-
   Future<void> requestPayment({
     required String billId,
     required double amount,
@@ -157,15 +148,6 @@ class MobileRepository {
       'reference': reference,
       'status': 'pending',
     });
-  }
-
-  Future<List<Map<String, dynamic>>> fetchMyJobs() async {
-    final list = await _client.get('/api/field/work-orders') as List<dynamic>;
-    return list.cast<Map<String, dynamic>>();
-  }
-
-  Future<void> actOnJob(String id, String action, [Map<String, dynamic>? body]) async {
-    await _client.post('/api/field/work-orders/$id/$action', body ?? {});
   }
 
   Future<List<Bill>> fetchBills() async {
