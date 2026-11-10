@@ -4,8 +4,11 @@ import '../models/mobile_home_data.dart';
 import '../models/mobile_repository.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.repo});
+  const HomeScreen({super.key, required this.repo, this.onNavigate});
   final MobileRepository repo;
+
+  /// Switches the parent shell to another bottom-navigation tab.
+  final ValueChanged<int>? onNavigate;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -210,30 +213,39 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             children: [
-              // Top status banner
-              Center(
-                child: Text(
-                  'Connecting to sensor data...',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[500],
-                    fontWeight: FontWeight.w500,
-                  ),
+              // Greeting and live status
+              Text(
+                'Hello, ${home.customerName.split(' ').first}',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
+              Text(
+                'Meter ${home.meterId} • ${home.zone}',
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 10),
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(isOffline ? Icons.cloud_off_outlined : Icons.cloud_done_outlined, size: 15, color: isOffline ? Colors.orange : Colors.green),
                   const SizedBox(width: 5),
-                  Text(
-                    isOffline ? 'Device offline' : 'Device online',
-                    style: TextStyle(fontSize: 12, color: isOffline ? Colors.orange[800] : Colors.green[800], fontWeight: FontWeight.w600),
+                  Flexible(
+                    child: Text(
+                      isOffline ? 'Showing last known readings' : 'Live sensor readings',
+                      style: TextStyle(fontSize: 12, color: isOffline ? Colors.orange[800] : Colors.green[800], fontWeight: FontWeight.w600),
+                    ),
                   ),
                   if (home.lastUpdatedAt != null) ...[
                     const SizedBox(width: 8),
-                    Text('Updated ${_formatTimestamp(home.lastUpdatedAt!)}', style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                    Flexible(
+                      child: Text('Updated ${_formatTimestamp(home.lastUpdatedAt!)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                    ),
                   ],
                 ],
               ),
@@ -246,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: 0.95,
+                childAspectRatio: 0.84,
                 children: [
                   // 1. Flow Rate Card
                   _SensorGridCard(
@@ -354,6 +366,109 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 20),
+              const _SectionHeader('Quick actions'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.receipt_long_outlined,
+                      label: 'Pay bill',
+                      color: const Color(0xFF7C3AED),
+                      onTap: widget.onNavigate == null
+                          ? null
+                          : () => widget.onNavigate!(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.insights_outlined,
+                      label: 'View usage',
+                      color: const Color(0xFF0284C7),
+                      onTap: widget.onNavigate == null
+                          ? null
+                          : () => widget.onNavigate!(1),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.support_agent_outlined,
+                      label: 'Raise ticket',
+                      color: const Color(0xFFD97706),
+                      onTap: widget.onNavigate == null
+                          ? null
+                          : () => widget.onNavigate!(3),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _QualityCard(
+                status: home.waterQualityStatus,
+                advice: home.waterQualityAdvice,
+                turbidity: home.turbidityNtu,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _InfoTile(
+                      icon: Icons.today_outlined,
+                      label: 'Today',
+                      value: '${home.dailyConsumptionLiters.toStringAsFixed(0)} L',
+                      caption: 'Used since midnight',
+                      color: const Color(0xFF0284C7),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _InfoTile(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'Outstanding',
+                      value: home.outstandingBillEtb > 0
+                          ? 'ETB ${home.outstandingBillEtb.toStringAsFixed(2)}'
+                          : 'Paid up',
+                      caption: home.outstandingBillCount > 0
+                          ? '${home.outstandingBillCount} unpaid bill(s)'
+                          : 'No pending bills',
+                      color: home.outstandingBillEtb > 0
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF15803D),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const _SectionHeader('Recent alerts'),
+              const SizedBox(height: 8),
+              if (home.alerts.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle_outline,
+                          size: 18, color: Color(0xFF15803D)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'No active alerts. We will notify you if the meter reports a problem.',
+                          style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ...home.alerts.take(5).map((alert) => _AlertTile(message: alert)),
             ],
           ),
         );
@@ -438,6 +553,255 @@ class _SensorGridCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF0F172A),
+      ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  const _InfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.caption,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String caption;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+                fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+                fontSize: 17, fontWeight: FontWeight.w800, color: color),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            caption,
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QualityCard extends StatelessWidget {
+  const _QualityCard({
+    required this.status,
+    required this.advice,
+    required this.turbidity,
+  });
+
+  final String status;
+  final String advice;
+  final double turbidity;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = status.toLowerCase();
+    final isSafe = normalized == 'safe';
+    final isUnknown = normalized == 'unknown';
+    final color = isUnknown
+        ? const Color(0xFF64748B)
+        : isSafe
+            ? const Color(0xFF15803D)
+            : normalized == 'warning'
+                ? const Color(0xFFD97706)
+                : const Color(0xFFDC2626);
+    final background = isUnknown
+        ? const Color(0xFFF1F5F9)
+        : isSafe
+            ? const Color(0xFFDCFCE7)
+            : normalized == 'warning'
+                ? const Color(0xFFFEF3C7)
+                : const Color(0xFFFEE2E2);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.water_drop_outlined, color: color, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Water quality: ${isUnknown ? 'No reading' : status}',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: color),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${turbidity.toStringAsFixed(1)} NTU',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: color),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  advice.isEmpty
+                      ? 'Water quality is measured from the latest turbidity reading.'
+                      : advice,
+                  style: const TextStyle(
+                      fontSize: 12, height: 1.35, color: Color(0xFF334155)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(icon, size: 20, color: color),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF334155)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AlertTile extends StatelessWidget {
+  const _AlertTile({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              size: 18, color: Color(0xFFD97706)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155)),
             ),
           ),
         ],

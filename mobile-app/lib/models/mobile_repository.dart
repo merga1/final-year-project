@@ -56,6 +56,14 @@ class SupportTicket {
     this.description = '',
     this.technicianId,
     this.technicianName,
+    this.customerAddress = '',
+    this.notes = '',
+    this.progressNotes = '',
+    this.rejectionReason = '',
+    this.assignedAt,
+    this.acceptedAt,
+    this.resolvedAt,
+    this.updatedAt,
   });
 
   final String id;
@@ -67,6 +75,14 @@ class SupportTicket {
   final String description;
   final String? technicianId;
   final String? technicianName;
+  final String customerAddress;
+  final String notes;
+  final String progressNotes;
+  final String rejectionReason;
+  final String? assignedAt;
+  final String? acceptedAt;
+  final String? resolvedAt;
+  final String? updatedAt;
 
   factory SupportTicket.fromJson(Map<String, dynamic> j) {
     return SupportTicket(
@@ -79,6 +95,14 @@ class SupportTicket {
       description: j['description'] as String? ?? (j['issue'] as String? ?? ''),
       technicianId: j['technicianId'] as String?,
       technicianName: j['technicianName'] as String?,
+      customerAddress: j['customerAddress'] as String? ?? '',
+      notes: j['notes'] as String? ?? '',
+      progressNotes: j['progressNotes'] as String? ?? '',
+      rejectionReason: j['rejectionReason'] as String? ?? '',
+      assignedAt: j['assignedAt'] as String?,
+      acceptedAt: j['acceptedAt'] as String?,
+      resolvedAt: j['resolvedAt'] as String?,
+      updatedAt: j['updatedAt'] as String?,
     );
   }
 }
@@ -181,6 +205,11 @@ class MobileRepository {
 }
 
 extension MobileRepositorySrsFeatures on MobileRepository {
+  Future<SupportTicket> fetchTicket(String id) async {
+    final json = await _client.get('/api/mobile/support-tickets/$id');
+    return SupportTicket.fromJson(Map<String, dynamic>.from(json as Map));
+  }
+
   Future<List<AppNotification>> fetchNotifications() async {
     final json = Map<String, dynamic>.from(await _client.get('/api/notifications') as Map);
     final items = (json['items'] as List<dynamic>? ?? []);
@@ -210,16 +239,27 @@ extension MobileRepositorySrsFeatures on MobileRepository {
 }
 
 class PaymentRecord {
-  const PaymentRecord({required this.amount, required this.status, required this.reference, required this.createdAt});
+  const PaymentRecord({
+    required this.amount,
+    required this.status,
+    required this.reference,
+    required this.createdAt,
+    this.billId = '',
+    this.method = 'chapa',
+  });
   final double amount;
   final String status;
   final String reference;
   final String createdAt;
+  final String billId;
+  final String method;
 
   factory PaymentRecord.fromJson(Map<String, dynamic> json) => PaymentRecord(
         amount: (json['amount'] as num?)?.toDouble() ?? 0,
         status: json['status']?.toString() ?? 'pending',
         reference: json['reference']?.toString() ?? '-',
         createdAt: json['createdAt']?.toString() ?? '',
+        billId: json['billId']?.toString() ?? '',
+        method: json['method']?.toString() ?? 'chapa',
       );
 }

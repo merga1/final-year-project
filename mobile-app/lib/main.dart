@@ -8,6 +8,7 @@ import 'models/mobile_repository.dart';
 import 'screens/login_screen.dart';
 import 'screens/role_select_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/usage_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/support_screen.dart';
 import 'screens/profile_screen.dart';
@@ -177,12 +178,27 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(repo: widget.repo),
+      HomeScreen(
+        repo: widget.repo,
+        onNavigate: (i) => setState(() => _index = i),
+      ),
+      UsageScreen(repo: widget.repo),
       BillsScreen(repo: widget.repo),
       SupportScreen(repo: widget.repo),
+      ProfileScreen(
+        authService: widget.auth,
+        onLogout: widget.onLogout,
+        repo: widget.repo,
+      ),
     ];
 
-    const titles = ['Water Dashboard', 'Water Bill', 'Support Tickets'];
+    const titles = [
+      'Water Dashboard',
+      'Usage Analytics',
+      'Water Bill',
+      'Support Tickets',
+      'My Profile',
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -227,6 +243,12 @@ class _MainShellState extends State<MainShell> {
             label: 'Home',
           ),
           NavigationDestination(
+            icon: Icon(Icons.show_chart_rounded),
+            selectedIcon:
+                Icon(Icons.show_chart_rounded, color: Color(0xFF0284C7)),
+            label: 'Usage',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),
             selectedIcon:
                 Icon(Icons.receipt_long_rounded, color: Color(0xFF0284C7)),
@@ -236,7 +258,13 @@ class _MainShellState extends State<MainShell> {
             icon: Icon(Icons.support_agent_outlined),
             selectedIcon:
                 Icon(Icons.support_agent_rounded, color: Color(0xFF0284C7)),
-            label: 'Support Ticket',
+            label: 'Support',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon:
+                Icon(Icons.person_rounded, color: Color(0xFF0284C7)),
+            label: 'Profile',
           ),
         ],
       ),
@@ -320,6 +348,7 @@ class _MainShellState extends State<MainShell> {
                     body: ProfileScreen(
                       authService: widget.auth,
                       onLogout: widget.onLogout,
+                      repo: widget.repo,
                     ),
                   ),
                 ),

@@ -121,7 +121,24 @@ export class AppService {
         ])
       : [0, 0];
     const myBills = await this.billing.findByCustomer(userId);
-    const pendingBill = myBills.find(b => b.status === 'pending');
+    const unpaidBills = myBills.filter(b => b.status === 'pending' || b.status === 'overdue');
+    const pendingBill = unpaidBills[0];
+    const outstandingTotal = unpaidBills.reduce((sum, bill) => sum + bill.amountEtb, 0);
+    const waterQuality =
+      latestReading
+        ? latestReading.turbidityNtu <= 5
+          ? 'Safe'
+          : latestReading.turbidityNtu <= 15
+            ? 'Warning'
+            : 'Contaminated'
+        : 'Unknown';
+    const waterQualityAdvice = latestReading
+      ? latestReading.turbidityNtu <= 5
+        ? 'Water is within the safe turbidity range (0-5 NTU).'
+        : latestReading.turbidityNtu <= 15
+          ? 'Turbidity is borderline. Let the tap run for a moment and avoid drinking until it clears.'
+          : 'High turbidity detected. Do not drink the water and raise a support ticket.'
+      : 'No sensor reading is available yet.';
 
     const cards = [
       {
@@ -157,13 +174,22 @@ export class AppService {
       userId: customer.id,
       customerName: customer.name,
       customerEmail: customer.email,
+      customerAddress: customer.address ?? '',
+      zone: customer.zone ?? device?.zone ?? 'Zone A',
+      accountStatus: customer.accountStatus ?? 'active',
       connectionStatus: isOffline ? 'OFFLINE' : device?.connectivity ?? 'ONLINE',
       meterId: device?.meterId ?? meterId ?? 'Not assigned',
       flowRateLpm: latestReading?.flowRateLpm ?? 0.0,
       turbidityNtu: latestReading?.turbidityNtu ?? 0.0,
       monthlyConsumptionLiters: monthlyUsage,
       dailyConsumptionLiters: dailyUsage,
-      waterQualityStatus: latestReading ? (latestReading.turbidityNtu <= 5 ? 'Safe' : latestReading.turbidityNtu <= 15 ? 'Warning' : 'Contaminated') : 'Unknown',
+      waterQualityStatus: waterQuality,
+      waterQualityAdvice,
+      batteryPercent: device?.batteryPercent ?? null,
+      installedAt: device?.createdAt ?? null,
+      outstandingBillEtb: Math.round(outstandingTotal * 100) / 100,
+      outstandingBillCount: unpaidBills.length,
+      outstandingBillDueDate: pendingBill?.dueDate ?? null,
       lastUpdatedAt: latestTimestamp,
       deviceOffline: isOffline,
       valveState: device?.valveState ?? 'N/A',
@@ -174,12 +200,27 @@ export class AppService {
   }
 
   async getTechnicianHome(technicianId: string) {
-    const tickets = await this.tickets.findByTechnician(technicianId);
+    const [tickets, technician] = await Promise.all([
+      this.tickets.findByTechnician(technicianId),
+      this.technicians.findOne(technicianId).catch(() => null),
+    ]);
+    const countWhere = (statuses: string[]) =>
+      tickets.filter((t) => statuses.includes(t.status.toLowerCase())).length;
+
     return {
-      assigned: tickets.filter((t) => ['assigned', 'open', 'pending'].includes(t.status.toLowerCase())).length,
-      accepted: tickets.filter((t) => ['accepted', 'in_progress'].includes(t.status.toLowerCase())).length,
-      resolved: tickets.filter((t) => ['resolved', 'closed'].includes(t.status.toLowerCase())).length,
+      assigned: countWhere(['assigned', 'open', 'pending']),
+      accepted: countWhere(['accepted', 'in_progress']),
+      inProgress: countWhere(['in_progress']),
+      resolved: countWhere(['resolved', 'closed']),
       total: tickets.length,
+      technicianName: technician?.name ?? 'Technician',
+      email: technician?.email ?? '',
+      phone: technician?.phone ?? '',
+      zone: technician?.zone ?? 'Zone A',
+      specialization: technician?.specialization ?? 'No specialization',
+      dutyStatus: technician?.status ?? 'on_duty',
+      currentJobCount: technician?.currentJobCount ?? 0,
+      completedRepairs: technician?.completedRepairs ?? 0,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -197,8 +238,14 @@ export class AppService {
       : [null, []];
     return {
       ticketId: ticket.id,
+      ticketType: ticket.type,
+      priority: ticket.priority,
+      customerName: ticket.customerName,
+      customerAddress: ticket.customerAddress ?? '',
       deviceId: device?.id ?? null,
       meterId: meterId ?? null,
+      zone: device?.zone ?? 'Unknown zone',
+      batteryPercent: device?.batteryPercent ?? null,
       flowRateLpm: reading?.flowRateLpm ?? 0,
       turbidityNtu: reading?.turbidityNtu ?? 0,
       valveState: reading?.valveState ?? device?.valveState ?? 'UNKNOWN',

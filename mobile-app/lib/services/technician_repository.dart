@@ -13,7 +13,7 @@ class TechnicianRepository {
   Future<List<TechnicianTicket>> fetchTickets({String? status}) async {
     final suffix = status == null || status == 'All'
         ? ''
-        : '?status=${Uri.encodeQueryComponent(status.toLowerCase())}';
+        : '?status=${Uri.encodeQueryComponent(status.toLowerCase().replaceAll(' ', '_'))}';
     final json = await _client.get('/api/technician/tickets$suffix')
         as List<dynamic>;
     return json
@@ -42,5 +42,9 @@ class TechnicianRepository {
 
   Future<void> markNotificationRead(String id) async {
     await _client.patch('/api/notifications/$id/read', {});
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _client.patch('/api/notifications/read-all', {});
   }
 }

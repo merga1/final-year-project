@@ -121,7 +121,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Connecting to sensor data...'), findsOneWidget);
+    expect(find.text('Live sensor readings'), findsOneWidget);
     expect(find.text('Flow Rate'), findsOneWidget);
     expect(find.text('Turbidity Level'), findsOneWidget);
     expect(find.text('Monthly Consumption'), findsOneWidget);

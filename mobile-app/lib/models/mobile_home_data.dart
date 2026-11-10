@@ -41,6 +41,9 @@ class MobileHomeData {
     required this.cards,
     required this.alerts,
     this.customerEmail = '',
+    this.customerAddress = '',
+    this.zone = 'Zone A',
+    this.accountStatus = 'active',
     this.userId = '',
     this.flowRateLpm = 0.0,
     this.turbidityNtu = 0.0,
@@ -48,12 +51,21 @@ class MobileHomeData {
     this.dailyConsumptionLiters = 0.0,
     this.valveState = 'OPEN',
     this.waterQualityStatus = 'Unknown',
+    this.waterQualityAdvice = '',
+    this.batteryPercent,
+    this.installedAt,
+    this.outstandingBillEtb = 0.0,
+    this.outstandingBillCount = 0,
+    this.outstandingBillDueDate,
     this.lastUpdatedAt,
     this.deviceOffline = false,
   });
 
   final String customerName;
   final String customerEmail;
+  final String customerAddress;
+  final String zone;
+  final String accountStatus;
   final String userId;
   final String connectionStatus;
   final String meterId;
@@ -63,6 +75,12 @@ class MobileHomeData {
   final double dailyConsumptionLiters;
   final String valveState;
   final String waterQualityStatus;
+  final String waterQualityAdvice;
+  final double? batteryPercent;
+  final String? installedAt;
+  final double outstandingBillEtb;
+  final int outstandingBillCount;
+  final String? outstandingBillDueDate;
   final String? lastUpdatedAt;
   final bool deviceOffline;
   final List<MobileStatusCardData> cards;
@@ -72,6 +90,9 @@ class MobileHomeData {
     return MobileHomeData(
       customerName: json['customerName'] as String? ?? 'Customer',
       customerEmail: json['customerEmail'] as String? ?? '',
+      customerAddress: json['customerAddress'] as String? ?? '',
+      zone: json['zone'] as String? ?? 'Zone A',
+      accountStatus: json['accountStatus'] as String? ?? 'active',
       userId: json['userId'] as String? ?? '',
       connectionStatus: json['connectionStatus'] as String? ?? 'ONLINE',
       meterId: json['meterId'] as String? ?? 'Not assigned',
@@ -83,6 +104,13 @@ class MobileHomeData {
           (json['dailyConsumptionLiters'] as num?)?.toDouble() ?? 0,
       valveState: json['valveState'] as String? ?? 'OPEN',
       waterQualityStatus: json['waterQualityStatus'] as String? ?? 'Unknown',
+      waterQualityAdvice: json['waterQualityAdvice'] as String? ?? '',
+      batteryPercent: (json['batteryPercent'] as num?)?.toDouble(),
+      installedAt: json['installedAt'] as String?,
+      outstandingBillEtb:
+          (json['outstandingBillEtb'] as num?)?.toDouble() ?? 0.0,
+      outstandingBillCount: (json['outstandingBillCount'] as num?)?.toInt() ?? 0,
+      outstandingBillDueDate: json['outstandingBillDueDate'] as String?,
       lastUpdatedAt: json['lastUpdatedAt'] as String?,
       deviceOffline: json['deviceOffline'] as bool? ?? false,
       cards: ((json['cards'] as List<dynamic>?) ?? [])
