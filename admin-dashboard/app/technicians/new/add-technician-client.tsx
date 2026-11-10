@@ -15,13 +15,16 @@ export default function AddTechnicianPage({ token }: { token?: string }) {
     setLoading(true);
 
     const fd = new FormData(e.currentTarget);
+    const address = fd.get('address') as string;
     const body = {
       firstName: fd.get('firstName') as string,
       lastName: fd.get('lastName') as string,
       email: fd.get('email') as string,
+      password: fd.get('password') as string,
       phone: fd.get('phone') as string,
       hireDate: fd.get('hireDate') as string,
-      address: fd.get('address') as string,
+      address,
+      zone: address,
       specialization: fd.get('specialization') as string,
       qualifications: fd.get('qualifications') as string,
     };
@@ -90,6 +93,22 @@ export default function AddTechnicianPage({ token }: { token?: string }) {
               <label htmlFor="phone">Phone Number</label>
               <input id="phone" name="phone" type="tel" placeholder="+251..." />
             </div>
+          </div>
+
+          <div className="form-field-group full-width">
+            <label htmlFor="password">Temporary Password *</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              minLength={6}
+              autoComplete="new-password"
+              placeholder="At least 6 characters"
+            />
+            <small style={{ color: '#64748b', fontSize: '0.78rem' }}>
+              Share this password with the technician. They sign in from the mobile app and can change it from their profile.
+            </small>
           </div>
 
           <div className="form-row-two-col">

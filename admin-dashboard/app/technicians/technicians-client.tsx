@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Pagination } from '../../components/pagination';
@@ -62,6 +62,11 @@ export function TechniciansClient({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [passwordTech, setPasswordTech] = useState<any | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const onDutyCount = technicians.filter(
     t => (t.status ?? '').toLowerCase() === 'on_duty' || (t.status ?? '').toLowerCase() === 'onduty'
@@ -128,6 +133,47 @@ export function TechniciansClient({
     }
   }
 
+  function openPasswordModal(tech: any) {
+    setPasswordTech(tech);
+    setNewPassword('');
+    setPasswordError('');
+  }
+
+  async function handleSetPassword(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!passwordTech) return;
+    if (newPassword.trim().length < 6) {
+      setPasswordError('Password must be at least 6 characters long.');
+      return;
+    }
+    setSavingPassword(true);
+    setPasswordError('');
+    try {
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
+      const t = getCookie('sw_token') || token;
+      const res = await fetch(`${API}/api/admin/technicians/${passwordTech.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const msg = Array.isArray(data.message) ? data.message.join(', ') : (data.message || 'Failed to set password');
+        setPasswordError(msg);
+        return;
+      }
+      const rawName = passwordTech.name ?? `${passwordTech.firstName ?? ''} ${passwordTech.lastName ?? ''}`.trim();
+      const name = rawName || 'Technician';
+      setNotice(`Password updated for ${name}. They can now sign in from the mobile app.`);
+      setPasswordTech(null);
+      setNewPassword('');
+    } catch {
+      setPasswordError('Could not connect to the server.');
+    } finally {
+      setSavingPassword(false);
+    }
+  }
+
   return (
     <div className="section-container">
       <div className="section-header-row">
@@ -180,6 +226,7 @@ export function TechniciansClient({
       </div>
 
       {error && <div className="form-error-alert">{error}</div>}
+      {notice && <div className="form-success-alert">{notice}</div>}
 
       {/* Standardized Table Toolbar (Filters & Search) */}
       <div className="table-toolbar-row">
@@ -383,6 +430,14 @@ export function TechniciansClient({
                       >
                         Tickets
                       </Link>
+                      <button
+                        type="button"
+                        className="btn-table-action-purple"
+                        onClick={() => openPasswordModal(tech)}
+                        title={`Set a login password for ${displayName}`}
+                      >
+                        Set Password
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -400,6 +455,67 @@ export function TechniciansClient({
           itemLabel="technicians"
         />
       </div>
+
+      {passwordTech && (
+        <div className="modal-backdrop" onClick={() => !savingPassword && setPasswordTech(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title" style={{ margin: 0 }}>Set Technician Password</h3>
+                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                  {(passwordTech.name ?? `${passwordTech.firstName ?? ''} ${passwordTech.lastName ?? ''}`.trim()) || 'Technician'}
+                  {' · '}
+                  {passwordTech.email}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => !savingPassword && setPasswordTech(null)}
+                aria-label="Close dialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleSetPassword}>
+              <div className="modal-body">
+                {passwordError && <div className="form-error-alert">{passwordError}</div>}
+                <div className="form-field-group full-width">
+                  <label htmlFor="newTechnicianPassword">New Temporary Password</label>
+                  <input
+                    id="newTechnicianPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    minLength={6}
+                    autoComplete="new-password"
+                    autoFocus
+                    required
+                  />
+                  <small style={{ color: '#64748b', fontSize: '0.78rem' }}>
+                    Share this with the technician. It replaces their old password immediately.
+                  </small>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-outline-gray"
+                  onClick={() => setPasswordTech(null)}
+                  disabled={savingPassword}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary-blue" disabled={savingPassword}>
+                  {savingPassword ? 'Saving...' : 'Set Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

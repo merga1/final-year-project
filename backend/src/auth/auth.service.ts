@@ -26,7 +26,10 @@ export class AuthService {
   /** Customers/admins are looked up first, technicians second. The role comes only from the database. */
   async login(email: string, password: string, requestedRole?: 'customer' | 'technician') {
     const customer = await this.customersService.findByEmail(email);
-    if (customer) {
+
+    // When the technician portal is selected, resolve the technician account
+    // first. Some people exist in both tables, and the portal choice must win.
+    if (requestedRole !== 'technician' && customer) {
       if (!(await bcrypt.compare(password, customer.passwordHash))) throw new UnauthorizedException(INVALID);
       if (customer.accountStatus === 'suspended') throw new UnauthorizedException('This account is suspended');
 
@@ -60,24 +63,43 @@ export class AuthService {
     }
 
     const technician = await this.techniciansService.findByEmail(email);
-    if (!technician?.passwordHash || technician.accountStatus !== 'active') {
-      throw new UnauthorizedException(INVALID);
-    }
-    if (!(await bcrypt.compare(password, technician.passwordHash))) throw new UnauthorizedException(INVALID);
+    if (technician) {
+      if (!technician.passwordHash) {
+        throw new UnauthorizedException(
+          'This technician account has no password yet. Ask an administrator to set one.',
+        );
+      }
+      if (technician.accountStatus !== 'active') {
+        throw new UnauthorizedException(
+          'This technician account is not active. Contact an administrator.',
+        );
+      }
+      if (!(await bcrypt.compare(password, technician.passwordHash))) {
+        throw new UnauthorizedException(INVALID);
+      }
 
-    if (requestedRole && requestedRole !== 'technician') {
+      if (requestedRole && requestedRole !== 'technician') {
+        throw new UnauthorizedException(
+          'This is a technician account. Choose Technician on the previous screen.',
+        );
+      }
+
+      return this.sign({
+        sub: technician.id,
+        technicianId: technician.id,
+        email: technician.email,
+        name: technician.name,
+        role: 'technician',
+      });
+    }
+
+    if (requestedRole === 'technician' && customer) {
       throw new UnauthorizedException(
-        'This is a technician account. Choose Technician on the previous screen.',
+        'No technician account is registered with this email. Choose Customer on the previous screen.',
       );
     }
 
-    return this.sign({
-      sub: technician.id,
-      technicianId: technician.id,
-      email: technician.email,
-      name: technician.name,
-      role: 'technician',
-    });
+    throw new UnauthorizedException(INVALID);
   }
 
   async register(name: string, email: string, password: string, meterId?: string, address?: string) {
