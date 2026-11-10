@@ -691,6 +691,11 @@ button, input, select {
   gap: 6px;
 }
 
+.form-field-group.full-width {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .form-field-group label {
   font-size: 0.85rem;
   font-weight: 600;
