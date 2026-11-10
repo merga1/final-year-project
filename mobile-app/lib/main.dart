@@ -413,7 +413,7 @@ class _MainShellState extends State<MainShell> {
               controller: controller,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'http://192.168.11.137:4000',
+                hintText: 'https://backend-five-liart-75.vercel.app',
               ),
             ),
             const SizedBox(height: 12),

@@ -27,7 +27,7 @@ export default function AddTechnicianPage({ token }: { token?: string }) {
     };
 
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
       const res = await fetch(`${API}/api/admin/technicians`, {
         method: 'POST',
         headers: {

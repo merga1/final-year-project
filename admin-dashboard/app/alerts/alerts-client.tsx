@@ -239,7 +239,7 @@ export function AlertsClient({
     setAckingId(id);
     setError('');
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
       const t = getCookie('sw_token') || token;
       const res = await fetch(`${API}/api/admin/alerts/${id}/acknowledge`, {
         method: 'PATCH',
@@ -296,7 +296,7 @@ export function AlertsClient({
     setDispatchError('');
 
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
       const t = getCookie('sw_token') || token;
 
       const tech = (technicians || []).find((techItem: any) => techItem.id === selectedTechId);

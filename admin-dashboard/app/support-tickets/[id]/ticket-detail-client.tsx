@@ -54,7 +54,7 @@ export function TicketDetailClient({
     setError('');
     setSuccess('');
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
       const t = getCookie('sw_token') || token;
       const res = await fetch(`${API}/api/admin/support-tickets/${ticket.id}`, {
         method: 'PATCH',

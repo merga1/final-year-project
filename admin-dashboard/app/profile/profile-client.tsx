@@ -41,7 +41,7 @@ export default function ProfileClient({
     setLoading(true);
 
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000')
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app')
         .replace(String.fromCharCode(0xFEFF), '')
         .trim();
 

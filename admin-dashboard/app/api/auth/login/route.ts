@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { TOKEN_COOKIE, USER_COOKIE } from '../../../../lib/auth';
 
-const API_BASE = (process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/^\uFEFF/, '').trim();
+const API_BASE = (process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(/^\uFEFF/, '').trim();
 
 export async function POST(request: Request) {
   try {

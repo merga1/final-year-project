@@ -98,7 +98,7 @@ export function UsageAnalyticsClient({
     setSelectedMeter(meterId);
     setLoading(true);
     try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(String.fromCharCode(0xFEFF), '').trim();
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
       const url = meterId === 'all'
         ? `${API}/api/admin/readings/daily`
         : `${API}/api/admin/readings/daily?meterId=${meterId}`;

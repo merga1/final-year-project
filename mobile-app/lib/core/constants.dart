@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConstants {
   static const String _prefKey = 'smart_water_custom_base_url';
   static String? _inMemoryBaseUrl;
 
+  static const String defaultCloudUrl = 'https://backend-five-liart-75.vercel.app';
   static const String defaultLocalUrl = 'http://127.0.0.1:4000';
   static const String defaultWifiUrl = 'http://192.168.11.137:4000';
   static const String defaultEmulatorUrl = 'http://10.0.2.2:4000';
@@ -30,7 +32,6 @@ class ApiConstants {
     const override = String.fromEnvironment('API_BASE_URL');
     if (override.isNotEmpty) return override;
 
-    // Default to Wi-Fi LAN IP (192.168.11.137:4000) for physical devices on local network
-    return defaultWifiUrl;
+    return defaultCloudUrl;
   }
 }
