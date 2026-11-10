@@ -26,7 +26,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           else
-            CHANGED=$(git diff --name-only HEAD^ HEAD | grep -E '^backend/' || true)
+            CHANGED=$(git diff --name-only HEAD^ HEAD | grep -E '^(backend/|\.github/)' || true)
             if [ -n "$CHANGED" ]; then
               echo "changed=true" >> $GITHUB_OUTPUT
             else
@@ -73,7 +73,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           else
-            CHANGED=$(git diff --name-only HEAD^ HEAD | grep -E '^admin-dashboard/' || true)
+            CHANGED=$(git diff --name-only HEAD^ HEAD | grep -E '^(admin-dashboard/|\.github/)' || true)
             if [ -n "$CHANGED" ]; then
               echo "changed=true" >> $GITHUB_OUTPUT
             else
