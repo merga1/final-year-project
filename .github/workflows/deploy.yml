@@ -103,4 +103,8 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
         run: |
           CLEAN_TOKEN=$(printf '%s' "$VERCEL_TOKEN" | sed $'s/\xef\xbb\xbf//g' | tr -d '\r\n[:space:]')
+          CLEAN_PROJECT_ID=$(printf '%s' "${VERCEL_PROJECT_ID:-prj_hKZrwi0h3w5iDbkvZN6iBbKdptRS}" | sed $'s/\xef\xbb\xbf//g' | tr -d '\r\n[:space:]')
+          CLEAN_ORG_ID=$(printf '%s' "${VERCEL_ORG_ID:-team_OtvkCJJHwsQV2X3Dj8oZWDRP}" | sed $'s/\xef\xbb\xbf//g' | tr -d '\r\n[:space:]')
+          mkdir -p .vercel
+          echo "{\"projectId\":\"${CLEAN_PROJECT_ID}\",\"orgId\":\"${CLEAN_ORG_ID}\"}" > .vercel/project.json
           npx vercel deploy --prod --yes --token="$CLEAN_TOKEN"
