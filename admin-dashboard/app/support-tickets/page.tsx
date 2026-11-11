@@ -66,7 +66,16 @@ export default async function SupportTicketsPage({
       </AdminShell>
     );
   } catch (e: any) {
-    if (e.message === 'UNAUTHORIZED') redirect('/login');
-    throw e;
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    return (
+      <AdminShell currentPath="/support-tickets" title="Support Tickets">
+        <TicketsClient
+          tickets={[]}
+          technicians={[]}
+          customers={[]}
+          token={token}
+        />
+      </AdminShell>
+    );
   }
 }

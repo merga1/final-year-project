@@ -45,7 +45,11 @@ export default async function PaymentsPage() {
       </AdminShell>
     );
   } catch (e: any) {
-    if (e.message === 'UNAUTHORIZED') redirect('/login');
-    throw e;
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    return (
+      <AdminShell currentPath="/payments" title="Payments">
+        <PaymentsClient payments={[]} />
+      </AdminShell>
+    );
   }
 }

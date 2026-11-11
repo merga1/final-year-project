@@ -8,16 +8,30 @@ export default async function AuditPage() {
   const token = await getServerToken();
   if (!token) redirect('/login');
 
-  const logs = await getAuditLogs(token);
+  try {
+    const logs = await getAuditLogs(token);
 
-  return (
-    <AdminShell
-      currentPath="/audit"
-      title="Audit Trail & Change History"
-      description="Review chronological, immutable logs of all administrative actions, valve states, and system interventions (SRS NFR-A07)."
-      status="Secure"
-    >
-      <AuditClient logs={logs} />
-    </AdminShell>
-  );
+    return (
+      <AdminShell
+        currentPath="/audit"
+        title="Audit Trail & Change History"
+        description="Review chronological, immutable logs of all administrative actions, valve states, and system interventions (SRS NFR-A07)."
+        status="Secure"
+      >
+        <AuditClient logs={logs} />
+      </AdminShell>
+    );
+  } catch (e: any) {
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    return (
+      <AdminShell
+        currentPath="/audit"
+        title="Audit Trail & Change History"
+        description="Review chronological, immutable logs of all administrative actions, valve states, and system interventions (SRS NFR-A07)."
+        status="Secure"
+      >
+        <AuditClient logs={[]} />
+      </AdminShell>
+    );
+  }
 }

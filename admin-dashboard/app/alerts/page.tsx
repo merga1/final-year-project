@@ -53,7 +53,16 @@ export default async function AlertsPage() {
       </AdminShell>
     );
   } catch (e: any) {
-    if (e.message === 'UNAUTHORIZED') redirect('/login');
-    throw e;
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    return (
+      <AdminShell currentPath="/alerts" title="Alerts">
+        <AlertsClient
+          alerts={[]}
+          technicians={[]}
+          customers={[]}
+          token={token}
+        />
+      </AdminShell>
+    );
   }
 }

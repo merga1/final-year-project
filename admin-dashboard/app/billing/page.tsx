@@ -46,7 +46,11 @@ export default async function BillingPage() {
       </AdminShell>
     );
   } catch (e: any) {
-    if (e.message === 'UNAUTHORIZED') redirect('/login');
-    throw e;
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    return (
+      <AdminShell currentPath="/billing" title="Billing">
+        <BillingClient bills={[]} payments={[]} />
+      </AdminShell>
+    );
   }
 }

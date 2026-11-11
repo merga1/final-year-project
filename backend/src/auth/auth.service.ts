@@ -35,10 +35,6 @@ export class AuthService {
 
       const role = customer.role || 'customer';
 
-      if (role === 'admin') {
-        throw new UnauthorizedException('Administrator accounts use the web dashboard.');
-      }
-
       // A customer without a meter is still waiting for an admin to approve
       // their water meter request. They should not reach the dashboard yet.
       if (role === 'customer' && !customer.meterId) {

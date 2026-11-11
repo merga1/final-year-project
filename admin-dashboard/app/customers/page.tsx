@@ -16,7 +16,11 @@ export default async function CustomersPage() {
       </AdminShell>
     );
   } catch (e: any) {
-    if (e.message === 'UNAUTHORIZED') redirect('/login');
-    throw e;
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    return (
+      <AdminShell currentPath="/customers" title="Customers">
+        <CustomersClient customers={[]} />
+      </AdminShell>
+    );
   }
 }

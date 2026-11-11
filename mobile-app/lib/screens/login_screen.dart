@@ -50,6 +50,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Check if technician must change password on first login.
       final user = await widget.authService.getStoredUser();
+      if (user['role'] == 'admin') {
+        await widget.authService.logout();
+        setState(() {
+          _error = 'Administrator accounts use the web dashboard.';
+        });
+        return;
+      }
       final mustChange = user['mustChangePassword'] == 'true';
       if (mustChange && mounted) {
         await _showForceChangePassword();

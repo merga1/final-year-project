@@ -35,7 +35,22 @@ export default async function UsageAnalyticsPage() {
       </AdminShell>
     );
   } catch (e: any) {
-    if (e.message === 'UNAUTHORIZED') redirect('/login');
-    throw e;
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    return (
+      <AdminShell
+        currentPath="/usage-analytics"
+        title="Usage Analytics"
+        description="Daily consumption patterns, water quality trends, and meter readings."
+      >
+        <UsageAnalyticsClient
+          dailyUsage={[]}
+          zoneUsage={[]}
+          qualityTrend={[]}
+          devices={[]}
+          recentReadings={[]}
+          token={token}
+        />
+      </AdminShell>
+    );
   }
 }

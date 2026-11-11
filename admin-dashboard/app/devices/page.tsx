@@ -45,7 +45,11 @@ export default async function DevicesPage() {
       </AdminShell>
     );
   } catch (e: any) {
-    if (e.message === 'UNAUTHORIZED') redirect('/login');
-    throw e;
+    if (e.message === 'UNAUTHORIZED' || e.message?.includes('401')) redirect('/login');
+    return (
+      <AdminShell currentPath="/devices" title="Devices">
+        <DevicesClient devices={[]} token={token} />
+      </AdminShell>
+    );
   }
 }
