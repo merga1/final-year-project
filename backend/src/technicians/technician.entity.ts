@@ -54,6 +54,12 @@ export class Technician {
   @Column({ default: 0 })
   completedRepairs: number;
 
+  /** True when the account was just created by an admin and the technician
+   *  has never changed their password. The mobile app shows a forced
+   *  change-password dialog on first login. */
+  @Column({ default: true })
+  mustChangePassword: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

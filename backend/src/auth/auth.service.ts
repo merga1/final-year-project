@@ -35,14 +35,8 @@ export class AuthService {
 
       const role = customer.role || 'customer';
 
-      if (requestedRole && role !== requestedRole) {
-        throw new UnauthorizedException(
-          role === 'technician'
-            ? 'This is a technician account. Choose Technician on the previous screen.'
-            : role === 'admin'
-              ? 'Administrator accounts use the web dashboard.'
-              : 'This is a customer account. Choose Customer on the previous screen.',
-        );
+      if (role === 'admin') {
+        throw new UnauthorizedException('Administrator accounts use the web dashboard.');
       }
 
       // A customer without a meter is still waiting for an admin to approve
@@ -90,6 +84,7 @@ export class AuthService {
         email: technician.email,
         name: technician.name,
         role: 'technician',
+        mustChangePassword: technician.mustChangePassword ?? false,
       });
     }
 

@@ -251,7 +251,35 @@ export class AppService {
       valveState: reading?.valveState ?? device?.valveState ?? 'UNKNOWN',
       connectivity: device?.connectivity ?? 'UNKNOWN',
       lastUpdatedAt: reading?.timestamp ?? device?.lastSeenAt ?? null,
+      latitude: device?.latitude ?? null,
+      longitude: device?.longitude ?? null,
       alerts,
+    };
+  }
+
+  async setMeterLocation(ticketId: string, technicianId: string, latitude: number, longitude: number) {
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      throw new Error('latitude and longitude must be numbers');
+    }
+    if (latitude < -90 || latitude > 90) throw new Error('latitude must be between -90 and 90');
+    if (longitude < -180 || longitude > 180) throw new Error('longitude must be between -180 and 180');
+
+    const ticket = await this.tickets.findOneForTechnician(ticketId, technicianId);
+    const device = ticket.deviceId
+      ? await this.devices.findOne(ticket.deviceId)
+      : ticket.customerId
+        ? await this.devices.findByCustomerId(ticket.customerId)
+        : null;
+
+    if (!device) throw new Error('No device linked to this ticket');
+
+    await this.devices.updateByMeterId(device.meterId, { latitude, longitude });
+    return {
+      success: true,
+      meterId: device.meterId,
+      latitude,
+      longitude,
+      message: 'Meter location updated successfully',
     };
   }
 }

@@ -670,6 +670,22 @@ class TechnicianTicketDetail extends StatefulWidget {
 
 class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
   bool _loading = false;
+  TechnicianDeviceSnapshot? _deviceSnapshot;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDevice();
+  }
+
+  Future<void> _loadDevice() async {
+    try {
+      final snap = await widget.repo.fetchDevice(widget.ticket.id);
+      if (mounted) setState(() => _deviceSnapshot = snap);
+    } catch (_) {
+      // non-fatal — location card shows gracefully without it
+    }
+  }
 
   Future<void> _transition(String status,
       {String? notes, String? rejectionReason, String? progressNotes}) async {
@@ -723,6 +739,167 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
     controller.dispose();
     if (result == null || result.trim().isEmpty) return null;
     return result.trim();
+  }
+
+  Future<void> _showMeterLocation() async {
+    final snap = _deviceSnapshot;
+    final latCtrl = TextEditingController(
+      text: snap?.latitude != null ? snap!.latitude!.toStringAsFixed(6) : '',
+    );
+    final lngCtrl = TextEditingController(
+      text: snap?.longitude != null ? snap!.longitude!.toStringAsFixed(6) : '',
+    );
+    String? dialogError;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.location_on_outlined, color: Color(0xFF1E6B52)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Meter GPS Location',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Enter the exact location of the water meter. '
+                  'Use a GPS app to get precise coordinates on-site.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 16),
+                if (snap?.latitude != null && snap?.longitude != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5EF),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFBFE5D2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Current saved location',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E6B52))),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Lat: ${snap!.latitude!.toStringAsFixed(6)}\n'
+                          'Lng: ${snap.longitude!.toStringAsFixed(6)}',
+                          style: const TextStyle(
+                              fontSize: 12.5,
+                              fontFamily: 'monospace',
+                              color: Color(0xFF334155)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                TextField(
+                  controller: latCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                      signed: true, decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Latitude',
+                    hintText: 'e.g. 9.023456',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    prefixIcon: Icon(Icons.north, size: 18),
+                    suffixText: '°',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: lngCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                      signed: true, decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Longitude',
+                    hintText: 'e.g. 38.765432',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    prefixIcon: Icon(Icons.east, size: 18),
+                    suffixText: '°',
+                  ),
+                ),
+                if (dialogError != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFEDED),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(dialogError!,
+                        style: const TextStyle(
+                            color: Color(0xFFDC2626), fontSize: 13)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E6B52)),
+              icon: const Icon(Icons.save_outlined, size: 16),
+              label: const Text('Save Location'),
+              onPressed: () async {
+                final latVal = double.tryParse(latCtrl.text.trim());
+                final lngVal = double.tryParse(lngCtrl.text.trim());
+                if (latVal == null || latVal < -90 || latVal > 90) {
+                  setDialogState(() =>
+                      dialogError = 'Latitude must be a number between -90 and 90.');
+                  return;
+                }
+                if (lngVal == null || lngVal < -180 || lngVal > 180) {
+                  setDialogState(() =>
+                      dialogError = 'Longitude must be a number between -180 and 180.');
+                  return;
+                }
+                try {
+                  await widget.repo.updateMeterLocation(
+                      widget.ticket.id, latVal, lngVal);
+                  if (!ctx.mounted) return;
+                  _loadDevice();
+                  Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Location saved: ${latVal.toStringAsFixed(6)}°, ${lngVal.toStringAsFixed(6)}°'),
+                        backgroundColor: const Color(0xFF1E6B52),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  setDialogState(() =>
+                      dialogError = e.toString().replaceFirst('Exception: ', ''));
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+    latCtrl.dispose();
+    lngCtrl.dispose();
   }
 
   Future<void> _showDevice() async {
@@ -902,6 +1079,72 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
               icon: const Icon(Icons.sensors_outlined),
               label: const Text('View read-only sensor dashboard')),
           const SizedBox(height: 14),
+          // ── Meter GPS location card ──────────────────────────────────────
+          if (_deviceSnapshot != null) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined,
+                            color: Color(0xFF1E6B52), size: 18),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'METER LOCATION',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (_deviceSnapshot!.latitude != null &&
+                        _deviceSnapshot!.longitude != null) ...[
+                      Text(
+                        'Latitude:  ${_deviceSnapshot!.latitude!.toStringAsFixed(6)}°',
+                        style: const TextStyle(
+                            fontSize: 13, fontFamily: 'monospace'),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Longitude: ${_deviceSnapshot!.longitude!.toStringAsFixed(6)}°',
+                        style: const TextStyle(
+                            fontSize: 13, fontFamily: 'monospace'),
+                      ),
+                    ] else
+                      const Text(
+                        'No location recorded yet.',
+                        style: TextStyle(
+                            fontSize: 13, color: Color(0xFF94A3B8)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (status == 'accepted' || status == 'in_progress' || status == 'assigned') ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _loading ? null : _showMeterLocation,
+              icon: const Icon(Icons.edit_location_alt_outlined, color: Color(0xFF1E6B52)),
+              label: Text(
+                _deviceSnapshot?.latitude != null
+                    ? 'Update meter location'
+                    : 'Set meter location',
+                style: const TextStyle(color: Color(0xFF1E6B52)),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF1E6B52)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 4),
           if (status == 'assigned')
             Row(
               children: [

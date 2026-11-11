@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -44,5 +44,16 @@ export class AppController {
   @Roles('technician')
   getTechnicianDevice(@CurrentUser() user: any, @Param('id') ticketId: string) {
     return this.appService.getTechnicianDevice(ticketId, user.technicianId ?? user.sub);
+  }
+
+  @Patch('api/technician/tickets/:id/meter-location')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('technician')
+  setMeterLocation(
+    @CurrentUser() user: any,
+    @Param('id') ticketId: string,
+    @Body() body: { latitude: number; longitude: number },
+  ) {
+    return this.appService.setMeterLocation(ticketId, user.technicianId ?? user.sub, body.latitude, body.longitude);
   }
 }

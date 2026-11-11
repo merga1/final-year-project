@@ -47,4 +47,13 @@ class TechnicianRepository {
   Future<void> markAllNotificationsRead() async {
     await _client.patch('/api/notifications/read-all', {});
   }
+
+  /// Saves the GPS coordinates of the water meter linked to [ticketId].
+  Future<void> updateMeterLocation(
+      String ticketId, double latitude, double longitude) async {
+    await _client.patch('/api/technician/tickets/$ticketId/meter-location', {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+  }
 }

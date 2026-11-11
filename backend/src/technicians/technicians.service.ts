@@ -50,6 +50,7 @@ export class TechniciansService {
       accountStatus: 'active',
       currentJobCount: 0,
       completedRepairs: 0,
+      mustChangePassword: true,
     });
     return this.repo.save(tech);
   }
@@ -58,7 +59,11 @@ export class TechniciansService {
   async updateFromAdmin(id: string, dto: UpdateTechnicianDto) {
     const { password, ...rest } = dto;
     const data: Partial<Technician> = { ...rest };
-    if (password) data.passwordHash = await bcrypt.hash(password, 10);
+    if (password) {
+      data.passwordHash = await bcrypt.hash(password, 10);
+      // When an admin resets the password the technician must change it on next login.
+      data.mustChangePassword = true;
+    }
     return this.update(id, data);
   }
 
@@ -91,6 +96,6 @@ export class TechniciansService {
 
   async updatePassword(id: string, passwordHash: string) {
     await this.findOne(id);
-    await this.repo.update(id, { passwordHash });
+    await this.repo.update(id, { passwordHash, mustChangePassword: false });
   }
 }

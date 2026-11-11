@@ -4,21 +4,25 @@ import '../core/constants.dart';
 import '../widgets/aquasense_logo.dart';
 import 'register_screen.dart';
 
+/// Unified sign-in screen.
+///
+/// • No role selection before sign-in — the user just enters credentials and
+///   the backend/app determine whether they are a customer, technician, or admin.
+/// • Technicians always sign in here (they cannot self-register).
+/// • Customers can tap "Sign up" to create an account.
+/// • On a technician's very first login [mustChangePassword == true] a dialog
+///   forces them to set a new password before proceeding.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
     required this.authService,
     required this.onLogin,
-    required this.portalRole,
-    required this.onBack,
   });
 
   final AuthService authService;
-  final VoidCallback onLogin;
 
-  /// `customer` or `technician` — chosen on the previous screen.
-  final String portalRole;
-  final VoidCallback onBack;
+  /// Called once login (and any forced password change) is complete.
+  final VoidCallback onLogin;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -32,10 +36,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _rememberMe = true;
 
-  bool get _isTechnician => widget.portalRole == 'technician';
-
-  String get _roleLabel => _isTechnician ? 'Technician' : 'Customer';
-
   Future<void> _login() async {
     setState(() {
       _loading = true;
@@ -46,21 +46,14 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
         rememberMe: _rememberMe,
-        role: widget.portalRole,
       );
 
-      // Extra safety in case an older backend ignores the requested role.
+      // Check if technician must change password on first login.
       final user = await widget.authService.getStoredUser();
-      final actualRole = user['role'] ?? 'customer';
-      if (actualRole != widget.portalRole) {
-        await widget.authService.logout();
-        setState(() {
-          _error = actualRole == 'technician'
-              ? 'This is a technician account. Go back and choose Technician.'
-              : actualRole == 'admin'
-                  ? 'Administrator accounts use the web dashboard.'
-                  : 'This is a customer account. Go back and choose Customer.';
-        });
+      final mustChange = user['mustChangePassword'] == 'true';
+      if (mustChange && mounted) {
+        await _showForceChangePassword();
+        // After dialog, re-fetch to confirm flag is cleared.
         return;
       }
 
@@ -72,6 +65,155 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Shows a mandatory password-change dialog for technicians on first login.
+  /// They cannot dismiss it without setting a new password.
+  Future<void> _showForceChangePassword() async {
+    final oldCtrl = TextEditingController(text: _passwordController.text);
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    bool obscureNew = true;
+    String? dialogError;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.lock_reset_rounded, color: Color(0xFF1E6B52)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Set your password',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Welcome! This is your first login.\n'
+                  'Please set a new password to secure your account.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 20),
+                _dialogField(
+                  controller: oldCtrl,
+                  label: 'Current (temporary) password',
+                  obscure: true,
+                ),
+                const SizedBox(height: 12),
+                _dialogFieldObscureToggle(
+                  controller: newCtrl,
+                  label: 'New password',
+                  obscure: obscureNew,
+                  onToggle: () => setDialogState(() => obscureNew = !obscureNew),
+                ),
+                const SizedBox(height: 12),
+                _dialogField(
+                  controller: confirmCtrl,
+                  label: 'Confirm new password',
+                  obscure: true,
+                ),
+                if (dialogError != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFEDED),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      dialogError!,
+                      style: const TextStyle(color: Color(0xFFDC2626), fontSize: 13),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1E6B52),
+              ),
+              onPressed: () async {
+                final oldPw = oldCtrl.text;
+                final newPw = newCtrl.text;
+                final confirmPw = confirmCtrl.text;
+                if (newPw.length < 6) {
+                  setDialogState(
+                      () => dialogError = 'New password must be at least 6 characters.');
+                  return;
+                }
+                if (newPw != confirmPw) {
+                  setDialogState(() => dialogError = 'Passwords do not match.');
+                  return;
+                }
+                if (newPw == oldPw) {
+                  setDialogState(
+                      () => dialogError = 'New password must be different from the current one.');
+                  return;
+                }
+                try {
+                  await widget.authService.changePassword(oldPw, newPw);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  widget.onLogin();
+                } catch (e) {
+                  setDialogState(() => dialogError =
+                      e.toString().replaceFirst('Exception: ', ''));
+                }
+              },
+              child: const Text('Save & Continue'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dialogField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscure,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+    );
+  }
+
+  Widget _dialogFieldObscureToggle({
+    required TextEditingController controller,
+    required String label,
+    required bool obscure,
+    required VoidCallback onToggle,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+        suffixIcon: IconButton(
+          icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+          onPressed: onToggle,
+        ),
+      ),
+    );
   }
 
   Future<void> _showMeterRequestSubmitted() async {
@@ -111,7 +253,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await widget.authService.forgotPassword(email);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('If the account exists, reset instructions will be sent shortly.')),
+          const SnackBar(
+              content: Text('If the account exists, reset instructions will be sent shortly.')),
         );
       }
     } catch (e) {
@@ -224,10 +367,7 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black87),
-          onPressed: widget.onBack,
-        ),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.dns_outlined, color: Colors.black54),
@@ -243,7 +383,6 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 12),
-              // AquaSense Logo from attached image
               const Center(
                 child: AquaSenseLogo(
                   iconSize: 68,
@@ -252,10 +391,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 28),
-              Text(
-                '$_roleLabel Login',
+              const Text(
+                'Sign In',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF0F172A),
@@ -263,9 +402,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                _isTechnician
-                    ? 'Sign in to see the field jobs assigned to you.'
-                    : 'Sign in to check your usage, bills and meter details.',
+                'Enter your credentials to continue.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
@@ -309,7 +446,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onSubmitted: (_) => _login(),
               ),
 
-              // Remember me and Forgot Password row
+              // Remember me & Forgot Password row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -318,8 +455,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Checkbox(
                         value: _rememberMe,
-                        onChanged: (v) =>
-                            setState(() => _rememberMe = v ?? true),
+                        onChanged: (v) => setState(() => _rememberMe = v ?? true),
                         activeColor: const Color(0xFF0284C7),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
@@ -347,6 +483,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
 
+              // Error banner
               if (_error != null) ...[
                 const SizedBox(height: 8),
                 Container(
@@ -360,8 +497,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Text(
                         _error!,
-                        style:
-                            TextStyle(color: cs.onErrorContainer, fontSize: 13),
+                        style: TextStyle(color: cs.onErrorContainer, fontSize: 13),
                       ),
                       if (_error!.contains('Connection refused') ||
                           _error!.contains('SocketConnection') ||
@@ -379,12 +515,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 _login();
                               },
                               icon: const Icon(Icons.wifi, size: 16),
-                              label: const Text('Use Wi-Fi (192.168.11.137)',
+                              label: const Text('Use Wi-Fi',
                                   style: TextStyle(fontSize: 12)),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF1E6B52),
-                                side: const BorderSide(
-                                    color: Color(0xFF1E6B52)),
+                                side: const BorderSide(color: Color(0xFF1E6B52)),
                                 visualDensity: VisualDensity.compact,
                               ),
                             ),
@@ -407,7 +542,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // Blue Login button
+              // Sign In button
               ElevatedButton(
                 onPressed: _loading ? null : _login,
                 style: ElevatedButton.styleFrom(
@@ -429,7 +564,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       )
                     : const Text(
-                        'Login',
+                        'Sign In',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -439,46 +574,69 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // Customer self-registration. Technician accounts are created by
-              // an administrator and cannot be self-registered from the app.
-              if (!_isTechnician)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Don't have an account? ",
-                      style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => RegisterScreen(
-                              authService: widget.authService,
-                              onRegistered: () {
-                                Navigator.pop(context);
-                                widget.onLogin();
-                              },
-                              onMeterRequestSubmitted: () {
-                                Navigator.pop(context);
-                                _showMeterRequestSubmitted();
-                              },
-                            ),
+              // Customer self-registration link.
+              // Technicians are always created by an admin and cannot self-register.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Don't have an account? ",
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RegisterScreen(
+                            authService: widget.authService,
+                            onRegistered: () {
+                              Navigator.pop(context);
+                              widget.onLogin();
+                            },
+                            onMeterRequestSubmitted: () {
+                              Navigator.pop(context);
+                              _showMeterRequestSubmitted();
+                            },
                           ),
-                        );
-                      },
-                      child: const Text(
-                        'Sign up',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0284C7),
                         ),
+                      );
+                    },
+                    child: const Text(
+                      'Sign up',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0284C7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Hint for technicians
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.engineering_outlined,
+                        size: 18, color: Color(0xFF1E6B52)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Technicians: use the credentials provided by your administrator.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                       ),
                     ),
                   ],
                 ),
+              ),
 
               const SizedBox(height: 48),
 
@@ -492,7 +650,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '© 2025 YourCompany. All rights reserved.',
+                      '© 2025 AquaSense. All rights reserved.',
                       style: TextStyle(fontSize: 11, color: Colors.grey[400]),
                     ),
                   ],

@@ -31,6 +31,13 @@ export class Device {
   @Column({ nullable: true })
   lastSeenAt: Date;
 
+  /** GPS coordinates set by the technician on-site. */
+  @Column({ type: 'real', nullable: true })
+  latitude: number | null;
+
+  @Column({ type: 'real', nullable: true })
+  longitude: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -1,12 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'core/constants.dart';
 import 'core/api_client.dart';
 import 'core/auth_service.dart';
 import 'models/mobile_repository.dart';
 import 'screens/login_screen.dart';
-import 'screens/role_select_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/usage_screen.dart';
 import 'screens/bills_screen.dart';
@@ -64,9 +62,6 @@ class _AppRootState extends State<AppRoot> {
   bool _loggedIn = false;
   String _role = 'customer';
 
-  /// Which portal the user picked on the role selection screen.
-  String? _portalRole;
-
   @override
   void initState() {
     super.initState();
@@ -100,7 +95,6 @@ class _AppRootState extends State<AppRoot> {
       setState(() {
         _loggedIn = false;
         _role = 'customer';
-        _portalRole = null;
       });
     });
   }
@@ -112,19 +106,9 @@ class _AppRootState extends State<AppRoot> {
     }
 
     if (!_loggedIn) {
-      final portalRole = _portalRole;
-      if (portalRole == null) {
-        return RoleSelectScreen(
-          onSelectRole: (role) => setState(() => _portalRole = role),
-        );
-      }
       return LoginScreen(
         authService: _auth,
-        portalRole: portalRole,
-        onBack: () => setState(() => _portalRole = null),
-        onLogin: () {
-          _onLogin();
-        },
+        onLogin: _onLogin,
       );
     }
 
@@ -158,7 +142,8 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
-  String _userId = '7ebb0d261llb24dc88afb564400f8f5cc-289317';
+  String _userEmail = '';
+  String _userName = '';
 
   @override
   void initState() {
@@ -168,9 +153,12 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _loadUser() async {
     try {
-      final home = await widget.repo.fetchHome();
-      if (mounted && home.userId.isNotEmpty) {
-        setState(() => _userId = home.userId);
+      final stored = await widget.auth.getStoredUser();
+      if (mounted) {
+        setState(() {
+          _userEmail = stored['email'] ?? '';
+          _userName = stored['name'] ?? '';
+        });
       }
     } catch (_) {}
   }
@@ -291,43 +279,37 @@ class _MainShellState extends State<MainShell> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 14),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 10),
+                if (_userName.isNotEmpty)
+                  Text(
+                    _userName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  child: Row(
+                if (_userEmail.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Row(
                     children: [
+                      const Icon(Icons.email_outlined, size: 13, color: Colors.white70),
+                      const SizedBox(width: 5),
                       Expanded(
                         child: Text(
-                          _userId,
-                          maxLines: 2,
+                          _userEmail,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontFamily: 'monospace',
+                            color: Colors.white70,
+                            fontSize: 12.5,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: _userId));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('User ID copied to clipboard')),
-                          );
-                        },
-                        child: const Icon(Icons.copy_rounded,
-                            size: 16, color: Colors.white70),
-                      ),
                     ],
                   ),
-                ),
+                ],
+                const SizedBox(height: 4),
               ],
             ),
           ),

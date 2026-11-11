@@ -9,6 +9,7 @@ class AuthService {
   static const _meterIdKey = 'sw_meterId';
   static const _roleKey = 'sw_role';
   static const _userIdKey = 'sw_userId';
+  static const _mustChangePwKey = 'sw_mustChangePw';
 
   final ApiClient _client;
   final FlutterSecureStorage _secureStorage;
@@ -42,6 +43,7 @@ class AuthService {
     await prefs.setString(_meterIdKey, user['meterId'] as String? ?? '');
     await prefs.setString(_roleKey, user['role'] as String? ?? 'customer');
     await prefs.setString(_userIdKey, user['sub']?.toString() ?? '');
+    await prefs.setBool(_mustChangePwKey, user['mustChangePassword'] == true);
     if (rememberMe) {
       await prefs.setString(_tokenKey, token);
     } else {
@@ -117,6 +119,9 @@ class AuthService {
       'oldPassword': oldPassword,
       'newPassword': newPassword,
     });
+    // Clear the first-login flag locally after a successful password change.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_mustChangePwKey, false);
   }
 
   Future<bool> tryRestoreSession() async {
@@ -143,6 +148,7 @@ class AuthService {
       'meterId': prefs.getString(_meterIdKey) ?? '',
       'role': prefs.getString(_roleKey) ?? 'customer',
       'userId': prefs.getString(_userIdKey) ?? '',
+      'mustChangePassword': prefs.getBool(_mustChangePwKey) == true ? 'true' : 'false',
     };
   }
 
@@ -158,6 +164,7 @@ class AuthService {
     await prefs.remove(_meterIdKey);
     await prefs.remove(_roleKey);
     await prefs.remove(_userIdKey);
+    await prefs.remove(_mustChangePwKey);
   }
 
   bool get isLoggedIn => _client.token != null;

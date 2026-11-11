@@ -123,6 +123,8 @@ class TechnicianDeviceSnapshot {
     this.zone = '',
     this.batteryPercent,
     this.lastUpdatedAt,
+    this.latitude,
+    this.longitude,
   });
 
   final String meterId;
@@ -138,6 +140,8 @@ class TechnicianDeviceSnapshot {
   final String zone;
   final double? batteryPercent;
   final String? lastUpdatedAt;
+  final double? latitude;
+  final double? longitude;
 
   factory TechnicianDeviceSnapshot.fromJson(Map<String, dynamic> json) =>
       TechnicianDeviceSnapshot(
@@ -154,6 +158,8 @@ class TechnicianDeviceSnapshot {
         zone: json['zone']?.toString() ?? '',
         batteryPercent: (json['batteryPercent'] as num?)?.toDouble(),
         lastUpdatedAt: json['lastUpdatedAt']?.toString(),
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
       );
 }
 
