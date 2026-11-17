@@ -223,6 +223,31 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  Future<void> _showRegistrationSubmitted() async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Color(0xFF2E8B57)),
+            SizedBox(width: 8),
+            Expanded(child: Text('Registration submitted')),
+          ],
+        ),
+        content: const Text(
+          'Your account registration has been submitted and is awaiting administrator approval.\n\n'
+          'Once an administrator approves your account, you will be able to log in with your email and password.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Back to login'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showMeterRequestSubmitted() async {
     await showDialog<void>(
       context: context,
@@ -599,7 +624,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             authService: widget.authService,
                             onRegistered: () {
                               Navigator.pop(context);
-                              widget.onLogin();
+                              _showRegistrationSubmitted();
                             },
                             onMeterRequestSubmitted: () {
                               Navigator.pop(context);

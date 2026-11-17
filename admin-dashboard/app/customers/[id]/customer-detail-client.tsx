@@ -112,7 +112,21 @@ export function CustomerDetailClient({
               )}
             </dl>
 
-            <div style={{ marginTop: 20 }}>
+            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {currentStatus === 'pending' && (
+                <button
+                  className="btn-success-sm"
+                  style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 600, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                  disabled={loading}
+                  onClick={() => {
+                    if (confirm('Approve this customer account? The customer will be able to log in to the mobile app.')) {
+                      updateCustomer({ accountStatus: 'active' });
+                    }
+                  }}
+                >
+                  ✓ Approve Customer Account
+                </button>
+              )}
               {isSuspended ? (
                 <button
                   className="btn-success-sm"
@@ -126,7 +140,7 @@ export function CustomerDetailClient({
                 >
                   Reactivate Account
                 </button>
-              ) : (
+              ) : currentStatus !== 'pending' && (
                 <button
                   className="btn-danger-sm"
                   style={{ width: '100%', padding: '10px' }}
@@ -146,6 +160,11 @@ export function CustomerDetailClient({
           {/* Device link */}
           <div className="detail-card">
             <h3 className="detail-card-subtitle">Device Assignment</h3>
+            {currentStatus === 'pending' && !(customer.meterId ?? customer.deviceId) && (
+              <div style={{ padding: '8px 12px', background: '#fef3c7', color: '#92400e', borderRadius: 6, fontSize: '0.82rem', marginBottom: 12 }}>
+                ℹ This customer requested a new water meter. Linking a meter below will automatically activate their account.
+              </div>
+            )}
             <p className="text-muted-sm" style={{ marginBottom: 10 }}>
               Currently linked: {' '}
               {(customer.meterId ?? customer.deviceId)

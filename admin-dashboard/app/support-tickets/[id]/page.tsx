@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import { AdminShell } from '../../../components/admin-shell';
-import { getTicket, getTechnicians, getCustomer } from '../../../lib/admin-api';
+import { getTicket, getTechnicians, getCustomer, getDevices } from '../../../lib/admin-api';
 import { getServerToken } from '../../../lib/auth';
 import { TicketDetailClient } from './ticket-detail-client';
 
@@ -20,9 +20,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   if (!token) redirect('/login');
 
   try {
-    const [ticket, technicians] = await Promise.all([
+    const [ticket, technicians, devices] = await Promise.all([
       getTicket(token, id),
       getTechnicians(token),
+      getDevices(token).catch(() => []),
     ]);
 
     if (!ticket) notFound();
@@ -44,7 +45,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
     return (
       <AdminShell currentPath="/support-tickets" title="Ticket Detail">
-        <TicketDetailClient ticket={formattedTicket} technicians={technicians} token={token} />
+        <TicketDetailClient ticket={formattedTicket} technicians={technicians} devices={devices ?? []} token={token} />
       </AdminShell>
     );
   } catch (e: any) {

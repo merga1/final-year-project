@@ -2,6 +2,8 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { SupportTicket } from './support-ticket.entity';
+import { Customer } from '../customers/customer.entity';
+import { Device } from '../devices/device.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TechniciansService } from '../technicians/technicians.service';
 import {
@@ -13,6 +15,10 @@ export class SupportTicketsService {
   constructor(
     @InjectRepository(SupportTicket)
     private readonly repo: Repository<SupportTicket>,
+    @InjectRepository(Customer)
+    private readonly customerRepo: Repository<Customer>,
+    @InjectRepository(Device)
+    private readonly deviceRepo: Repository<Device>,
     private readonly notifications: NotificationsService,
     private readonly technicians: TechniciansService,
   ) {}
@@ -215,6 +221,33 @@ export class SupportTicketsService {
       }
       if (data.status === 'accepted' && !before.acceptedAt) {
         updatePayload.acceptedAt = new Date();
+      }
+
+      // If resolving a registration or water meter request, activate the customer
+      if (data.status === 'resolved' && before.status !== 'resolved') {
+        const isRegistrationOrMeterReq =
+          before.type === 'New Customer Registration' ||
+          before.type === 'Water Meter Request' ||
+          before.issue?.toLowerCase().includes('water meter') ||
+          before.issue?.toLowerCase().includes('registration');
+
+        if (isRegistrationOrMeterReq && before.customerId) {
+          try {
+            const customer = await this.customerRepo.findOneBy({ id: before.customerId });
+            if (customer) {
+              const assignedMeter = (data.deviceId || before.deviceId || customer.meterId)?.trim();
+              const customerUpdates: Partial<Customer> = { accountStatus: 'active' };
+              if (assignedMeter) {
+                customerUpdates.meterId = assignedMeter;
+                await this.deviceRepo.update({ meterId: assignedMeter }, { customerId: customer.id });
+                updatePayload.deviceId = assignedMeter;
+              }
+              await this.customerRepo.update(customer.id, customerUpdates);
+            }
+          } catch (custErr) {
+            console.warn('Could not activate customer on ticket resolution:', custErr);
+          }
+        }
       }
     }
 

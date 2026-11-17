@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, In } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Customer } from './customer.entity';
+import { SupportTicket } from '../support-tickets/support-ticket.entity';
 import { DevicesService } from '../devices/devices.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -12,6 +13,8 @@ export class CustomersService {
   constructor(
     @InjectRepository(Customer)
     private readonly repo: Repository<Customer>,
+    @InjectRepository(SupportTicket)
+    private readonly ticketRepo: Repository<SupportTicket>,
     private readonly devices: DevicesService,
   ) {}
 
@@ -111,7 +114,54 @@ export class CustomersService {
       data.meterId = newMeterId || undefined;
     }
     if (Object.keys(data).length) await this.repo.update(id, data);
-    return this.findOne(id);
+    const updated = await this.findOne(id);
+
+    // If the customer account is activated, automatically resolve any pending
+    // registration or water meter request tickets.
+    if (updated.accountStatus === 'active') {
+      try {
+        const pendingTickets = await this.ticketRepo.find({
+          where: {
+            customerId: id,
+            status: In(['pending', 'open'] as any),
+          },
+        });
+        const now = new Date();
+        for (const ticket of pendingTickets) {
+          if (
+            ticket.type === 'New Customer Registration' ||
+            ticket.type === 'Water Meter Request' ||
+            ticket.issue?.includes('water meter') ||
+            ticket.issue?.includes('Registration')
+          ) {
+            ticket.status = 'resolved';
+            ticket.resolvedAt = now;
+            ticket.notes = 'Approved by administrator';
+            if (updated.meterId && !ticket.deviceId) {
+              ticket.deviceId = updated.meterId;
+            }
+            let historyArr: any[] = [];
+            try {
+              if (ticket.statusHistory) historyArr = JSON.parse(ticket.statusHistory);
+              if (!Array.isArray(historyArr)) historyArr = [{ entry: ticket.statusHistory }];
+            } catch {
+              historyArr = [];
+            }
+            historyArr.push({
+              status: 'resolved',
+              at: now.toISOString(),
+              note: 'Account approved by administrator',
+            });
+            ticket.statusHistory = JSON.stringify(historyArr);
+            await this.ticketRepo.save(ticket);
+          }
+        }
+      } catch (ticketErr) {
+        console.warn('Could not auto-resolve tickets on customer activation:', ticketErr);
+      }
+    }
+
+    return updated;
   }
 
   count() {

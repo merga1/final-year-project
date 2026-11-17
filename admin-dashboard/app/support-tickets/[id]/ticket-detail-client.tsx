@@ -33,10 +33,12 @@ function getCookie(name: string): string {
 export function TicketDetailClient({
   ticket,
   technicians,
+  devices = [],
   token,
 }: {
   ticket: any;
   technicians: any[];
+  devices?: any[];
   token: string;
 }) {
   const router = useRouter();
@@ -44,10 +46,23 @@ export function TicketDetailClient({
   const status = rawStatus === 'open' ? 'pending' : (rawStatus === 'accepted' ? 'in_progress' : rawStatus);
 
   const [selectedTech, setSelectedTech] = useState(status === 'pending' ? '' : (ticket.technicianId ?? ''));
+  const [selectedMeter, setSelectedMeter] = useState(ticket.deviceId ?? ticket.meterId ?? '');
   const [reassignReason, setReassignReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const isRegistrationTicket =
+    ticket.type === 'New Customer Registration' ||
+    (ticket.subject?.toLowerCase().includes('registration') && ticket.subject?.toLowerCase().includes('approval')) ||
+    ticket.issue?.toLowerCase().includes('registration');
+
+  const isMeterRequestTicket =
+    ticket.type === 'Water Meter Request' ||
+    ticket.issue?.toLowerCase().includes('water meter') ||
+    ticket.subject?.toLowerCase().includes('water meter');
+
+  const isAwaitingApproval = status === 'pending' || status === 'open';
 
   async function patchTicket(data: any) {
     setLoading(true);
@@ -70,6 +85,64 @@ export function TicketDetailClient({
       router.refresh();
     } catch (err: any) {
       setError(err?.message || 'Action failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approveRegistration() {
+    if (!confirm('Approve this customer registration? The customer will be able to log in to the mobile app.')) return;
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
+      const t = getCookie('sw_token') || token;
+      if (ticket.customerId) {
+        await fetch(`${API}/api/admin/customers/${ticket.customerId}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountStatus: 'active' }),
+        });
+      }
+      await patchTicket({ status: 'resolved', notes: 'Registration approved by administrator' });
+      setSuccess('Customer registration approved successfully.');
+      router.refresh();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to approve registration');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approveMeterRequest() {
+    if (!selectedMeter) {
+      setError('Please select or enter a water meter device ID to assign.');
+      return;
+    }
+    if (!confirm(`Assign water meter ${selectedMeter} to this customer and approve their account?`)) return;
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
+      const t = getCookie('sw_token') || token;
+      if (ticket.customerId) {
+        const res = await fetch(`${API}/api/admin/customers/${ticket.customerId}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ meterId: selectedMeter, accountStatus: 'active' }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.message || 'Failed to link meter to customer');
+        }
+      }
+      await patchTicket({ status: 'resolved', deviceId: selectedMeter, notes: `Water meter ${selectedMeter} assigned and account approved` });
+      setSuccess(`Water meter ${selectedMeter} assigned and customer account approved!`);
+      router.refresh();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to approve water meter request');
     } finally {
       setLoading(false);
     }
@@ -165,6 +238,68 @@ export function TicketDetailClient({
 
         {/* Right column: actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Registration Approval Card */}
+          {isRegistrationTicket && isAwaitingApproval && (
+            <div className="detail-card" style={{ borderLeft: '4px solid #16a34a' }}>
+              <h3 className="detail-card-subtitle" style={{ color: '#15803d' }}>
+                ✓ Customer Registration Approval
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 14px' }}>
+                This user registered on the mobile app and is waiting for administrator approval before they can log in.
+              </p>
+              <button
+                type="button"
+                className="btn-success-sm"
+                style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 600, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                disabled={loading}
+                onClick={approveRegistration}
+              >
+                {loading ? 'Approving...' : '✓ Approve Customer Registration'}
+              </button>
+            </div>
+          )}
+
+          {/* Water Meter Request Approval Card */}
+          {isMeterRequestTicket && isAwaitingApproval && (
+            <div className="detail-card" style={{ borderLeft: '4px solid #0284c7' }}>
+              <h3 className="detail-card-subtitle" style={{ color: '#0369a1' }}>
+                🚰 Water Meter Request Approval
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 12px' }}>
+                Assign an available water meter device to this customer. Assigning a meter will activate their account so they can log in.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
+                    Select Device / Meter ID:
+                  </label>
+                  <select
+                    className="filter-select"
+                    style={{ width: '100%' }}
+                    value={selectedMeter}
+                    onChange={e => setSelectedMeter(e.target.value)}
+                  >
+                    <option value="">Choose a water meter device...</option>
+                    {devices.map(d => (
+                      <option key={d.id ?? d.meterId} value={d.meterId ?? d.id}>
+                        {d.meterId ?? d.id} {d.customerId ? '(In Use)' : '(Available)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  className="btn-primary-blue"
+                  style={{ width: '100%', padding: '11px', fontSize: '0.92rem', fontWeight: 600 }}
+                  disabled={loading || !selectedMeter}
+                  onClick={approveMeterRequest}
+                >
+                  {loading ? 'Assigning...' : '✓ Assign Meter & Approve Account'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Assign / Reassign Card */}
           {(canAssign || canReassign) && (
             <div className="detail-card">

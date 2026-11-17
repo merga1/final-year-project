@@ -35,12 +35,24 @@ export class AuthService {
 
       const role = customer.role || 'customer';
 
-      // A customer without a meter is still waiting for an admin to approve
-      // their water meter request. They should not reach the dashboard yet.
-      if (role === 'customer' && !customer.meterId) {
-        throw new UnauthorizedException(
-          'Your water meter request is awaiting admin approval. Please log in again once a meter has been assigned to your account.',
-        );
+      // Customer accounts awaiting admin approval cannot log in yet
+      if (role === 'customer') {
+        if (customer.accountStatus === 'pending') {
+          if (!customer.meterId) {
+            throw new UnauthorizedException(
+              'Your water meter request is awaiting admin approval. Please log in again once a meter has been assigned and your account is approved.',
+            );
+          } else {
+            throw new UnauthorizedException(
+              'Your account registration is awaiting administrator approval. Please log in again once an administrator approves your account.',
+            );
+          }
+        }
+        if (!customer.meterId) {
+          throw new UnauthorizedException(
+            'Your water meter request is awaiting admin approval. Please log in again once a meter has been assigned to your account.',
+          );
+        }
       }
 
       return this.sign({
@@ -121,21 +133,46 @@ export class AuthService {
       meterId: normalizedMeterId,
       address,
       role: 'customer',
-      // Customers waiting for a meter are activated when an admin links one.
-      accountStatus: normalizedMeterId ? 'active' : 'pending',
+      // Self-registered customers require administrator approval before logging in
+      accountStatus: 'pending',
     });
 
     if (normalizedMeterId) {
       await this.devicesService.updateByMeterId(normalizedMeterId, { customerId: customer.id });
     }
 
-    return this.sign({
-      sub: customer.id,
-      email: customer.email,
-      name: customer.name,
-      role: 'customer',
-      meterId: customer.meterId,
-    });
+    try {
+      await this.supportTickets.createCustomerTicket({
+        customerId: customer.id,
+        customerName: customer.name,
+        type: 'New Customer Registration',
+        issue: 'New Customer Registration Approval',
+        subject: `Account Approval: ${customer.name}`,
+        priority: 'Medium',
+        description: [
+          `New customer registration awaiting administrator approval.`,
+          `Customer: ${customer.name} (${customer.email})`,
+          normalizedMeterId ? `Water Meter: ${normalizedMeterId}` : 'No meter linked',
+          address ? `Address: ${address}` : null,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        customerAddress: address,
+        deviceId: normalizedMeterId,
+      });
+    } catch (error) {
+      // Do not leave an orphan pending account if the ticket could not be queued
+      await this.customersService.remove(customer.id).catch(() => undefined);
+      throw error;
+    }
+
+    return {
+      success: true,
+      pending: true,
+      message:
+        'Your registration was submitted successfully. An administrator will review and approve your account before you can log in.',
+      customerId: customer.id,
+    };
   }
 
   /**
