@@ -409,11 +409,6 @@ export function TicketDetailClient({
               </p>
             </div>
           )}
-                  {loading ? 'Assigning...' : '✓ Assign Meter & Approve Account'}
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Assign / Reassign Card */}
           {(canAssign || canReassign) && (
