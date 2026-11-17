@@ -59,6 +59,21 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 function TypeBadge({ type }: { type: string }) {
+  const t = (type ?? '').toLowerCase();
+  if (t.includes('water meter') || t.includes('meter request')) {
+    return (
+      <span className="type-pill" style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', fontWeight: 700, fontSize: '0.75rem' }}>
+        🚰 Meter Request
+      </span>
+    );
+  }
+  if (t.includes('registration')) {
+    return (
+      <span className="type-pill" style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 700, fontSize: '0.75rem' }}>
+        👤 Registration
+      </span>
+    );
+  }
   const norm = (type ?? 'General').toLowerCase().replace(/_/g, ' ');
   const formatted = norm.charAt(0).toUpperCase() + norm.slice(1);
   return (
@@ -142,7 +157,10 @@ export function TicketsClient({
     if (priorityFilter !== 'all' && pri !== priorityFilter) return false;
 
     const typ = (t.type ?? t.issueType ?? '').toLowerCase();
+    const iss = (t.issue ?? '').toLowerCase();
     if (typeFilter !== 'all') {
+      if (typeFilter === 'Water Meter Request' && !(typ.includes('water meter') || iss.includes('water meter'))) return false;
+      if (typeFilter === 'New Customer Registration' && !(typ.includes('registration') || iss.includes('registration'))) return false;
       if (typeFilter === 'sensor' && !typ.includes('sensor')) return false;
       if (typeFilter === 'valve' && !typ.includes('valve')) return false;
       if (typeFilter === 'leak' && !typ.includes('leak')) return false;
@@ -201,6 +219,13 @@ export function TicketsClient({
 
   const selectedTech = technicians.find(t => t.id === techFilter);
   const selectedCust = customers.find(c => c.id === customerFilter);
+
+  const meterRequestsCount = scopedTickets.filter(t => {
+    const typ = (t.type ?? t.issueType ?? '').toLowerCase();
+    const iss = (t.issue ?? '').toLowerCase();
+    const norm = normalizeStatus(t.status);
+    return (typ.includes('water meter') || iss.includes('water meter')) && (norm === 'pending' || norm === 'open');
+  }).length;
 
   async function handleAssign(ticketId: string) {
     const techId = assignTechId[ticketId];
@@ -272,6 +297,22 @@ export function TicketsClient({
         >
           <span className="stat-chip-val">{counts['pending'] ?? 0}</span>
           <span className="stat-chip-label">Awaiting Admin</span>
+        </div>
+        <div
+          className={`stat-chip ${typeFilter === 'Water Meter Request' ? 'active-chip' : ''}`}
+          style={{
+            cursor: 'pointer',
+            background: typeFilter === 'Water Meter Request' ? '#bae6fd' : '#f0f9ff',
+            border: '1px solid #7dd3fc',
+          }}
+          onClick={() => {
+            setTypeFilter(typeFilter === 'Water Meter Request' ? 'all' : 'Water Meter Request');
+            setPage(1);
+          }}
+          title="Filter Water Meter Requests awaiting approval"
+        >
+          <span className="stat-chip-val" style={{ color: '#0369a1' }}>{meterRequestsCount}</span>
+          <span className="stat-chip-label" style={{ color: '#0369a1' }}>Meter Requests</span>
         </div>
       </div>
 
@@ -381,6 +422,8 @@ export function TicketsClient({
             aria-label="Filter tickets by type"
           >
             <option value="all">All Types</option>
+            <option value="Water Meter Request">🚰 Water Meter Request</option>
+            <option value="New Customer Registration">👤 Customer Registration</option>
             <option value="sensor">Sensor / Meter</option>
             <option value="leak">Leak</option>
             <option value="valve">Valve</option>
@@ -517,7 +560,26 @@ export function TicketsClient({
                         View
                       </Link>
 
-                      {isPending && (
+                      {isPending && ((t.type ?? '').toLowerCase().includes('water meter') || (t.issue ?? '').toLowerCase().includes('water meter') || (t.type ?? '').toLowerCase().includes('registration')) ? (
+                        <Link
+                          href={`/support-tickets/${t.id}`}
+                          className="btn-success-sm"
+                          style={{
+                            padding: '5px 12px',
+                            fontSize: '0.8rem',
+                            textDecoration: 'none',
+                            background: '#0284c7',
+                            color: '#fff',
+                            borderRadius: 6,
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Review &amp; Approve →
+                        </Link>
+                      ) : isPending && (
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                           <select
                             className="inline-assign-select"

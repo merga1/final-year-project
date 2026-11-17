@@ -28,15 +28,16 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
     if (!ticket) notFound();
 
-    let customerName = ticket.customerName && ticket.customerName !== 'Customer' ? ticket.customerName : null;
-    if (ticket.customerId && !customerName) {
+    let customer: any = null;
+    if (ticket.customerId) {
       try {
-        const cust = await getCustomer(token, ticket.customerId);
-        if (cust?.name) customerName = cust.name;
+        customer = await getCustomer(token, ticket.customerId);
       } catch {
         // fallback
       }
     }
+
+    let customerName = customer?.name || (ticket.customerName && ticket.customerName !== 'Customer' ? ticket.customerName : null);
 
     const formattedTicket = {
       ...ticket,
@@ -45,7 +46,13 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
     return (
       <AdminShell currentPath="/support-tickets" title="Ticket Detail">
-        <TicketDetailClient ticket={formattedTicket} technicians={technicians} devices={devices ?? []} token={token} />
+        <TicketDetailClient
+          ticket={formattedTicket}
+          customer={customer}
+          technicians={technicians}
+          devices={devices ?? []}
+          token={token}
+        />
       </AdminShell>
     );
   } catch (e: any) {

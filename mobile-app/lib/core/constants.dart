@@ -12,9 +12,12 @@ class ApiConstants {
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _inMemoryBaseUrl = prefs.getString(_prefKey);
-    // If user has an outdated local IP stored, reset to cloud default
-    if (_inMemoryBaseUrl == 'http://192.168.11.137:4000' ||
-        _inMemoryBaseUrl == 'http://127.0.0.1:4000') {
+    // If user has an outdated local IP or localhost/127.0.0.1 stored, reset to cloud default
+    if (_inMemoryBaseUrl == null ||
+        _inMemoryBaseUrl!.isEmpty ||
+        _inMemoryBaseUrl!.contains('127.0.0.1') ||
+        _inMemoryBaseUrl!.contains('localhost') ||
+        _inMemoryBaseUrl!.contains('192.168.11.137')) {
       _inMemoryBaseUrl = defaultCloudUrl;
       await prefs.setString(_prefKey, defaultCloudUrl);
     }

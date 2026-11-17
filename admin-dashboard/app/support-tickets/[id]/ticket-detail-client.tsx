@@ -32,11 +32,13 @@ function getCookie(name: string): string {
 
 export function TicketDetailClient({
   ticket,
+  customer,
   technicians,
   devices = [],
   token,
 }: {
   ticket: any;
+  customer?: any;
   technicians: any[];
   devices?: any[];
   token: string;
@@ -63,6 +65,18 @@ export function TicketDetailClient({
     ticket.subject?.toLowerCase().includes('water meter');
 
   const isAwaitingApproval = status === 'pending' || status === 'open';
+
+  // Extract contact phone from customer or description
+  const phoneMatch = ticket.description?.match(/Contact phone:\s*([^\n\r]+)/i);
+  const contactPhone = customer?.phone ?? customer?.phoneNumber ?? phoneMatch?.[1]?.trim() ?? '—';
+
+  // Extract installation address from ticket or customer
+  const addressMatch = ticket.description?.match(/Installation address:\s*([^\n\r]+)/i);
+  const installAddress = ticket.customerAddress ?? customer?.address ?? addressMatch?.[1]?.trim() ?? '—';
+
+  // Extract additional details from description
+  const detailsMatch = ticket.description?.match(/Additional details:\s*([^\n\r]+)/i);
+  const extraDetails = detailsMatch?.[1]?.trim();
 
   async function patchTicket(data: any) {
     setLoading(true);
@@ -166,137 +180,233 @@ export function TicketDetailClient({
       {success && <div className="form-success-alert">{success}</div>}
 
       <div className="detail-two-col">
-        <div className="detail-card">
-          <div className="detail-card-header">
-            <h2 className="detail-card-title">
-              Ticket #{(ticket.id ?? '').replace(/-/g, '').slice(0, 8).toUpperCase()}
-            </h2>
-            <span className={STATUS_CLASS[status] ?? 'status-badge status-muted'}>
-              {STATUS_LABELS[status] ?? status}
-            </span>
-          </div>
+        {/* Left column: request details & ticket metadata */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Prominent card for Water Meter Request or Registration */}
+          {(isMeterRequestTicket || isRegistrationTicket) && (
+            <div className="detail-card" style={{ borderTop: '4px solid #0284c7' }}>
+              <div className="detail-card-header">
+                <h3 className="detail-card-subtitle" style={{ fontSize: '1.05rem', color: '#0369a1', margin: 0 }}>
+                  {isMeterRequestTicket ? '🚰 Water Meter Installation Request' : '👤 Customer Account Registration'}
+                </h3>
+                <span className={`status-badge ${customer?.accountStatus === 'active' ? 'status-ok' : 'status-warn'}`}>
+                  Account: {customer?.accountStatus ? customer.accountStatus.toUpperCase() : (isAwaitingApproval ? 'PENDING APPROVAL' : 'ACTIVE')}
+                </span>
+              </div>
 
-          <dl className="detail-fields">
-            <div className="detail-field-row">
-              <dt>Type</dt>
-              <dd><span className="type-pill">{ticket.type ?? ticket.issueType ?? 'General'}</span></dd>
-            </div>
-            <div className="detail-field-row">
-              <dt>Customer</dt>
-              <dd>
-                {ticket.customerId ? (
-                  <Link
-                    href={`/customers/${ticket.customerId}`}
-                    style={{ color: '#1e6b52', fontWeight: 600, textDecoration: 'none' }}
-                  >
-                    {ticket.customerName ?? ticket.customerId}
-                  </Link>
-                ) : (
-                  <span>{ticket.customerName ?? '—'}</span>
-                )}
-              </dd>
-            </div>
-            <div className="detail-field-row">
-              <dt>Device ID</dt>
-              <dd>
-                {ticket.meterId ?? ticket.deviceId ? (
-                  <Link href={`/devices/${ticket.meterId ?? ticket.deviceId}`} className="table-link-mono">
-                    {ticket.meterId ?? ticket.deviceId}
-                  </Link>
-                ) : '—'}
-              </dd>
-            </div>
-            <div className="detail-field-row">
-              <dt>Created</dt>
-              <dd className="text-muted-sm" suppressHydrationWarning>
-                {ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : '—'}
-              </dd>
-            </div>
-            <div className="detail-field-row">
-              <dt>Updated</dt>
-              <dd className="text-muted-sm" suppressHydrationWarning>
-                {ticket.updatedAt ? new Date(ticket.updatedAt).toLocaleString() : '—'}
-              </dd>
-            </div>
-            <div className="detail-field-row">
-              <dt>Assigned Technician</dt>
-              <dd style={{ fontWeight: 600, color: assignedTechName ? '#0f172a' : '#d97706' }}>
-                {assignedTechName ?? 'Unassigned'}
-              </dd>
-            </div>
-          </dl>
+              <dl className="detail-fields" style={{ marginTop: 14 }}>
+                <div className="detail-field-row">
+                  <dt>Customer Name</dt>
+                  <dd style={{ fontWeight: 600 }}>{ticket.customerName ?? customer?.name ?? '—'}</dd>
+                </div>
+                <div className="detail-field-row">
+                  <dt>Email Address</dt>
+                  <dd>
+                    {customer?.email ? (
+                      <a href={`mailto:${customer.email}`} style={{ color: '#0284c7', textDecoration: 'none', fontWeight: 600 }}>
+                        {customer.email}
+                      </a>
+                    ) : '—'}
+                  </dd>
+                </div>
+                <div className="detail-field-row">
+                  <dt>Contact Phone</dt>
+                  <dd style={{ fontWeight: 600, color: '#0f172a' }}>{contactPhone}</dd>
+                </div>
+                <div className="detail-field-row">
+                  <dt>Installation Address</dt>
+                  <dd style={{ fontWeight: 600, color: '#0f172a' }}>{installAddress}</dd>
+                </div>
+                <div className="detail-field-row">
+                  <dt>Zone / Area</dt>
+                  <dd>{customer?.zone ?? 'Zone A'}</dd>
+                </div>
+                <div className="detail-field-row">
+                  <dt>Customer Profile</dt>
+                  <dd>
+                    {ticket.customerId ? (
+                      <Link href={`/customers/${ticket.customerId}`} style={{ color: '#1e6b52', fontWeight: 600, textDecoration: 'none' }}>
+                        View Customer Record →
+                      </Link>
+                    ) : '—'}
+                  </dd>
+                </div>
+                <div className="detail-field-row">
+                  <dt>Assigned Meter</dt>
+                  <dd>
+                    {(ticket.deviceId ?? customer?.meterId) ? (
+                      <span className="type-pill" style={{ background: '#ecfdf5', color: '#065f46', fontWeight: 700 }}>
+                        {ticket.deviceId ?? customer?.meterId}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#d97706', fontWeight: 600 }}>Not assigned yet</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
 
-          <div style={{ marginTop: 20 }}>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 6, color: '#334155' }}>
-              Issue Description
-            </h3>
-            <p style={{ background: '#f8fafc', padding: 12, borderRadius: 8, fontSize: '0.9rem', color: '#1e293b', margin: 0, border: '1px solid #e2e8f0' }}>
-              {ticket.description ?? ticket.issue ?? 'No description provided.'}
-            </p>
+              {extraDetails && (
+                <div style={{ marginTop: 14, background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginBottom: 4, letterSpacing: '0.04em' }}>
+                    CUSTOMER REQUEST NOTES
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#1e293b' }}>{extraDetails}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Core Ticket Information Card */}
+          <div className="detail-card">
+            <div className="detail-card-header">
+              <h2 className="detail-card-title">
+                Ticket #{(ticket.id ?? '').replace(/-/g, '').slice(0, 8).toUpperCase()}
+              </h2>
+              <span className={STATUS_CLASS[status] ?? 'status-badge status-muted'}>
+                {STATUS_LABELS[status] ?? status}
+              </span>
+            </div>
+
+            <dl className="detail-fields">
+              <div className="detail-field-row">
+                <dt>Type</dt>
+                <dd><span className="type-pill">{ticket.type ?? ticket.issueType ?? 'General'}</span></dd>
+              </div>
+              <div className="detail-field-row">
+                <dt>Customer</dt>
+                <dd>
+                  {ticket.customerId ? (
+                    <Link
+                      href={`/customers/${ticket.customerId}`}
+                      style={{ color: '#1e6b52', fontWeight: 600, textDecoration: 'none' }}
+                    >
+                      {ticket.customerName ?? ticket.customerId}
+                    </Link>
+                  ) : (
+                    <span>{ticket.customerName ?? '—'}</span>
+                  )}
+                </dd>
+              </div>
+              <div className="detail-field-row">
+                <dt>Device ID</dt>
+                <dd>
+                  {ticket.meterId ?? ticket.deviceId ? (
+                    <Link href={`/devices/${ticket.meterId ?? ticket.deviceId}`} className="table-link-mono">
+                      {ticket.meterId ?? ticket.deviceId}
+                    </Link>
+                  ) : '—'}
+                </dd>
+              </div>
+              <div className="detail-field-row">
+                <dt>Created</dt>
+                <dd className="text-muted-sm" suppressHydrationWarning>
+                  {ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : '—'}
+                </dd>
+              </div>
+              <div className="detail-field-row">
+                <dt>Updated</dt>
+                <dd className="text-muted-sm" suppressHydrationWarning>
+                  {ticket.updatedAt ? new Date(ticket.updatedAt).toLocaleString() : '—'}
+                </dd>
+              </div>
+              <div className="detail-field-row">
+                <dt>Assigned Technician</dt>
+                <dd style={{ fontWeight: 600, color: assignedTechName ? '#0f172a' : '#d97706' }}>
+                  {assignedTechName ?? 'Unassigned'}
+                </dd>
+              </div>
+            </dl>
+
+            <div style={{ marginTop: 20 }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 6, color: '#334155' }}>
+                Full Description
+              </h3>
+              <p style={{ background: '#f8fafc', padding: 12, borderRadius: 8, fontSize: '0.9rem', color: '#1e293b', margin: 0, border: '1px solid #e2e8f0', whiteSpace: 'pre-line' }}>
+                {ticket.description ?? ticket.issue ?? 'No description provided.'}
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Right column: actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Registration Approval Card */}
-          {isRegistrationTicket && isAwaitingApproval && (
-            <div className="detail-card" style={{ borderLeft: '4px solid #16a34a' }}>
-              <h3 className="detail-card-subtitle" style={{ color: '#15803d' }}>
-                ✓ Customer Registration Approval
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 14px' }}>
-                This user registered on the mobile app and is waiting for administrator approval before they can log in.
-              </p>
-              <button
-                type="button"
-                className="btn-success-sm"
-                style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 600, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
-                disabled={loading}
-                onClick={approveRegistration}
-              >
-                {loading ? 'Approving...' : '✓ Approve Customer Registration'}
-              </button>
-            </div>
-          )}
-
           {/* Water Meter Request Approval Card */}
           {isMeterRequestTicket && isAwaitingApproval && (
-            <div className="detail-card" style={{ borderLeft: '4px solid #0284c7' }}>
+            <div className="detail-card" style={{ borderLeft: '4px solid #0284c7', background: '#f0f9ff' }}>
               <h3 className="detail-card-subtitle" style={{ color: '#0369a1' }}>
-                🚰 Water Meter Request Approval
+                🚰 Approve Request &amp; Assign Meter
               </h3>
-              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 12px' }}>
-                Assign an available water meter device to this customer. Assigning a meter will activate their account so they can log in.
+              <p style={{ fontSize: '0.85rem', color: '#334155', margin: '8px 0 14px', lineHeight: 1.5 }}>
+                Assign an available smart water meter to <strong>{ticket.customerName}</strong> for installation at <strong>{installAddress}</strong>.
+                Approving assigns the device, activates the customer account for mobile login, and resolves this request.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
-                    Select Device / Meter ID:
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', display: 'block', marginBottom: 6 }}>
+                    Select Water Meter Device to Assign:
                   </label>
                   <select
                     className="filter-select"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', background: '#fff' }}
                     value={selectedMeter}
                     onChange={e => setSelectedMeter(e.target.value)}
                   >
-                    <option value="">Choose a water meter device...</option>
-                    {devices.map(d => (
-                      <option key={d.id ?? d.meterId} value={d.meterId ?? d.id}>
-                        {d.meterId ?? d.id} {d.customerId ? '(In Use)' : '(Available)'}
-                      </option>
-                    ))}
+                    <option value="">Choose an available device...</option>
+                    {devices.map(d => {
+                      const id = d.meterId ?? d.id;
+                      const isInUse = Boolean(d.customerId && d.customerId !== ticket.customerId);
+                      return (
+                        <option key={id} value={id}>
+                          {id} {isInUse ? '(In Use)' : '✓ (Available)'}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <button
                   type="button"
                   className="btn-primary-blue"
-                  style={{ width: '100%', padding: '11px', fontSize: '0.92rem', fontWeight: 600 }}
+                  style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#0284c7', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
                   disabled={loading || !selectedMeter}
                   onClick={approveMeterRequest}
                 >
-                  {loading ? 'Assigning...' : '✓ Assign Meter & Approve Account'}
+                  {loading ? 'Approving...' : '✓ Assign Meter & Approve Request'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Registration Approval Card */}
+          {isRegistrationTicket && isAwaitingApproval && (
+            <div className="detail-card" style={{ borderLeft: '4px solid #16a34a', background: '#f0fdf4' }}>
+              <h3 className="detail-card-subtitle" style={{ color: '#15803d' }}>
+                ✓ Approve Customer Registration
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#166534', margin: '8px 0 14px', lineHeight: 1.5 }}>
+                Confirm and approve registration for <strong>{ticket.customerName}</strong>.
+                Approving activates their account so they can immediately sign in on the mobile app.
+              </p>
+              <button
+                type="button"
+                className="btn-success-sm"
+                style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                disabled={loading}
+                onClick={approveRegistration}
+              >
+                {loading ? 'Approving...' : '✓ Approve & Activate Account'}
+              </button>
+            </div>
+          )}
+
+          {/* Already Approved Card */}
+          {(isMeterRequestTicket || isRegistrationTicket) && !isAwaitingApproval && (
+            <div className="detail-card" style={{ borderLeft: '4px solid #16a34a', background: '#f0fdf4' }}>
+              <h3 className="detail-card-subtitle" style={{ color: '#15803d' }}>
+                ✓ Request Approved &amp; Resolved
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#166534', margin: '8px 0 0' }}>
+                This request was approved. The customer account is active and can sign in on the mobile app.
+              </p>
             </div>
           )}
 
