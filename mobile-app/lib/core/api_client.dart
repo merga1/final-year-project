@@ -20,23 +20,24 @@ class ApiClient {
   ) async {
     final primaryBase = ApiConstants.baseUrl;
     try {
-      final res = await requestFn(primaryBase).timeout(const Duration(seconds: 4));
+      final res = await requestFn(primaryBase).timeout(const Duration(seconds: 15));
       _checkStatus(res, path);
       return jsonDecode(res.body);
     } catch (e) {
-      final fallbackBase = (primaryBase == ApiConstants.defaultLocalUrl)
-          ? ApiConstants.defaultWifiUrl
-          : ApiConstants.defaultLocalUrl;
-
-      if (e is SocketException ||
+      final isConnectionIssue = e is SocketException ||
           e is http.ClientException ||
           e is TimeoutException ||
           e.toString().contains('Connection refused') ||
-          e.toString().contains('SocketException')) {
+          e.toString().contains('SocketException') ||
+          e.toString().contains('SocketConnection');
+
+      // If a local URL (e.g. 127.0.0.1 or 192.168.x) was refused, auto-fallback to live Cloud URL
+      if (isConnectionIssue && primaryBase != ApiConstants.defaultCloudUrl) {
         try {
-          final res = await requestFn(fallbackBase).timeout(const Duration(seconds: 4));
+          final res = await requestFn(ApiConstants.defaultCloudUrl)
+              .timeout(const Duration(seconds: 15));
           _checkStatus(res, path);
-          await ApiConstants.setBaseUrl(fallbackBase);
+          await ApiConstants.setBaseUrl(ApiConstants.defaultCloudUrl);
           return jsonDecode(res.body);
         } catch (_) {
           rethrow;

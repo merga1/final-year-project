@@ -322,6 +322,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.cloud, color: Color(0xFF0284C7)),
+                title: const Text('Cloud Server (Vercel Production)'),
+                subtitle: const Text(ApiConstants.defaultCloudUrl),
+                onTap: () {
+                  customController.text = ApiConstants.defaultCloudUrl;
+                },
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.usb, color: Color(0xFF0D5C91)),
                 title: const Text('USB Cable / ADB reverse'),
                 subtitle: const Text(ApiConstants.defaultLocalUrl),
@@ -539,6 +549,22 @@ class _LoginScreenState extends State<LoginScreen> {
                           spacing: 8,
                           runSpacing: 6,
                           children: [
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                await ApiConstants.setBaseUrl(
+                                    ApiConstants.defaultCloudUrl);
+                                setState(() => _error = null);
+                                _login();
+                              },
+                              icon: const Icon(Icons.cloud_outlined, size: 16),
+                              label: const Text('Use Cloud Server',
+                                  style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF0284C7),
+                                side: const BorderSide(color: Color(0xFF0284C7)),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
                             OutlinedButton.icon(
                               onPressed: () async {
                                 await ApiConstants.setBaseUrl(

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'core/constants.dart';
 import 'core/api_client.dart';
@@ -433,8 +433,15 @@ class _MainShellState extends State<MainShell> {
               runSpacing: 6,
               children: [
                 ActionChip(
+                  avatar: const Icon(Icons.cloud, size: 16),
+                  label: const Text('Cloud (Vercel)',
+                      style: TextStyle(fontSize: 11)),
+                  onPressed: () =>
+                      controller.text = ApiConstants.defaultCloudUrl,
+                ),
+                ActionChip(
                   avatar: const Icon(Icons.wifi, size: 16),
-                  label: const Text('Wi-Fi (192.168.11.137)',
+                  label: const Text('Wi-Fi (LAN)',
                       style: TextStyle(fontSize: 11)),
                   onPressed: () =>
                       controller.text = ApiConstants.defaultWifiUrl,

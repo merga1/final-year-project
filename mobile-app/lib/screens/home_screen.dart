@@ -125,11 +125,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       OutlinedButton.icon(
                         onPressed: () async {
                           await ApiConstants.setBaseUrl(
-                              ApiConstants.defaultLocalUrl);
+                              ApiConstants.defaultCloudUrl);
                           _refresh();
                         },
-                        icon: const Icon(Icons.usb, size: 16),
-                        label: const Text('USB (127.0.0.1)'),
+                        icon: const Icon(Icons.cloud_outlined, size: 16),
+                        label: const Text('Cloud (Vercel)'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF0284C7),
+                          side: const BorderSide(color: Color(0xFF0284C7)),
+                        ),
                       ),
                       OutlinedButton.icon(
                         onPressed: () async {
@@ -138,11 +142,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           _refresh();
                         },
                         icon: const Icon(Icons.wifi, size: 16),
-                        label: const Text('Wi-Fi (192.168.11.137)'),
+                        label: const Text('Wi-Fi (LAN)'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF1E6B52),
                           side: const BorderSide(color: Color(0xFF1E6B52)),
                         ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await ApiConstants.setBaseUrl(
+                              ApiConstants.defaultLocalUrl);
+                          _refresh();
+                        },
+                        icon: const Icon(Icons.usb, size: 16),
+                        label: const Text('USB (127.0.0.1)'),
                       ),
                     ],
                   ),

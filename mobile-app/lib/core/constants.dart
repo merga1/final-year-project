@@ -6,12 +6,18 @@ class ApiConstants {
 
   static const String defaultCloudUrl = 'https://backend-five-liart-75.vercel.app';
   static const String defaultLocalUrl = 'http://127.0.0.1:4000';
-  static const String defaultWifiUrl = 'http://192.168.11.137:4000';
+  static const String defaultWifiUrl = 'http://192.168.10.177:4000';
   static const String defaultEmulatorUrl = 'http://10.0.2.2:4000';
 
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _inMemoryBaseUrl = prefs.getString(_prefKey);
+    // If user has an outdated local IP stored, reset to cloud default
+    if (_inMemoryBaseUrl == 'http://192.168.11.137:4000' ||
+        _inMemoryBaseUrl == 'http://127.0.0.1:4000') {
+      _inMemoryBaseUrl = defaultCloudUrl;
+      await prefs.setString(_prefKey, defaultCloudUrl);
+    }
   }
 
   static Future<void> setBaseUrl(String url) async {
