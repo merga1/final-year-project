@@ -470,7 +470,7 @@ export function TicketsClient({
       </div>
 
       <div className="table-card">
-        <table className="data-table">
+        <table className="data-table data-table-wide">
           <thead>
             <tr>
               <th>Ticket ID</th>

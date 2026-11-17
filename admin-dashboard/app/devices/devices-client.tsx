@@ -323,7 +323,7 @@ export function DevicesClient({
       </div>
 
       <div className="table-card">
-        <table className="data-table">
+        <table className="data-table data-table-wide">
           <thead>
             <tr>
               <th>Device ID</th>

@@ -206,7 +206,7 @@ export function BillingClient({
 
       {/* Bills Data Table */}
       <div className="table-card">
-        <table className="data-table">
+        <table className="data-table data-table-wide">
           <thead>
             <tr>
               <th>Invoice ID</th>

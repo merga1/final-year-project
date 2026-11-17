@@ -366,7 +366,7 @@ export function AuditClient({ logs = [] }: { logs: any[] }) {
       ) : (
         /* ── Compact Table View ── */
         <div className="table-card">
-          <table className="data-table">
+          <table className="data-table data-table-wide">
             <thead>
               <tr>
                 <th>Timestamp</th>

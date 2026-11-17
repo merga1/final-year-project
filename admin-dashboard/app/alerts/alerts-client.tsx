@@ -550,7 +550,7 @@ export function AlertsClient({
       </div>
 
       <div className="table-card">
-        <table className="data-table">
+        <table className="data-table data-table-wide">
           <thead>
             <tr>
               <th>Severity</th>
