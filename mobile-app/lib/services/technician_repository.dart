@@ -56,4 +56,9 @@ class TechnicianRepository {
       'longitude': longitude,
     });
   }
+
+  /// Activates the ticket's water meter for usage after physical installation.
+  Future<void> activateMeter(String ticketId) async {
+    await _client.patch('/api/technician/tickets/$ticketId/activate-meter', {});
+  }
 }

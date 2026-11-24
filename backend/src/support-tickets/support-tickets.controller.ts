@@ -5,7 +5,11 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
-  AdminCreateTicketDto, AdminUpdateTicketDto, CreateCustomerTicketDto, TechnicianTransitionDto,
+  AdminCreateTicketDto,
+  AdminUpdateTicketDto,
+  CreateCustomerTicketDto,
+  CustomerTicketDecisionDto,
+  TechnicianTransitionDto,
 } from './dto/ticket.dto';
 
 @Controller()
@@ -66,6 +70,22 @@ export class SupportTicketsController {
   @Roles('customer')
   getCustomerTicket(@CurrentUser() user: any, @Param('id') id: string) {
     return this.service.findOneForCustomer(id, user.sub);
+  }
+
+  @Patch('api/mobile/support-tickets/:id/decision')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('customer')
+  decideInstallation(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() body: CustomerTicketDecisionDto,
+  ) {
+    return this.service.customerDecideInstallation(
+      id,
+      user.sub,
+      body.decision,
+      body.notes,
+    );
   }
 
   // ── Technician endpoints ──────────────────────────────────────────────────────

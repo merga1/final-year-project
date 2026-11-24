@@ -11,6 +11,7 @@ const STATUS_LABELS: Record<string, string> = {
   assigned: 'Assigned',
   accepted: 'In Progress',
   in_progress: 'In Progress',
+  awaiting_customer: 'Awaiting Customer',
   resolved: 'Resolved',
   closed: 'Closed',
 };
@@ -21,6 +22,7 @@ const STATUS_CLASS: Record<string, string> = {
   assigned: 'status-badge status-info',
   accepted: 'status-badge status-ok',
   in_progress: 'status-badge status-ok',
+  awaiting_customer: 'status-badge status-warn',
   resolved: 'status-badge status-ok',
   closed: 'status-badge status-muted',
 };
@@ -104,7 +106,7 @@ function getCookie(name: string): string {
   return match ? match[2] : '';
 }
 
-const ALL_STATUSES = ['all', 'pending', 'assigned', 'in_progress', 'resolved', 'closed'];
+const ALL_STATUSES = ['all', 'pending', 'assigned', 'in_progress', 'awaiting_customer', 'resolved', 'closed'];
 
 export function TicketsClient({
   tickets,
@@ -577,7 +579,7 @@ export function TicketsClient({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          Assign Meter →
+                          Assign Meter &amp; Tech →
                         </Link>
                       ) : isPending && (
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>

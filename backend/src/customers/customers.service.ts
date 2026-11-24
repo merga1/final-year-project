@@ -116,35 +116,27 @@ export class CustomersService {
     if (Object.keys(data).length) await this.repo.update(id, data);
     const updated = await this.findOne(id);
 
-    // Close legacy registration tickets when the account is active.
-    // Water meter requests are only closed once a meter is actually linked.
+    // Close only legacy registration-approval tickets.
+    // Water Meter Requests stay open until the customer approves installation.
     if (updated.accountStatus === 'active') {
       try {
         const pendingTickets = await this.ticketRepo.find({
           where: {
             customerId: id,
-            status: In(['pending', 'open'] as any),
+            status: In(['pending', 'open', 'assigned'] as any),
           },
         });
         const now = new Date();
         for (const ticket of pendingTickets) {
           const isRegistration =
             ticket.type === 'New Customer Registration' ||
-            ticket.issue?.toLowerCase().includes('registration');
-          const isMeterRequest =
-            ticket.type === 'Water Meter Request' ||
-            ticket.issue?.toLowerCase().includes('water meter');
-
-          if (!isRegistration && !(isMeterRequest && updated.meterId)) continue;
+            ticket.issue?.toLowerCase().includes('registration approval') ||
+            ticket.description?.toLowerCase().includes('awaiting administrator approval');
+          if (!isRegistration) continue;
 
           ticket.status = 'resolved';
           ticket.resolvedAt = now;
-          ticket.notes = isMeterRequest
-            ? `Water meter ${updated.meterId} linked by administrator`
-            : 'Registration ticket closed (accounts no longer require approval)';
-          if (updated.meterId && !ticket.deviceId) {
-            ticket.deviceId = updated.meterId;
-          }
+          ticket.notes = 'Registration ticket closed (accounts no longer require approval)';
           let historyArr: any[] = [];
           try {
             if (ticket.statusHistory) historyArr = JSON.parse(ticket.statusHistory);
@@ -155,13 +147,13 @@ export class CustomersService {
           historyArr.push({
             status: 'resolved',
             at: now.toISOString(),
-            note: isMeterRequest ? 'Meter linked' : 'Registration closed',
+            note: 'Registration closed',
           });
           ticket.statusHistory = JSON.stringify(historyArr);
           await this.ticketRepo.save(ticket);
         }
       } catch (ticketErr) {
-        console.warn('Could not auto-resolve tickets on customer update:', ticketErr);
+        console.warn('Could not auto-resolve legacy registration tickets:', ticketErr);
       }
     }
 

@@ -234,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'You can create a support ticket or update your profile now. Usage, billing, and live readings unlock after an administrator assigns a water meter.',
+                          'Request a water meter from Support. An admin will assign a device and technician. After installation, you approve the meter here to unlock usage and billing.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Color(0xFF64748B)),
                         ),
@@ -254,11 +254,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 8),
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.support_agent_outlined,
+                    leading: const Icon(Icons.water_drop_outlined,
                         color: Color(0xFF0284C7)),
-                    title: const Text('Create a support ticket'),
+                    title: const Text('Request a water meter'),
                     subtitle: const Text(
-                        'Request a water meter or report another issue'),
+                        'Open Support and create a Water Meter Request'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => widget.onNavigate?.call(1),
                   ),

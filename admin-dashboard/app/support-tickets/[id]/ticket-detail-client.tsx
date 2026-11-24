@@ -10,6 +10,7 @@ const STATUS_LABELS: Record<string, string> = {
   assigned: 'Assigned',
   accepted: 'In Progress',
   in_progress: 'In Progress',
+  awaiting_customer: 'Awaiting Customer',
   resolved: 'Resolved',
   closed: 'Closed',
 };
@@ -20,6 +21,7 @@ const STATUS_CLASS: Record<string, string> = {
   assigned: 'status-badge status-info',
   accepted: 'status-badge status-ok',
   in_progress: 'status-badge status-ok',
+  awaiting_customer: 'status-badge status-warn',
   resolved: 'status-badge status-ok',
   closed: 'status-badge status-muted',
 };
@@ -112,12 +114,16 @@ export function TicketDetailClient({
     });
   }
 
-  async function assignMeterFromRequest() {
+  async function assignMeterAndTechnician() {
     if (!selectedMeter) {
-      setError('Please select or enter a water meter device ID to assign.');
+      setError('Select a water meter device to assign.');
       return;
     }
-    if (!confirm(`Assign water meter ${selectedMeter} to this customer?`)) return;
+    if (!selectedTech) {
+      setError('Select a technician who will install the meter.');
+      return;
+    }
+    if (!confirm(`Link meter ${selectedMeter} and assign the technician for installation?`)) return;
     setLoading(true);
     setError('');
     setSuccess('');
@@ -135,15 +141,21 @@ export function TicketDetailClient({
           throw new Error(d.message || 'Failed to link meter to customer');
         }
       }
+      const tech = technicians.find((item: any) => item.id === selectedTech);
+      const techName = tech
+        ? (tech.name ?? `${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim())
+        : undefined;
       await patchTicket({
-        status: 'resolved',
+        status: 'assigned',
         deviceId: selectedMeter,
-        notes: `Water meter ${selectedMeter} assigned`,
+        technicianId: selectedTech,
+        technicianName: techName,
+        notes: `Meter ${selectedMeter} linked; technician assigned for installation`,
       });
-      setSuccess(`Water meter ${selectedMeter} assigned to the customer.`);
+      setSuccess(`Meter ${selectedMeter} linked and technician assigned. Waiting for installation.`);
       router.refresh();
     } catch (err: any) {
-      setError(err?.message || 'Failed to assign water meter');
+      setError(err?.message || 'Failed to assign meter and technician');
     } finally {
       setLoading(false);
     }
@@ -317,20 +329,20 @@ export function TicketDetailClient({
 
         {/* Right column: actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Water Meter Request — assign device (account is already active after registration) */}
+          {/* Water Meter Request — link meter + assign technician for field installation */}
           {isMeterRequestTicket && isAwaitingApproval && (
             <div className="detail-card" style={{ borderLeft: '4px solid #0284c7', background: '#f0f9ff' }}>
               <h3 className="detail-card-subtitle" style={{ color: '#0369a1' }}>
-                Assign Water Meter
+                Assign Meter &amp; Technician
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#334155', margin: '8px 0 14px', lineHeight: 1.5 }}>
-                Assign an available smart water meter to <strong>{ticket.customerName}</strong> for installation at <strong>{installAddress}</strong>.
-                The customer can already sign in; linking a meter unlocks usage, billing, and live readings.
+                Link a meter to <strong>{ticket.customerName}</strong> and assign a technician to install it at <strong>{installAddress}</strong>.
+                After installation, the technician activates the meter and the customer must approve it.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
                   <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', display: 'block', marginBottom: 6 }}>
-                    Select Water Meter Device to Assign:
+                    Water meter device
                   </label>
                   <select
                     className="filter-select"
@@ -350,14 +362,32 @@ export function TicketDetailClient({
                     })}
                   </select>
                 </div>
+                <div>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', display: 'block', marginBottom: 6 }}>
+                    Installation technician
+                  </label>
+                  <select
+                    className="filter-select"
+                    style={{ width: '100%', background: '#fff' }}
+                    value={selectedTech}
+                    onChange={e => setSelectedTech(e.target.value)}
+                  >
+                    <option value="">Choose a technician...</option>
+                    {technicians.map((tech: any) => (
+                      <option key={tech.id} value={tech.id}>
+                        {tech.name ?? `${tech.firstName ?? ''} ${tech.lastName ?? ''}`.trim()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   type="button"
                   className="btn-primary-blue"
                   style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#0284c7', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
-                  disabled={loading || !selectedMeter}
-                  onClick={assignMeterFromRequest}
+                  disabled={loading || !selectedMeter || !selectedTech}
+                  onClick={assignMeterAndTechnician}
                 >
-                  {loading ? 'Assigning...' : 'Assign Meter & Resolve Request'}
+                  {loading ? 'Assigning...' : 'Assign Meter & Technician'}
                 </button>
               </div>
             </div>

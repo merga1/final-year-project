@@ -672,6 +672,12 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
   bool _loading = false;
   TechnicianDeviceSnapshot? _deviceSnapshot;
 
+  bool get _isMeterInstall {
+    final type = widget.ticket.type.toLowerCase();
+    final issue = widget.ticket.issue.toLowerCase();
+    return type.contains('water meter') || issue.contains('water meter');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -685,6 +691,20 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
     } catch (_) {
       // non-fatal — location card shows gracefully without it
     }
+  }
+
+  Future<void> _completeOrResolve() async {
+    final notes = await _askForText(
+      _isMeterInstall ? 'Complete installation' : 'Resolve ticket',
+      _isMeterInstall
+          ? 'Installation notes (sent to customer for approval)'
+          : 'Resolution notes',
+    );
+    if (notes == null) return;
+    _transition(
+      _isMeterInstall ? 'awaiting_customer' : 'resolved',
+      notes: notes,
+    );
   }
 
   Future<void> _transition(String status,
@@ -1187,15 +1207,11 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: _loading
-                  ? null
-                  : () async {
-                      final notes = await _askForText(
-                          'Resolve ticket', 'Resolution notes');
-                      if (notes != null) _transition('resolved', notes: notes);
-                    },
+              onPressed: _loading ? null : _completeOrResolve,
               icon: const Icon(Icons.check),
-              label: const Text('Resolve ticket'),
+              label: Text(_isMeterInstall
+                  ? 'Complete installation'
+                  : 'Resolve ticket'),
             ),
           ],
           if (status == 'in_progress') ...[
@@ -1203,12 +1219,35 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
               onPressed: _loading
                   ? null
                   : () async {
-                      final notes = await _askForText(
-                          'Resolve ticket', 'Resolution notes');
-                      if (notes != null) _transition('resolved', notes: notes);
+                      setState(() => _loading = true);
+                      try {
+                        await widget.repo.activateMeter(widget.ticket.id);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Water meter activated for usage')),
+                          );
+                          await _loadDevice();
+                        }
+                      } catch (error) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('$error')));
+                        }
+                      } finally {
+                        if (mounted) setState(() => _loading = false);
+                      }
                     },
+              icon: const Icon(Icons.power_settings_new),
+              label: const Text('Activate water meter'),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: _loading ? null : _completeOrResolve,
               icon: const Icon(Icons.check),
-              label: const Text('Resolve ticket'),
+              label: Text(_isMeterInstall
+                  ? 'Complete installation'
+                  : 'Resolve ticket'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -1223,6 +1262,20 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
                     },
               icon: const Icon(Icons.edit_note),
               label: const Text('Save progress note'),
+            ),
+          ],
+          if (status == 'awaiting_customer') ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Installation submitted. Waiting for the customer to approve the installed meter.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF92400E)),
+              ),
             ),
           ],
         ],
@@ -1540,6 +1593,8 @@ Color _statusColor(String status) {
       return const Color(0xFF0284C7);
     case 'assigned':
       return const Color(0xFFD97706);
+    case 'awaiting_customer':
+      return const Color(0xFFCA8A04);
     case 'in progress':
       return const Color(0xFF7C3AED);
     default:

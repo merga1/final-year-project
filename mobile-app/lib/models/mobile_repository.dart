@@ -192,13 +192,31 @@ class MobileRepository {
     String priority, {
     String type = 'Sensor Issue',
     String description = '',
+    String? customerAddress,
   }) async {
     final json = await _client.post('/api/mobile/support-tickets', {
       'issue': issue,
       'priority': priority,
       'type': type,
       'description': description.isNotEmpty ? description : issue,
+      if (customerAddress != null && customerAddress.trim().isNotEmpty)
+        'customerAddress': customerAddress.trim(),
     });
+    return SupportTicket.fromJson(Map<String, dynamic>.from(json as Map));
+  }
+
+  Future<SupportTicket> decideInstallation(
+    String ticketId, {
+    required bool approve,
+    String? notes,
+  }) async {
+    final json = await _client.patch(
+      '/api/mobile/support-tickets/$ticketId/decision',
+      {
+        'decision': approve ? 'approve' : 'reject',
+        if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      },
+    );
     return SupportTicket.fromJson(Map<String, dynamic>.from(json as Map));
   }
 

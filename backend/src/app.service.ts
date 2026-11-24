@@ -287,4 +287,31 @@ export class AppService {
       message: 'Meter location updated successfully',
     };
   }
+
+  /** Technician activates the ticket's meter for usage after installation. */
+  async activateTicketMeter(ticketId: string, technicianId: string) {
+    const ticket = await this.tickets.findOneForTechnician(ticketId, technicianId);
+    const device = ticket.deviceId
+      ? await this.devices.findOne(ticket.deviceId)
+      : ticket.customerId
+        ? await this.devices.findByCustomerId(ticket.customerId)
+        : null;
+
+    if (!device) throw new Error('No device linked to this ticket. Ask an admin to assign a meter first.');
+
+    await this.devices.updateByMeterId(device.meterId, { connectivity: 'ONLINE' });
+    if (ticket.customerId) {
+      await this.customers.update(ticket.customerId, {
+        meterId: device.meterId,
+        accountStatus: 'active',
+      });
+    }
+
+    return {
+      success: true,
+      meterId: device.meterId,
+      connectivity: 'ONLINE',
+      message: `Water meter ${device.meterId} activated for usage`,
+    };
+  }
 }

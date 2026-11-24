@@ -306,11 +306,71 @@ class _TicketDetailScreen extends StatefulWidget {
 class _TicketDetailScreenState extends State<_TicketDetailScreen> {
   late SupportTicket _ticket = widget.ticket;
   bool _loading = true;
+  bool _deciding = false;
 
   @override
   void initState() {
     super.initState();
     _loadLatest();
+  }
+
+  Future<void> _decide({required bool approve}) async {
+    final controller = TextEditingController();
+    final notes = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(approve ? 'Approve meter' : 'Reject installation'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: approve
+                ? 'Optional note'
+                : 'What should the technician fix?',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: Text(approve ? 'Approve' : 'Reject'),
+          ),
+        ],
+      ),
+    );
+    if (notes == null) return;
+    if (!approve && notes.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please describe the problem')),
+      );
+      return;
+    }
+    setState(() => _deciding = true);
+    try {
+      final updated = await widget.repo.decideInstallation(
+        _ticket.id,
+        approve: approve,
+        notes: notes.isEmpty ? null : notes,
+      );
+      if (!mounted) return;
+      setState(() => _ticket = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(approve
+              ? 'Meter approved. Your dashboard will unlock shortly.'
+              : 'Installation rejected. The technician will continue work.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _deciding = false);
+    }
   }
 
   Future<void> _loadLatest() async {
@@ -467,18 +527,45 @@ class _TicketDetailScreenState extends State<_TicketDetailScreen> {
                   style: const TextStyle(
                       fontSize: 11.5, color: Color(0xFF64748B))),
             ],
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
+            if (_ticket.status.toLowerCase() == 'awaiting_customer') ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'A technician finished installing your water meter. Approve it to unlock usage, or reject if something is wrong.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF92400E), height: 1.4),
+                ),
               ),
-              child: const Text(
-                'An administrator reviews every ticket. You will get a notification whenever the status changes.',
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF1E40AF)),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _deciding ? null : () => _decide(approve: true),
+                icon: const Icon(Icons.verified_outlined),
+                label: Text(_deciding ? 'Saving...' : 'Approve installed meter'),
               ),
-            ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _deciding ? null : () => _decide(approve: false),
+                icon: const Icon(Icons.report_gmailerrorred_outlined),
+                label: const Text('Reject installation'),
+              ),
+            ] else ...[
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'After you request a water meter, an admin assigns a device and technician. When installation is done, you approve it here.',
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF1E40AF)),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -493,8 +580,18 @@ class _Timeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const steps = ['open', 'assigned', 'in progress', 'resolved'];
-    final normalized = status == 'pending' ? 'open' : status;
+    const steps = [
+      'open',
+      'assigned',
+      'in progress',
+      'awaiting customer',
+      'resolved',
+    ];
+    final normalized = status == 'pending'
+        ? 'open'
+        : status == 'accepted'
+            ? 'in progress'
+            : status;
     final current = steps.indexOf(normalized);
     return Row(
       children: [
@@ -630,6 +727,13 @@ class _CreateTicketScreenState extends State<_CreateTicketScreen> {
     'Billing Inquiry',
     'Other Service Issue',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // New customers without a meter usually open Support to request one.
+    _selectedType = 'Water Meter Request';
+  }
 
   Future<void> _submit() async {
     final desc = _descController.text.trim();
@@ -811,7 +915,7 @@ class _CreateTicketScreenState extends State<_CreateTicketScreen> {
 }
 
 Color _supportStatusColor(String status) {
-  switch (status.toLowerCase()) {
+  switch (status.toLowerCase().replaceAll('_', ' ')) {
     case 'resolved':
     case 'closed':
       return const Color(0xFF15803D);
@@ -823,6 +927,8 @@ Color _supportStatusColor(String status) {
     case 'pending':
     case 'open':
       return const Color(0xFF64748B);
+    case 'awaiting customer':
+      return const Color(0xFFD97706);
     default:
       return const Color(0xFF64748B);
   }

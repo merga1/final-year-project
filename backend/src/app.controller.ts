@@ -56,4 +56,11 @@ export class AppController {
   ) {
     return this.appService.setMeterLocation(ticketId, user.technicianId ?? user.sub, body.latitude, body.longitude);
   }
+
+  @Patch('api/technician/tickets/:id/activate-meter')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('technician')
+  activateTicketMeter(@CurrentUser() user: any, @Param('id') ticketId: string) {
+    return this.appService.activateTicketMeter(ticketId, user.technicianId ?? user.sub);
+  }
 }

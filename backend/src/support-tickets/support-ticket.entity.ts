@@ -7,7 +7,16 @@ import { getDatabaseUrl } from '../config/env';
 const timestampType: 'timestamp' | 'datetime' = getDatabaseUrl() ? 'timestamp' : 'datetime';
 
 export type TicketPriority = 'High' | 'Medium' | 'Low';
-export type TicketStatus = 'pending' | 'open' | 'assigned' | 'accepted' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
+export type TicketStatus =
+  | 'pending'
+  | 'open'
+  | 'assigned'
+  | 'accepted'
+  | 'in_progress'
+  | 'awaiting_customer'
+  | 'resolved'
+  | 'closed'
+  | 'cancelled';
 
 @Entity('support_tickets')
 export class SupportTicket {

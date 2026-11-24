@@ -1,7 +1,17 @@
 import { Transform } from 'class-transformer';
 import { IsIn, IsOptional, IsString } from 'class-validator';
 
-export const TICKET_STATUSES = ['pending', 'open', 'assigned', 'accepted', 'in_progress', 'resolved', 'closed', 'cancelled'];
+export const TICKET_STATUSES = [
+  'pending',
+  'open',
+  'assigned',
+  'accepted',
+  'in_progress',
+  'awaiting_customer',
+  'resolved',
+  'closed',
+  'cancelled',
+];
 export const TICKET_PRIORITIES = ['High', 'Medium', 'Low'];
 
 const lower = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.toLowerCase() : value);
@@ -37,8 +47,18 @@ export class AdminUpdateTicketDto extends CreateCustomerTicketDto {
 }
 
 export class TechnicianTransitionDto {
-  @Transform(lower) @IsIn(['accepted', 'in_progress', 'rejected', 'resolved', 'closed']) status: string;
+  @Transform(lower)
+  @IsIn(['accepted', 'in_progress', 'rejected', 'awaiting_customer', 'resolved', 'closed'])
+  status: string;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsString() progressNotes?: string;
   @IsOptional() @IsString() rejectionReason?: string;
+}
+
+export class CustomerTicketDecisionDto {
+  @Transform(lower)
+  @IsIn(['approve', 'reject'])
+  decision: 'approve' | 'reject';
+
+  @IsOptional() @IsString() notes?: string;
 }

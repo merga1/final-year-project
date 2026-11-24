@@ -39,6 +39,9 @@ export class AuthService {
         customer.accountStatus = 'active';
       }
 
+      // Close obsolete registration-approval tickets from older backend builds.
+      await this.supportTickets.closeLegacyRegistrationTickets(customer.id).catch(() => undefined);
+
       const role = customer.role || 'customer';
 
       // Customers without a meter get limited app screens until an admin assigns one.
@@ -139,56 +142,11 @@ export class AuthService {
   }
 
   /**
-   * Creates an active customer account and queues a water-meter request for admins.
-   * Issues a session so the customer can use support/profile immediately.
+   * Legacy signup endpoint kept for older app builds.
+   * Creates an active account only — meter requests are created after login from Support.
    */
   async registerMeterRequest(dto: RegisterMeterRequestDto) {
-    const normalizedEmail = dto.email.trim().toLowerCase();
-    if (
-      (await this.customersService.findByEmail(normalizedEmail)) ||
-      (await this.techniciansService.findByEmail(normalizedEmail))
-    ) {
-      throw new ConflictException('Email already registered');
-    }
-
-    const customer = await this.customersService.create({
-      name: dto.name.trim(),
-      email: normalizedEmail,
-      passwordHash: await bcrypt.hash(dto.password, 10),
-      address: dto.address.trim(),
-      role: 'customer',
-      accountStatus: 'active',
-    });
-
-    try {
-      await this.supportTickets.createCustomerTicket({
-        customerId: customer.id,
-        customerName: customer.name,
-        type: 'Water Meter Request',
-        issue: 'Request a new water meter',
-        priority: 'Medium',
-        description: [
-          `Installation address: ${dto.address.trim()}`,
-          `Contact phone: ${dto.phone.trim()}`,
-          dto.details?.trim() ? `Additional details: ${dto.details.trim()}` : null,
-        ]
-          .filter(Boolean)
-          .join('\n'),
-        customerAddress: dto.address.trim(),
-        subject: 'Request a new water meter',
-      });
-    } catch (error) {
-      await this.customersService.remove(customer.id).catch(() => undefined);
-      throw error;
-    }
-
-    return this.sign({
-      sub: customer.id,
-      email: customer.email,
-      name: customer.name,
-      role: 'customer',
-      meterId: customer.meterId ?? null,
-    });
+    return this.register(dto.name, dto.email, dto.password, undefined, dto.address.trim());
   }
 
   async changePassword(userId: string, oldPass: string, newPass: string) {

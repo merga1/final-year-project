@@ -303,6 +303,123 @@ export class SupportTicketsService {
     return after;
   }
 
+  /**
+   * Customer approves or rejects a completed water-meter installation.
+   * Approve → resolve ticket and ensure the meter is active for usage.
+   * Reject → return ticket to the technician as in_progress.
+   */
+  async customerDecideInstallation(
+    id: string,
+    customerId: string,
+    decision: 'approve' | 'reject',
+    notes?: string,
+  ) {
+    const ticket = await this.findOneForCustomer(id, customerId);
+    if (ticket.status !== 'awaiting_customer') {
+      throw new BadRequestException('This ticket is not waiting for your approval');
+    }
+
+    const isMeterInstall =
+      ticket.type === 'Water Meter Request' ||
+      ticket.issue?.toLowerCase().includes('water meter');
+    if (!isMeterInstall) {
+      throw new BadRequestException('Only water meter installations require customer approval');
+    }
+
+    const now = new Date();
+    let history: any[] = [];
+    try {
+      history = ticket.statusHistory ? JSON.parse(ticket.statusHistory) : [];
+      if (!Array.isArray(history)) history = [{ entry: ticket.statusHistory }];
+    } catch {
+      history = [];
+    }
+
+    if (decision === 'approve') {
+      ticket.status = 'resolved';
+      ticket.resolvedAt = now;
+      ticket.notes = [
+        ticket.notes,
+        notes?.trim() ? `Customer approval: ${notes.trim()}` : 'Customer approved the installed meter',
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const meterId = (ticket.deviceId || '').trim();
+      if (meterId) {
+        await this.customerRepo.update(customerId, {
+          meterId,
+          accountStatus: 'active',
+        });
+        await this.deviceRepo.update(
+          { meterId },
+          { customerId, connectivity: 'ONLINE' },
+        );
+      }
+
+      if (ticket.technicianId) {
+        await this.decrementWorkload(ticket.technicianId, true);
+        await this.notifications.create({
+          userId: ticket.technicianId,
+          audience: 'technician',
+          type: 'ticket_status',
+          title: 'Customer approved installation',
+          message: `${ticket.customerName} approved the water meter installation.`,
+          relatedId: ticket.id,
+        }).catch(() => {});
+      }
+    } else {
+      ticket.status = 'in_progress';
+      ticket.rejectionReason = notes?.trim() || 'Customer rejected the installation';
+      history.push({
+        status: 'awaiting_customer_rejected',
+        at: now.toISOString(),
+        by: customerId,
+        note: ticket.rejectionReason,
+      });
+      if (ticket.technicianId) {
+        await this.notifications.create({
+          userId: ticket.technicianId,
+          audience: 'technician',
+          type: 'ticket_status',
+          title: 'Customer requested changes',
+          message: `${ticket.customerName} rejected the installation. Please continue work.`,
+          relatedId: ticket.id,
+        }).catch(() => {});
+      }
+    }
+
+    history.push({
+      status: ticket.status,
+      at: now.toISOString(),
+      by: customerId,
+      note: decision === 'approve' ? 'Customer approved' : 'Customer rejected',
+    });
+    ticket.statusHistory = JSON.stringify(history);
+    return this.repo.save(ticket);
+  }
+
+  /** Close obsolete registration-approval tickets created by older backend builds. */
+  async closeLegacyRegistrationTickets(customerId?: string) {
+    const where: any = {
+      status: In(['pending', 'open', 'assigned', 'accepted', 'in_progress'] as any),
+    };
+    if (customerId) where.customerId = customerId;
+    const tickets = await this.repo.find({ where });
+    const now = new Date();
+    for (const ticket of tickets) {
+      const isRegistration =
+        ticket.type === 'New Customer Registration' ||
+        ticket.issue?.toLowerCase().includes('registration approval') ||
+        ticket.description?.toLowerCase().includes('awaiting administrator approval');
+      if (!isRegistration) continue;
+      ticket.status = 'resolved';
+      ticket.resolvedAt = now;
+      ticket.notes = 'Closed automatically — registration no longer requires admin approval';
+      await this.repo.save(ticket);
+    }
+  }
+
   async transitionForTechnician(
     id: string,
     technicianId: string,
@@ -324,21 +441,37 @@ export class SupportTicketsService {
       ticket.technicianName = null;
       ticket.assignedAt = null;
       await this.decrementWorkload(technicianId, false);
-    } else if (requested === 'resolved') {
-      if (!['accepted', 'in_progress'].includes(current)) throw new BadRequestException('Accept the ticket before resolving it');
-      if (!data.notes?.trim()) throw new BadRequestException('Resolution notes are required');
-      ticket.status = 'resolved';
+    } else if (requested === 'awaiting_customer' || requested === 'resolved') {
+      // Water-meter installs wait for customer approval; other tickets resolve immediately.
+      if (!['accepted', 'in_progress'].includes(current)) {
+        throw new BadRequestException('Accept the ticket before completing it');
+      }
+      if (!data.notes?.trim()) throw new BadRequestException('Completion notes are required');
+      const isMeterInstall =
+        ticket.type === 'Water Meter Request' ||
+        ticket.issue?.toLowerCase().includes('water meter');
+      ticket.status = isMeterInstall || requested === 'awaiting_customer'
+        ? 'awaiting_customer'
+        : 'resolved';
       ticket.notes = data.notes.trim();
       ticket.progressNotes = data.progressNotes?.trim() || ticket.progressNotes;
-      ticket.resolvedAt = now;
-      await this.decrementWorkload(technicianId, true);
+      if (ticket.status === 'resolved') {
+        ticket.resolvedAt = now;
+        await this.decrementWorkload(technicianId, true);
+      }
     } else if (requested === 'closed') {
       if (current !== 'resolved') throw new BadRequestException('Only resolved tickets can be closed');
       ticket.status = 'closed';
     } else if (requested === 'accepted' || requested === 'in_progress') {
-      ticket.status = 'in_progress';
-      ticket.acceptedAt = ticket.acceptedAt ?? now;
-      if (data.progressNotes?.trim()) ticket.progressNotes = data.progressNotes.trim();
+      if (current === 'awaiting_customer') {
+        // Customer rejected installation — technician continues work.
+        ticket.status = 'in_progress';
+        if (data.progressNotes?.trim()) ticket.progressNotes = data.progressNotes.trim();
+      } else {
+        ticket.status = 'in_progress';
+        ticket.acceptedAt = ticket.acceptedAt ?? now;
+        if (data.progressNotes?.trim()) ticket.progressNotes = data.progressNotes.trim();
+      }
     } else {
       throw new BadRequestException('Unsupported ticket status transition');
     }
@@ -353,12 +486,18 @@ export class SupportTicketsService {
     history.push({ status: ticket.status, at: now.toISOString(), by: technicianId });
     ticket.statusHistory = JSON.stringify(history);
     const saved = await this.repo.save(ticket);
+    const customerMessage =
+      saved.status === 'awaiting_customer'
+        ? 'Your water meter was installed. Open the ticket and approve it to finish.'
+        : `Your ticket is now ${saved.status}.`;
     await this.notifications.create({
       userId: saved.customerId,
       audience: 'customer',
       type: 'ticket_status',
-      title: 'Support ticket updated',
-      message: `Your ticket is now ${saved.status}.`,
+      title: saved.status === 'awaiting_customer'
+        ? 'Approve your water meter'
+        : 'Support ticket updated',
+      message: customerMessage,
       relatedId: saved.id,
     });
     return saved;
