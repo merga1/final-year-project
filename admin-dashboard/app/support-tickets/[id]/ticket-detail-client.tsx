@@ -104,37 +104,20 @@ export function TicketDetailClient({
     }
   }
 
-  async function approveRegistration() {
-    if (!confirm('Approve this customer registration? The customer will be able to log in to the mobile app.')) return;
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    try {
-      const API = (process.env.NEXT_PUBLIC_API_URL ?? 'https://backend-five-liart-75.vercel.app').replace(String.fromCharCode(0xFEFF), '').trim();
-      const t = getCookie('sw_token') || token;
-      if (ticket.customerId) {
-        await fetch(`${API}/api/admin/customers/${ticket.customerId}`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountStatus: 'active' }),
-        });
-      }
-      await patchTicket({ status: 'resolved', notes: 'Registration approved by administrator' });
-      setSuccess('Customer registration approved successfully.');
-      router.refresh();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to approve registration');
-    } finally {
-      setLoading(false);
-    }
+  async function closeRegistrationTicket() {
+    if (!confirm('Close this legacy registration ticket? Customer accounts no longer require admin approval to sign in.')) return;
+    await patchTicket({
+      status: 'resolved',
+      notes: 'Registration ticket closed — accounts are active after self-registration',
+    });
   }
 
-  async function approveMeterRequest() {
+  async function assignMeterFromRequest() {
     if (!selectedMeter) {
       setError('Please select or enter a water meter device ID to assign.');
       return;
     }
-    if (!confirm(`Assign water meter ${selectedMeter} to this customer and approve their account?`)) return;
+    if (!confirm(`Assign water meter ${selectedMeter} to this customer?`)) return;
     setLoading(true);
     setError('');
     setSuccess('');
@@ -152,11 +135,15 @@ export function TicketDetailClient({
           throw new Error(d.message || 'Failed to link meter to customer');
         }
       }
-      await patchTicket({ status: 'resolved', deviceId: selectedMeter, notes: `Water meter ${selectedMeter} assigned and account approved` });
-      setSuccess(`Water meter ${selectedMeter} assigned and customer account approved!`);
+      await patchTicket({
+        status: 'resolved',
+        deviceId: selectedMeter,
+        notes: `Water meter ${selectedMeter} assigned`,
+      });
+      setSuccess(`Water meter ${selectedMeter} assigned to the customer.`);
       router.refresh();
     } catch (err: any) {
-      setError(err?.message || 'Failed to approve water meter request');
+      setError(err?.message || 'Failed to assign water meter');
     } finally {
       setLoading(false);
     }
@@ -189,8 +176,8 @@ export function TicketDetailClient({
                 <h3 className="detail-card-subtitle" style={{ fontSize: '1.05rem', color: '#0369a1', margin: 0 }}>
                   {isMeterRequestTicket ? '🚰 Water Meter Installation Request' : '👤 Customer Account Registration'}
                 </h3>
-                <span className={`status-badge ${customer?.accountStatus === 'active' ? 'status-ok' : 'status-warn'}`}>
-                  Account: {customer?.accountStatus ? customer.accountStatus.toUpperCase() : (isAwaitingApproval ? 'PENDING APPROVAL' : 'ACTIVE')}
+                <span className={`status-badge ${customer?.accountStatus === 'suspended' ? 'status-warn' : 'status-ok'}`}>
+                  Account: {(customer?.accountStatus || 'active').toUpperCase()}
                 </span>
               </div>
 
@@ -330,15 +317,15 @@ export function TicketDetailClient({
 
         {/* Right column: actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Water Meter Request Approval Card */}
+          {/* Water Meter Request — assign device (account is already active after registration) */}
           {isMeterRequestTicket && isAwaitingApproval && (
             <div className="detail-card" style={{ borderLeft: '4px solid #0284c7', background: '#f0f9ff' }}>
               <h3 className="detail-card-subtitle" style={{ color: '#0369a1' }}>
-                🚰 Approve Request &amp; Assign Meter
+                Assign Water Meter
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#334155', margin: '8px 0 14px', lineHeight: 1.5 }}>
                 Assign an available smart water meter to <strong>{ticket.customerName}</strong> for installation at <strong>{installAddress}</strong>.
-                Approving assigns the device, activates the customer account for mobile login, and resolves this request.
+                The customer can already sign in; linking a meter unlocks usage, billing, and live readings.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
@@ -368,44 +355,42 @@ export function TicketDetailClient({
                   className="btn-primary-blue"
                   style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#0284c7', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
                   disabled={loading || !selectedMeter}
-                  onClick={approveMeterRequest}
+                  onClick={assignMeterFromRequest}
                 >
-                  {loading ? 'Approving...' : '✓ Assign Meter & Approve Request'}
+                  {loading ? 'Assigning...' : 'Assign Meter & Resolve Request'}
                 </button>
               </div>
             </div>
           )}
 
-          {/* Registration Approval Card */}
+          {/* Legacy registration tickets — close only (no account approval gate) */}
           {isRegistrationTicket && isAwaitingApproval && (
-            <div className="detail-card" style={{ borderLeft: '4px solid #16a34a', background: '#f0fdf4' }}>
-              <h3 className="detail-card-subtitle" style={{ color: '#15803d' }}>
-                ✓ Approve Customer Registration
+            <div className="detail-card" style={{ borderLeft: '4px solid #64748b', background: '#f8fafc' }}>
+              <h3 className="detail-card-subtitle" style={{ color: '#334155' }}>
+                Legacy Registration Ticket
               </h3>
-              <p style={{ fontSize: '0.85rem', color: '#166534', margin: '8px 0 14px', lineHeight: 1.5 }}>
-                Confirm and approve registration for <strong>{ticket.customerName}</strong>.
-                Approving activates their account so they can immediately sign in on the mobile app.
+              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 14px', lineHeight: 1.5 }}>
+                Customer accounts are active immediately after registration. Close this legacy ticket if it is no longer needed.
               </p>
               <button
                 type="button"
                 className="btn-success-sm"
-                style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#475569', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
                 disabled={loading}
-                onClick={approveRegistration}
+                onClick={closeRegistrationTicket}
               >
-                {loading ? 'Approving...' : '✓ Approve & Activate Account'}
+                {loading ? 'Closing...' : 'Close Ticket'}
               </button>
             </div>
           )}
 
-          {/* Already Approved Card */}
           {(isMeterRequestTicket || isRegistrationTicket) && !isAwaitingApproval && (
             <div className="detail-card" style={{ borderLeft: '4px solid #16a34a', background: '#f0fdf4' }}>
               <h3 className="detail-card-subtitle" style={{ color: '#15803d' }}>
-                ✓ Request Approved &amp; Resolved
+                Request Resolved
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#166534', margin: '8px 0 0' }}>
-                This request was approved. The customer account is active and can sign in on the mobile app.
+                This ticket is resolved. Meter-linked customers see full dashboard features in the mobile app.
               </p>
             </div>
           )}

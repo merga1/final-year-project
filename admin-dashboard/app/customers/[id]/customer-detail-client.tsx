@@ -114,18 +114,17 @@ export function CustomerDetailClient({
 
             <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {currentStatus === 'pending' && (
-                <button
-                  className="btn-success-sm"
-                  style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 600, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
-                  disabled={loading}
-                  onClick={() => {
-                    if (confirm('Approve this customer account? The customer will be able to log in to the mobile app.')) {
-                      updateCustomer({ accountStatus: 'active' });
-                    }
-                  }}
-                >
-                  ✓ Approve Customer Account
-                </button>
+                <div style={{ padding: '10px 12px', background: '#f1f5f9', color: '#334155', borderRadius: 8, fontSize: '0.85rem', lineHeight: 1.45 }}>
+                  This is a legacy pending flag. Customers can sign in without admin approval. Link a meter below when one is ready, or mark the account active.
+                  <button
+                    className="btn-success-sm"
+                    style={{ width: '100%', marginTop: 10, padding: '10px', fontSize: '0.9rem', fontWeight: 600, background: '#475569', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                    disabled={loading}
+                    onClick={() => updateCustomer({ accountStatus: 'active' })}
+                  >
+                    Mark Account Active
+                  </button>
+                </div>
               )}
               {isSuspended ? (
                 <button
@@ -160,9 +159,9 @@ export function CustomerDetailClient({
           {/* Device link */}
           <div className="detail-card">
             <h3 className="detail-card-subtitle">Device Assignment</h3>
-            {currentStatus === 'pending' && !(customer.meterId ?? customer.deviceId) && (
-              <div style={{ padding: '8px 12px', background: '#fef3c7', color: '#92400e', borderRadius: 6, fontSize: '0.82rem', marginBottom: 12 }}>
-                ℹ This customer requested a new water meter. Linking a meter below will automatically activate their account.
+            {!(customer.meterId ?? customer.deviceId) && (
+              <div style={{ padding: '8px 12px', background: '#e0f2fe', color: '#075985', borderRadius: 6, fontSize: '0.82rem', marginBottom: 12 }}>
+                No water meter linked yet. The customer can use Support and Profile in the app; linking a meter unlocks the full dashboard.
               </div>
             )}
             <p className="text-muted-sm" style={{ marginBottom: 10 }}>

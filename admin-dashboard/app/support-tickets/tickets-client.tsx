@@ -560,7 +560,7 @@ export function TicketsClient({
                         View
                       </Link>
 
-                      {isPending && ((t.type ?? '').toLowerCase().includes('water meter') || (t.issue ?? '').toLowerCase().includes('water meter') || (t.type ?? '').toLowerCase().includes('registration')) ? (
+                      {isPending && ((t.type ?? '').toLowerCase().includes('water meter') || (t.issue ?? '').toLowerCase().includes('water meter')) ? (
                         <Link
                           href={`/support-tickets/${t.id}`}
                           className="btn-success-sm"
@@ -577,7 +577,7 @@ export function TicketsClient({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          Review &amp; Approve →
+                          Assign Meter →
                         </Link>
                       ) : isPending && (
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>

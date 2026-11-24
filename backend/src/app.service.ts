@@ -109,15 +109,20 @@ export class AppService {
 
   async getMobileHome(userId: string, meterId?: string) {
     const customer = await this.customers.findOne(userId);
-    const device = meterId ? await this.devices.findByMeterId(meterId) : null;
-    const latestReading = meterId ? await this.readings.findLatestByMeterId(meterId) : null;
+    // Prefer the live customer record so a meter assigned after login is visible
+    // without forcing the user to sign in again.
+    const effectiveMeterId = customer.meterId || meterId || undefined;
+    const device = effectiveMeterId ? await this.devices.findByMeterId(effectiveMeterId) : null;
+    const latestReading = effectiveMeterId
+      ? await this.readings.findLatestByMeterId(effectiveMeterId)
+      : null;
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
-    const [dailyUsage, monthlyUsage] = meterId
+    const [dailyUsage, monthlyUsage] = effectiveMeterId
       ? await Promise.all([
-          this.readings.usageSince(meterId, startOfToday),
-          this.readings.usageSince(meterId, startOfMonth),
+          this.readings.usageSince(effectiveMeterId, startOfToday),
+          this.readings.usageSince(effectiveMeterId, startOfMonth),
         ])
       : [0, 0];
     const myBills = await this.billing.findByCustomer(userId);
@@ -178,7 +183,7 @@ export class AppService {
       zone: customer.zone ?? device?.zone ?? 'Zone A',
       accountStatus: customer.accountStatus ?? 'active',
       connectionStatus: isOffline ? 'OFFLINE' : device?.connectivity ?? 'ONLINE',
-      meterId: device?.meterId ?? meterId ?? 'Not assigned',
+      meterId: device?.meterId ?? effectiveMeterId ?? 'Not assigned',
       flowRateLpm: latestReading?.flowRateLpm ?? 0.0,
       turbidityNtu: latestReading?.turbidityNtu ?? 0.0,
       monthlyConsumptionLiters: monthlyUsage,
@@ -194,7 +199,7 @@ export class AppService {
       deviceOffline: isOffline,
       valveState: device?.valveState ?? 'N/A',
       cards,
-      alerts: meterId ? await this.alerts.findByMeterId(meterId) : [],
+      alerts: effectiveMeterId ? await this.alerts.findByMeterId(effectiveMeterId) : [],
       updatedAt: new Date().toISOString(),
     };
   }

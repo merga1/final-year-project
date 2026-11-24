@@ -33,19 +33,23 @@ class AuthService {
       'password': password,
       if (role != null) 'role': role,
     });
-    final token = data['accessToken'] as String;
+    final token = data is Map ? data['accessToken'] as String? : null;
+    if (token == null || token.trim().isEmpty || data['user'] is! Map) {
+      throw Exception('Login succeeded but no session token was returned. Update the backend and try again.');
+    }
     final user = Map<String, dynamic>.from(data['user'] as Map);
-    _client.token = token;
+    final sessionToken = token.trim();
+    _client.token = sessionToken;
     final prefs = await SharedPreferences.getInstance();
-    await _secureStorage.write(key: _tokenKey, value: rememberMe ? token : null);
+    await _secureStorage.write(key: _tokenKey, value: rememberMe ? sessionToken : null);
     await prefs.setString(_nameKey, user['name'] as String? ?? '');
     await prefs.setString(_emailKey, user['email'] as String? ?? '');
-    await prefs.setString(_meterIdKey, user['meterId'] as String? ?? '');
+    await prefs.setString(_meterIdKey, user['meterId']?.toString() ?? '');
     await prefs.setString(_roleKey, user['role'] as String? ?? 'customer');
     await prefs.setString(_userIdKey, user['sub']?.toString() ?? '');
     await prefs.setBool(_mustChangePwKey, user['mustChangePassword'] == true);
     if (rememberMe) {
-      await prefs.setString(_tokenKey, token);
+      await prefs.setString(_tokenKey, sessionToken);
     } else {
       await prefs.remove(_tokenKey);
     }
@@ -75,29 +79,27 @@ class AuthService {
       'address': address,
       'meterId': meterId,
     });
-    final token = data['accessToken'] as String?;
-    if (token != null && data['user'] is Map) {
-      final user = Map<String, dynamic>.from(data['user'] as Map);
-      _client.token = token;
-      final prefs = await SharedPreferences.getInstance();
-      await _secureStorage.write(key: _tokenKey, value: token);
-      await prefs.setString(_tokenKey, token);
-      await prefs.setString(_nameKey, user['name'] as String? ?? '');
-      await prefs.setString(_emailKey, user['email'] as String? ?? '');
-      await prefs.setString(_meterIdKey, user['meterId'] as String? ?? '');
-      await prefs.setString(_roleKey, user['role'] as String? ?? 'customer');
-      await prefs.setString(_userIdKey, user['sub']?.toString() ?? '');
+    if (await _persistSessionFromAuthResponse(data)) return true;
+
+    // Older backends create the account but do not return a JWT. Try login.
+    try {
+      await login(email.trim(), password);
+      return true;
+    } catch (_) {
+      throw Exception(
+        'Account created, but the server did not start a session. '
+        'Update/redeploy the backend, then sign in with your email and password.',
+      );
     }
-    return true;
   }
 
   Future<void> forgotPassword(String email) async {
     await _client.post('/auth/forgot-password', {'email': email.trim()});
   }
 
-  /// Creates a pending customer account and queues a water-meter request.
-  /// No session is stored; the customer logs in after admin approval.
-  Future<void> registerMeterRequest({
+  /// Creates an active customer account, queues a water-meter request, and
+  /// stores the session so the user can open support/profile immediately.
+  Future<bool> registerMeterRequest({
     required String firstName,
     required String lastName,
     required String email,
@@ -106,7 +108,7 @@ class AuthService {
     required String phone,
     String? details,
   }) async {
-    await _client.post('/auth/register-meter-request', {
+    final data = await _client.post('/auth/register-meter-request', {
       'name': '${firstName.trim()} ${lastName.trim()}',
       'email': email.trim(),
       'password': password,
@@ -114,6 +116,36 @@ class AuthService {
       'phone': phone.trim(),
       if (details != null && details.trim().isNotEmpty) 'details': details.trim(),
     });
+    if (await _persistSessionFromAuthResponse(data)) return true;
+    try {
+      await login(email.trim(), password);
+      return true;
+    } catch (_) {
+      throw Exception(
+        'Account created, but the server did not start a session. '
+        'Update/redeploy the backend, then sign in with your email and password.',
+      );
+    }
+  }
+
+  Future<bool> _persistSessionFromAuthResponse(dynamic data) async {
+    if (data is! Map) return false;
+    final token = data['accessToken'] as String?;
+    if (token == null || token.trim().isEmpty || data['user'] is! Map) {
+      return false;
+    }
+    final user = Map<String, dynamic>.from(data['user'] as Map);
+    _client.token = token.trim();
+    final prefs = await SharedPreferences.getInstance();
+    await _secureStorage.write(key: _tokenKey, value: token.trim());
+    await prefs.setString(_tokenKey, token.trim());
+    await prefs.setString(_nameKey, user['name'] as String? ?? '');
+    await prefs.setString(_emailKey, user['email'] as String? ?? '');
+    await prefs.setString(
+        _meterIdKey, user['meterId']?.toString() ?? '');
+    await prefs.setString(_roleKey, user['role'] as String? ?? 'customer');
+    await prefs.setString(_userIdKey, user['sub']?.toString() ?? '');
+    return true;
   }
 
   Future<void> changePassword(String oldPassword, String newPassword) async {
@@ -154,6 +186,11 @@ class AuthService {
     };
   }
 
+  Future<void> updateStoredMeterId(String meterId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_meterIdKey, meterId);
+  }
+
   Future<void> logout() async {
     _client.token = null;
     try {
@@ -169,5 +206,6 @@ class AuthService {
     await prefs.remove(_mustChangePwKey);
   }
 
-  bool get isLoggedIn => _client.token != null;
+  bool get isLoggedIn =>
+      _client.token != null && _client.token!.trim().isNotEmpty;
 }

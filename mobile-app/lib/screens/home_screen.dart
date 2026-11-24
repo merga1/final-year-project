@@ -4,11 +4,23 @@ import '../models/mobile_home_data.dart';
 import '../models/mobile_repository.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.repo, this.onNavigate});
+  const HomeScreen({
+    super.key,
+    required this.repo,
+    this.onNavigate,
+    this.onMeterStatusChanged,
+    this.onAuthExpired,
+  });
   final MobileRepository repo;
 
   /// Switches the parent shell to another bottom-navigation tab.
   final ValueChanged<int>? onNavigate;
+
+  /// Called after a refresh so the shell can unlock full tabs when a meter appears.
+  final VoidCallback? onMeterStatusChanged;
+
+  /// Called when the API rejects the session so the user can sign in again.
+  final VoidCallback? onAuthExpired;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -31,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _valveOverride = null;
     });
     await _future;
+    widget.onMeterStatusChanged?.call();
   }
 
   Future<void> _handleValveToggle(bool currentOpen) async {
@@ -94,22 +107,37 @@ class _HomeScreenState extends State<HomeScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (snap.hasError) {
+          final err = '${snap.error}';
+          final isAuthError = err.toLowerCase().contains('token') ||
+              err.toLowerCase().contains('unauthorized');
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.wifi_off_outlined,
-                      size: 48, color: Colors.grey),
+                  Icon(
+                    isAuthError
+                        ? Icons.lock_outline_rounded
+                        : Icons.wifi_off_outlined,
+                    size: 48,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(height: 12),
-                  Text('${snap.error}',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(ctx).textTheme.bodySmall),
+                  Text(
+                    isAuthError
+                        ? 'Your session is missing or expired. Sign in again to continue.'
+                        : err,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(ctx).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Active: ${ApiConstants.baseUrl}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E6B52)),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E6B52)),
                   ),
                   const SizedBox(height: 16),
                   Wrap(
@@ -117,11 +145,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     runSpacing: 8,
                     alignment: WrapAlignment.center,
                     children: [
-                      FilledButton.icon(
-                        onPressed: _refresh,
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Retry'),
-                      ),
+                      if (isAuthError && widget.onAuthExpired != null)
+                        FilledButton.icon(
+                          onPressed: widget.onAuthExpired,
+                          icon: const Icon(Icons.login_rounded, size: 16),
+                          label: const Text('Sign in again'),
+                        )
+                      else
+                        FilledButton.icon(
+                          onPressed: _refresh,
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Retry'),
+                        ),
                       OutlinedButton.icon(
                         onPressed: () async {
                           await ApiConstants.setBaseUrl(
@@ -168,6 +203,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final home = snap.data!;
         final hasMeter = home.meterId.isNotEmpty && home.meterId != 'Not assigned';
         if (!hasMeter) {
+          // Without a meter the shell only exposes Home / Support / Profile.
+          // Support tab index is 1, Profile is 2.
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(
@@ -197,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Your meter request is available in Support Tickets. Once a meter is assigned, readings, water quality, and valve controls will appear here.',
+                          'You can create a support ticket or update your profile now. Usage, billing, and live readings unlock after an administrator assigns a water meter.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Color(0xFF64748B)),
                         ),
@@ -212,6 +249,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Color(0xFF0284C7)),
                     title: const Text('Customer information'),
                     subtitle: Text(home.customerEmail),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.support_agent_outlined,
+                        color: Color(0xFF0284C7)),
+                    title: const Text('Create a support ticket'),
+                    subtitle: const Text(
+                        'Request a water meter or report another issue'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => widget.onNavigate?.call(1),
+                  ),
+                ),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.person_outline_rounded,
+                        color: Color(0xFF0284C7)),
+                    title: const Text('My profile'),
+                    subtitle: const Text('View account details and sign out'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => widget.onNavigate?.call(2),
                   ),
                 ),
               ],
@@ -314,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
+                          color: Colors.black.withOpacity(0.03),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -524,7 +583,7 @@ class _SensorGridCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -679,7 +738,7 @@ class _QualityCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -688,7 +747,7 @@ class _QualityCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: Colors.white.withOpacity(0.7),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.water_drop_outlined, color: color, size: 24),
@@ -767,7 +826,7 @@ class _QuickAction extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
+                color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(11),
               ),
               child: Icon(icon, size: 20, color: color),

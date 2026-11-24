@@ -112,7 +112,7 @@ class _RoleCard extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE2E8F0)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withOpacity(0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -124,7 +124,7 @@ class _RoleCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
+                color: accent.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: accent, size: 28),

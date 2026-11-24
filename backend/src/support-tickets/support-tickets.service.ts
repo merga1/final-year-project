@@ -223,21 +223,22 @@ export class SupportTicketsService {
         updatePayload.acceptedAt = new Date();
       }
 
-      // If resolving a registration or water meter request, activate the customer
-      if (data.status === 'resolved' && before.status !== 'resolved') {
-        const isRegistrationOrMeterReq =
-          before.type === 'New Customer Registration' ||
+      // Resolving a water meter request links the device. Registration tickets no longer gate login.
+      if (data.status === 'resolved' && before.status !== 'resolved' && before.customerId) {
+        const isMeterReq =
           before.type === 'Water Meter Request' ||
-          before.issue?.toLowerCase().includes('water meter') ||
+          before.issue?.toLowerCase().includes('water meter');
+        const isRegistration =
+          before.type === 'New Customer Registration' ||
           before.issue?.toLowerCase().includes('registration');
 
-        if (isRegistrationOrMeterReq && before.customerId) {
+        if (isMeterReq || isRegistration) {
           try {
             const customer = await this.customerRepo.findOneBy({ id: before.customerId });
             if (customer) {
               const assignedMeter = (data.deviceId || before.deviceId || customer.meterId)?.trim();
               const customerUpdates: Partial<Customer> = { accountStatus: 'active' };
-              if (assignedMeter) {
+              if (isMeterReq && assignedMeter) {
                 customerUpdates.meterId = assignedMeter;
                 await this.deviceRepo.update({ meterId: assignedMeter }, { customerId: customer.id });
                 updatePayload.deviceId = assignedMeter;
@@ -245,7 +246,7 @@ export class SupportTicketsService {
               await this.customerRepo.update(customer.id, customerUpdates);
             }
           } catch (custErr) {
-            console.warn('Could not activate customer on ticket resolution:', custErr);
+            console.warn('Could not update customer on ticket resolution:', custErr);
           }
         }
       }

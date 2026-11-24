@@ -37,9 +37,8 @@ export class RegisterDto {
 }
 
 /**
- * Customer registration for someone who does not have a water meter yet.
- * The account is created in `pending` state and a meter request is sent to
- * the admin queue in the same API call.
+ * Customer registration that also queues a water-meter request for admins.
+ * The account is active immediately so the customer can log in.
  */
 export class RegisterMeterRequestDto {
   @IsNotEmpty()

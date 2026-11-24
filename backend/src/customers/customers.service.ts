@@ -116,8 +116,8 @@ export class CustomersService {
     if (Object.keys(data).length) await this.repo.update(id, data);
     const updated = await this.findOne(id);
 
-    // If the customer account is activated, automatically resolve any pending
-    // registration or water meter request tickets.
+    // Close legacy registration tickets when the account is active.
+    // Water meter requests are only closed once a meter is actually linked.
     if (updated.accountStatus === 'active') {
       try {
         const pendingTickets = await this.ticketRepo.find({
@@ -128,36 +128,40 @@ export class CustomersService {
         });
         const now = new Date();
         for (const ticket of pendingTickets) {
-          if (
+          const isRegistration =
             ticket.type === 'New Customer Registration' ||
+            ticket.issue?.toLowerCase().includes('registration');
+          const isMeterRequest =
             ticket.type === 'Water Meter Request' ||
-            ticket.issue?.includes('water meter') ||
-            ticket.issue?.includes('Registration')
-          ) {
-            ticket.status = 'resolved';
-            ticket.resolvedAt = now;
-            ticket.notes = 'Approved by administrator';
-            if (updated.meterId && !ticket.deviceId) {
-              ticket.deviceId = updated.meterId;
-            }
-            let historyArr: any[] = [];
-            try {
-              if (ticket.statusHistory) historyArr = JSON.parse(ticket.statusHistory);
-              if (!Array.isArray(historyArr)) historyArr = [{ entry: ticket.statusHistory }];
-            } catch {
-              historyArr = [];
-            }
-            historyArr.push({
-              status: 'resolved',
-              at: now.toISOString(),
-              note: 'Account approved by administrator',
-            });
-            ticket.statusHistory = JSON.stringify(historyArr);
-            await this.ticketRepo.save(ticket);
+            ticket.issue?.toLowerCase().includes('water meter');
+
+          if (!isRegistration && !(isMeterRequest && updated.meterId)) continue;
+
+          ticket.status = 'resolved';
+          ticket.resolvedAt = now;
+          ticket.notes = isMeterRequest
+            ? `Water meter ${updated.meterId} linked by administrator`
+            : 'Registration ticket closed (accounts no longer require approval)';
+          if (updated.meterId && !ticket.deviceId) {
+            ticket.deviceId = updated.meterId;
           }
+          let historyArr: any[] = [];
+          try {
+            if (ticket.statusHistory) historyArr = JSON.parse(ticket.statusHistory);
+            if (!Array.isArray(historyArr)) historyArr = [{ entry: ticket.statusHistory }];
+          } catch {
+            historyArr = [];
+          }
+          historyArr.push({
+            status: 'resolved',
+            at: now.toISOString(),
+            note: isMeterRequest ? 'Meter linked' : 'Registration closed',
+          });
+          ticket.statusHistory = JSON.stringify(historyArr);
+          await this.ticketRepo.save(ticket);
         }
       } catch (ticketErr) {
-        console.warn('Could not auto-resolve tickets on customer activation:', ticketErr);
+        console.warn('Could not auto-resolve tickets on customer update:', ticketErr);
       }
     }
 

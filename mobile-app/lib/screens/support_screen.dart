@@ -138,7 +138,7 @@ class _SupportScreenState extends State<SupportScreen> {
                           border: Border.all(color: const Color(0xFFE2E8F0)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
+                              color: Colors.black.withOpacity(0.02),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -170,12 +170,10 @@ class _SupportScreenState extends State<SupportScreen> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: statusColor.withValues(
-                                            alpha: 0.12),
+                                        color: statusColor.withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(999),
                                         border: Border.all(
-                                          color: statusColor.withValues(
-                                              alpha: 0.35),
+                                          color: statusColor.withOpacity(0.35),
                                         ),
                                       ),
                                       child: Text(
@@ -366,7 +364,7 @@ class _TicketDetailScreenState extends State<_TicketDetailScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
+                      color: color.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -557,9 +555,9 @@ class _NoteCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -623,6 +621,7 @@ class _CreateTicketScreenState extends State<_CreateTicketScreen> {
   bool _submitting = false;
 
   final List<String> _issueTypes = [
+    'Water Meter Request',
     'Sensor Issue',
     'Leak Detection',
     'Valve Failure',

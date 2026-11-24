@@ -33,34 +33,21 @@ export class AuthService {
       if (!(await bcrypt.compare(password, customer.passwordHash))) throw new UnauthorizedException(INVALID);
       if (customer.accountStatus === 'suspended') throw new UnauthorizedException('This account is suspended');
 
-      const role = customer.role || 'customer';
-
-      // Customer accounts awaiting admin approval cannot log in yet
-      if (role === 'customer') {
-        if (customer.accountStatus === 'pending') {
-          if (!customer.meterId) {
-            throw new UnauthorizedException(
-              'Your water meter request is awaiting admin approval. Please log in again once a meter has been assigned and your account is approved.',
-            );
-          } else {
-            throw new UnauthorizedException(
-              'Your account registration is awaiting administrator approval. Please log in again once an administrator approves your account.',
-            );
-          }
-        }
-        if (!customer.meterId) {
-          throw new UnauthorizedException(
-            'Your water meter request is awaiting admin approval. Please log in again once a meter has been assigned to your account.',
-          );
-        }
+      // Legacy pending accounts can sign in; clear the obsolete approval flag.
+      if (customer.accountStatus === 'pending') {
+        await this.customersService.update(customer.id, { accountStatus: 'active' });
+        customer.accountStatus = 'active';
       }
 
+      const role = customer.role || 'customer';
+
+      // Customers without a meter get limited app screens until an admin assigns one.
       return this.sign({
         sub: customer.id,
         email: customer.email,
         name: customer.name,
         role,
-        meterId: customer.meterId,
+        meterId: customer.meterId ?? null,
       });
     }
 
@@ -114,6 +101,8 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
+    // New self-registrations start without a meter. Admins link a meter later.
+    // Optional meterId is still accepted for legacy clients / admin-assisted signup.
     const normalizedMeterId = meterId?.trim() || undefined;
     if (normalizedMeterId) {
       const device = await this.devicesService.findByMeterId(normalizedMeterId);
@@ -133,52 +122,25 @@ export class AuthService {
       meterId: normalizedMeterId,
       address,
       role: 'customer',
-      // Self-registered customers require administrator approval before logging in
-      accountStatus: 'pending',
+      accountStatus: 'active',
     });
 
     if (normalizedMeterId) {
       await this.devicesService.updateByMeterId(normalizedMeterId, { customerId: customer.id });
     }
 
-    try {
-      await this.supportTickets.createCustomerTicket({
-        customerId: customer.id,
-        customerName: customer.name,
-        type: 'New Customer Registration',
-        issue: 'New Customer Registration Approval',
-        subject: `Account Approval: ${customer.name}`,
-        priority: 'Medium',
-        description: [
-          `New customer registration awaiting administrator approval.`,
-          `Customer: ${customer.name} (${customer.email})`,
-          normalizedMeterId ? `Water Meter: ${normalizedMeterId}` : 'No meter linked',
-          address ? `Address: ${address}` : null,
-        ]
-          .filter(Boolean)
-          .join('\n'),
-        customerAddress: address,
-        deviceId: normalizedMeterId,
-      });
-    } catch (error) {
-      // Do not leave an orphan pending account if the ticket could not be queued
-      await this.customersService.remove(customer.id).catch(() => undefined);
-      throw error;
-    }
-
-    return {
-      success: true,
-      pending: true,
-      message:
-        'Your registration was submitted successfully. An administrator will review and approve your account before you can log in.',
-      customerId: customer.id,
-    };
+    return this.sign({
+      sub: customer.id,
+      email: customer.email,
+      name: customer.name,
+      role: 'customer',
+      meterId: customer.meterId ?? null,
+    });
   }
 
   /**
-   * Creates a pending customer account and sends the water-meter request to
-   * the admin queue in one step. No session is issued: the customer logs in
-   * only after an admin links a meter to the account.
+   * Creates an active customer account and queues a water-meter request for admins.
+   * Issues a session so the customer can use support/profile immediately.
    */
   async registerMeterRequest(dto: RegisterMeterRequestDto) {
     const normalizedEmail = dto.email.trim().toLowerCase();
@@ -195,7 +157,7 @@ export class AuthService {
       passwordHash: await bcrypt.hash(dto.password, 10),
       address: dto.address.trim(),
       role: 'customer',
-      accountStatus: 'pending',
+      accountStatus: 'active',
     });
 
     try {
@@ -216,18 +178,17 @@ export class AuthService {
         subject: 'Request a new water meter',
       });
     } catch (error) {
-      // Do not leave an orphan pending account if the request could not be
-      // queued. The customer can safely register again.
       await this.customersService.remove(customer.id).catch(() => undefined);
       throw error;
     }
 
-    return {
-      success: true,
-      message:
-        'Your account was created. An administrator will review your meter request; you can log in after a meter is assigned.',
-      customerId: customer.id,
-    };
+    return this.sign({
+      sub: customer.id,
+      email: customer.email,
+      name: customer.name,
+      role: 'customer',
+      meterId: customer.meterId ?? null,
+    });
   }
 
   async changePassword(userId: string, oldPass: string, newPass: string) {

@@ -223,7 +223,7 @@ class _DrawerPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
+        color: Colors.white.withOpacity(0.16),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(text,
@@ -565,7 +565,7 @@ class _TechnicianTicketsState extends State<TechnicianTickets> {
                                     CircleAvatar(
                                       radius: 18,
                                       backgroundColor:
-                                          color.withValues(alpha: .13),
+                                          color.withOpacity(0.13),
                                       child: Icon(Icons.build_outlined,
                                           size: 18, color: color),
                                     ),
@@ -580,7 +580,7 @@ class _TechnicianTicketsState extends State<TechnicianTickets> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 9, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: color.withValues(alpha: .12),
+                                        color: color.withOpacity(0.12),
                                         borderRadius:
                                             BorderRadius.circular(999),
                                       ),
@@ -990,7 +990,7 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: .12),
+                  color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(_titleCase(status.replaceAll('_', ' ')),
@@ -1344,9 +1344,9 @@ class _NoteBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

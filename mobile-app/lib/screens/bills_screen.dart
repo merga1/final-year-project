@@ -167,7 +167,7 @@ class _BillsScreenState extends State<BillsScreen> {
                         margin: EdgeInsets.zero,
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: color.withValues(alpha: 0.12),
+                            backgroundColor: color.withOpacity(0.12),
                             child: Icon(Icons.receipt_long_outlined,
                                 color: color, size: 20),
                           ),
@@ -283,7 +283,7 @@ class _BillsScreenState extends State<BillsScreen> {
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
+                      color: Colors.black.withOpacity(0.03),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

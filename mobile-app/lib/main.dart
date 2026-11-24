@@ -76,12 +76,22 @@ class _AppRootState extends State<AppRoot> {
     final user = await _auth.getStoredUser();
     setState(() {
       _ready = true;
-      _loggedIn = restored;
+      _loggedIn = restored && _auth.isLoggedIn;
       _role = user['role'] ?? 'customer';
     });
   }
 
   Future<void> _onLogin() async {
+    // Never enter the app shell without a JWT — home/support APIs require it.
+    if (!_auth.isLoggedIn) {
+      await _auth.logout();
+      if (!mounted) return;
+      setState(() {
+        _loggedIn = false;
+        _role = 'customer';
+      });
+      return;
+    }
     final user = await _auth.getStoredUser();
     setState(() {
       _loggedIn = true;
@@ -144,6 +154,13 @@ class _MainShellState extends State<MainShell> {
   int _index = 0;
   String _userEmail = '';
   String _userName = '';
+  String _meterId = '';
+  bool _meterChecked = false;
+
+  bool get _hasMeter {
+    final id = _meterId.trim();
+    return id.isNotEmpty && id != 'Not assigned';
+  }
 
   @override
   void initState() {
@@ -153,45 +170,148 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _loadUser() async {
     try {
+      if (!widget.auth.isLoggedIn) {
+        widget.onLogout();
+        return;
+      }
       final stored = await widget.auth.getStoredUser();
+      String meterId = stored['meterId'] ?? '';
+      // Prefer live account data so a newly assigned meter unlocks the full app.
+      try {
+        final home = await widget.repo.fetchHome();
+        if (home.meterId.isNotEmpty) meterId = home.meterId;
+        await widget.auth.updateStoredMeterId(meterId);
+      } catch (e) {
+        final msg = e.toString().toLowerCase();
+        if (msg.contains('invalid or missing token') ||
+            msg.contains('unauthorized')) {
+          widget.onLogout();
+          return;
+        }
+      }
       if (mounted) {
         setState(() {
           _userEmail = stored['email'] ?? '';
           _userName = stored['name'] ?? '';
+          _meterId = meterId;
+          _meterChecked = true;
+          if (!_hasMeter && _index > 2) _index = 0;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _meterChecked = true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeScreen(
-        repo: widget.repo,
-        onNavigate: (i) => setState(() => _index = i),
-      ),
-      UsageScreen(repo: widget.repo),
-      BillsScreen(repo: widget.repo),
-      SupportScreen(repo: widget.repo),
-      ProfileScreen(
-        authService: widget.auth,
-        onLogout: widget.onLogout,
-        repo: widget.repo,
-      ),
-    ];
+    if (!_meterChecked) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-    const titles = [
-      'Water Dashboard',
-      'Usage Analytics',
-      'Water Bill',
-      'Support Tickets',
-      'My Profile',
-    ];
+    final pages = _hasMeter
+        ? [
+            HomeScreen(
+              repo: widget.repo,
+              onNavigate: (i) => setState(() => _index = i),
+              onMeterStatusChanged: _loadUser,
+              onAuthExpired: widget.onLogout,
+            ),
+            UsageScreen(repo: widget.repo),
+            BillsScreen(repo: widget.repo),
+            SupportScreen(repo: widget.repo),
+            ProfileScreen(
+              authService: widget.auth,
+              onLogout: widget.onLogout,
+              repo: widget.repo,
+            ),
+          ]
+        : [
+            HomeScreen(
+              repo: widget.repo,
+              onNavigate: (i) => setState(() => _index = i),
+              onMeterStatusChanged: _loadUser,
+              onAuthExpired: widget.onLogout,
+            ),
+            SupportScreen(repo: widget.repo),
+            ProfileScreen(
+              authService: widget.auth,
+              onLogout: widget.onLogout,
+              repo: widget.repo,
+            ),
+          ];
+
+    final titles = _hasMeter
+        ? const [
+            'Water Dashboard',
+            'Usage Analytics',
+            'Water Bill',
+            'Support Tickets',
+            'My Profile',
+          ]
+        : const [
+            'Home',
+            'Support Tickets',
+            'My Profile',
+          ];
+
+    final destinations = _hasMeter
+        ? const [
+            NavigationDestination(
+              icon: Icon(Icons.grid_view_rounded),
+              selectedIcon:
+                  Icon(Icons.grid_view_rounded, color: Color(0xFF0284C7)),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.show_chart_rounded),
+              selectedIcon:
+                  Icon(Icons.show_chart_rounded, color: Color(0xFF0284C7)),
+              label: 'Usage',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon:
+                  Icon(Icons.receipt_long_rounded, color: Color(0xFF0284C7)),
+              label: 'Billing',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.support_agent_outlined),
+              selectedIcon:
+                  Icon(Icons.support_agent_rounded, color: Color(0xFF0284C7)),
+              label: 'Support',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon:
+                  Icon(Icons.person_rounded, color: Color(0xFF0284C7)),
+              label: 'Profile',
+            ),
+          ]
+        : const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded, color: Color(0xFF0284C7)),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.support_agent_outlined),
+              selectedIcon:
+                  Icon(Icons.support_agent_rounded, color: Color(0xFF0284C7)),
+              label: 'Support',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon:
+                  Icon(Icons.person_rounded, color: Color(0xFF0284C7)),
+              label: 'Profile',
+            ),
+          ];
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          titles[_index],
+          titles[_index.clamp(0, titles.length - 1)],
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
         centerTitle: true,
@@ -216,45 +336,17 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
       drawer: _buildDrawer(context),
-      body: IndexedStack(index: _index, children: pages),
+      body: IndexedStack(
+        index: _index.clamp(0, pages.length - 1),
+        children: pages,
+      ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
+        selectedIndex: _index.clamp(0, destinations.length - 1),
         backgroundColor: Colors.white,
         elevation: 4,
         indicatorColor: const Color(0xFFE0F2FE),
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_rounded),
-            selectedIcon:
-                Icon(Icons.grid_view_rounded, color: Color(0xFF0284C7)),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.show_chart_rounded),
-            selectedIcon:
-                Icon(Icons.show_chart_rounded, color: Color(0xFF0284C7)),
-            label: 'Usage',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon:
-                Icon(Icons.receipt_long_rounded, color: Color(0xFF0284C7)),
-            label: 'Billing',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.support_agent_outlined),
-            selectedIcon:
-                Icon(Icons.support_agent_rounded, color: Color(0xFF0284C7)),
-            label: 'Support',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon:
-                Icon(Icons.person_rounded, color: Color(0xFF0284C7)),
-            label: 'Profile',
-          ),
-        ],
+        destinations: destinations,
       ),
     );
   }

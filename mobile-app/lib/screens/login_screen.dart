@@ -223,58 +223,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _showRegistrationSubmitted() async {
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle_outline, color: Color(0xFF2E8B57)),
-            SizedBox(width: 8),
-            Expanded(child: Text('Registration submitted')),
-          ],
-        ),
-        content: const Text(
-          'Your account registration has been submitted and is awaiting administrator approval.\n\n'
-          'Once an administrator approves your account, you will be able to log in with your email and password.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Back to login'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showMeterRequestSubmitted() async {
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle_outline, color: Color(0xFF2E8B57)),
-            SizedBox(width: 8),
-            Expanded(child: Text('Meter request submitted')),
-          ],
-        ),
-        content: const Text(
-          'Your customer account has been created and your request is now with '
-          'the administrator.\n\nOnce a water meter is approved and linked to '
-          'your account, log in here with your email and password to open your '
-          'customer dashboard.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Back to login'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _forgotPassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
@@ -650,11 +598,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             authService: widget.authService,
                             onRegistered: () {
                               Navigator.pop(context);
-                              _showRegistrationSubmitted();
-                            },
-                            onMeterRequestSubmitted: () {
-                              Navigator.pop(context);
-                              _showMeterRequestSubmitted();
+                              widget.onLogin();
                             },
                           ),
                         ),

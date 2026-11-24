@@ -11,8 +11,11 @@ class ApiClient {
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        if (token != null && token!.trim().isNotEmpty)
+          'Authorization': 'Bearer ${token!.trim()}',
       };
+
+  bool get hasToken => token != null && token!.trim().isNotEmpty;
 
   Future<dynamic> _executeWithFallback(
     Future<http.Response> Function(String baseUrl) requestFn,

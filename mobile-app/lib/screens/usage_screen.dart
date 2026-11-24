@@ -203,7 +203,7 @@ class _UsageScreenState extends State<UsageScreen> {
                                 belowBarData: BarAreaData(
                                   show: true,
                                   color: const Color(0xFF0284C7)
-                                      .withValues(alpha: 0.12),
+                                      .withOpacity(0.12),
                                 ),
                               ),
                             ],

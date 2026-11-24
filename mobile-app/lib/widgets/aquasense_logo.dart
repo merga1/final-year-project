@@ -111,7 +111,7 @@ class AquaSenseLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final titleColor = textColor ?? const Color(0xFF1E6B52);
     final subtitleColor = textColor != null
-        ? textColor!.withValues(alpha: 0.8)
+        ? textColor!.withOpacity(0.8)
         : const Color(0xFF5A6E7F);
 
     final textColumn = Column(
