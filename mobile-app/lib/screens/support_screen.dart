@@ -360,8 +360,8 @@ class _TicketDetailScreenState extends State<_TicketDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(approve
-              ? 'Meter approved. Your dashboard will unlock shortly.'
-              : 'Installation rejected. The technician will continue work.'),
+              ? 'Approved. The ticket is now resolved.'
+              : 'Rejected. The technician will continue work.'),
         ),
       );
     } catch (e) {
@@ -535,22 +535,26 @@ class _TicketDetailScreenState extends State<_TicketDetailScreen> {
                   color: const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'A technician finished installing your water meter. Approve it to unlock usage, or reject if something is wrong.',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF92400E), height: 1.4),
+                child: Text(
+                  (_ticket.type.toLowerCase().contains('water meter') ||
+                          _ticket.issue.toLowerCase().contains('water meter'))
+                      ? 'Status: Awaiting Customer. A technician finished installing your water meter. Approve to unlock usage, or reject if something is wrong.'
+                      : 'Status: Awaiting Customer. A technician marked this ticket complete. Approve to finish, or reject if something is wrong.',
+                  style: const TextStyle(
+                      fontSize: 13, color: Color(0xFF92400E), height: 1.4),
                 ),
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: _deciding ? null : () => _decide(approve: true),
                 icon: const Icon(Icons.verified_outlined),
-                label: Text(_deciding ? 'Saving...' : 'Approve installed meter'),
+                label: Text(_deciding ? 'Saving...' : 'Approve completed work'),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _deciding ? null : () => _decide(approve: false),
                 icon: const Icon(Icons.report_gmailerrorred_outlined),
-                label: const Text('Reject installation'),
+                label: const Text('Reject & send back'),
               ),
             ] else ...[
               const SizedBox(height: 18),
@@ -561,7 +565,7 @@ class _TicketDetailScreenState extends State<_TicketDetailScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
-                  'After you request a water meter, an admin assigns a device and technician. When installation is done, you approve it here.',
+                  'When a technician completes work, the ticket moves to Awaiting Customer so you can approve or reject it here.',
                   style: TextStyle(fontSize: 12.5, color: Color(0xFF1E40AF)),
                 ),
               ),

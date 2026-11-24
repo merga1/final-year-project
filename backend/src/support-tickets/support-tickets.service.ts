@@ -304,9 +304,8 @@ export class SupportTicketsService {
   }
 
   /**
-   * Customer approves or rejects a completed water-meter installation.
-   * Approve → resolve ticket and ensure the meter is active for usage.
-   * Reject → return ticket to the technician as in_progress.
+   * Customer approves or rejects work after the technician marked it complete
+   * (`awaiting_customer`). Approve → resolved; reject → back to in_progress.
    */
   async customerDecideInstallation(
     id: string,
@@ -322,9 +321,6 @@ export class SupportTicketsService {
     const isMeterInstall =
       ticket.type === 'Water Meter Request' ||
       ticket.issue?.toLowerCase().includes('water meter');
-    if (!isMeterInstall) {
-      throw new BadRequestException('Only water meter installations require customer approval');
-    }
 
     const now = new Date();
     let history: any[] = [];
@@ -340,13 +336,17 @@ export class SupportTicketsService {
       ticket.resolvedAt = now;
       ticket.notes = [
         ticket.notes,
-        notes?.trim() ? `Customer approval: ${notes.trim()}` : 'Customer approved the installed meter',
+        notes?.trim()
+          ? `Customer approval: ${notes.trim()}`
+          : isMeterInstall
+            ? 'Customer approved the installed meter'
+            : 'Customer approved the completed work',
       ]
         .filter(Boolean)
         .join('\n');
 
       const meterId = (ticket.deviceId || '').trim();
-      if (meterId) {
+      if (isMeterInstall && meterId) {
         await this.customerRepo.update(customerId, {
           meterId,
           accountStatus: 'active',
@@ -363,14 +363,14 @@ export class SupportTicketsService {
           userId: ticket.technicianId,
           audience: 'technician',
           type: 'ticket_status',
-          title: 'Customer approved installation',
-          message: `${ticket.customerName} approved the water meter installation.`,
+          title: 'Customer approved ticket',
+          message: `${ticket.customerName} approved your completed work.`,
           relatedId: ticket.id,
         }).catch(() => {});
       }
     } else {
       ticket.status = 'in_progress';
-      ticket.rejectionReason = notes?.trim() || 'Customer rejected the installation';
+      ticket.rejectionReason = notes?.trim() || 'Customer rejected the completed work';
       history.push({
         status: 'awaiting_customer_rejected',
         at: now.toISOString(),
@@ -383,7 +383,7 @@ export class SupportTicketsService {
           audience: 'technician',
           type: 'ticket_status',
           title: 'Customer requested changes',
-          message: `${ticket.customerName} rejected the installation. Please continue work.`,
+          message: `${ticket.customerName} rejected the completed work. Please continue.`,
           relatedId: ticket.id,
         }).catch(() => {});
       }
@@ -442,23 +442,40 @@ export class SupportTicketsService {
       ticket.assignedAt = null;
       await this.decrementWorkload(technicianId, false);
     } else if (requested === 'awaiting_customer' || requested === 'resolved') {
-      // Water-meter installs wait for customer approval; other tickets resolve immediately.
+      // Every technician completion waits for customer approval first.
       if (!['accepted', 'in_progress'].includes(current)) {
         throw new BadRequestException('Accept the ticket before completing it');
       }
       if (!data.notes?.trim()) throw new BadRequestException('Completion notes are required');
+
       const isMeterInstall =
         ticket.type === 'Water Meter Request' ||
         ticket.issue?.toLowerCase().includes('water meter');
-      ticket.status = isMeterInstall || requested === 'awaiting_customer'
-        ? 'awaiting_customer'
-        : 'resolved';
+      if (isMeterInstall) {
+        let device = ticket.deviceId
+          ? await this.deviceRepo.findOneBy({ meterId: ticket.deviceId })
+          : null;
+        if (!device && ticket.deviceId) {
+          device = await this.deviceRepo.findOneBy({ id: ticket.deviceId });
+        }
+        if (!device && ticket.customerId) {
+          device = await this.deviceRepo.findOneBy({ customerId: ticket.customerId });
+        }
+        if (!device) {
+          throw new BadRequestException(
+            'Assign/link a water meter before completing this installation',
+          );
+        }
+        if (device.latitude == null || device.longitude == null) {
+          throw new BadRequestException(
+            'Set the meter location before marking the installation complete',
+          );
+        }
+      }
+
+      ticket.status = 'awaiting_customer';
       ticket.notes = data.notes.trim();
       ticket.progressNotes = data.progressNotes?.trim() || ticket.progressNotes;
-      if (ticket.status === 'resolved') {
-        ticket.resolvedAt = now;
-        await this.decrementWorkload(technicianId, true);
-      }
     } else if (requested === 'closed') {
       if (current !== 'resolved') throw new BadRequestException('Only resolved tickets can be closed');
       ticket.status = 'closed';
@@ -488,14 +505,14 @@ export class SupportTicketsService {
     const saved = await this.repo.save(ticket);
     const customerMessage =
       saved.status === 'awaiting_customer'
-        ? 'Your water meter was installed. Open the ticket and approve it to finish.'
+        ? 'A technician completed your ticket. Open it and approve to finish, or reject if something is wrong.'
         : `Your ticket is now ${saved.status}.`;
     await this.notifications.create({
       userId: saved.customerId,
       audience: 'customer',
       type: 'ticket_status',
       title: saved.status === 'awaiting_customer'
-        ? 'Approve your water meter'
+        ? 'Approve completed work'
         : 'Support ticket updated',
       message: customerMessage,
       relatedId: saved.id,

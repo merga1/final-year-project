@@ -678,6 +678,11 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
     return type.contains('water meter') || issue.contains('water meter');
   }
 
+  bool get _hasMeterLocation =>
+      _deviceSnapshot?.latitude != null && _deviceSnapshot?.longitude != null;
+
+  bool get _canMarkComplete => !_isMeterInstall || _hasMeterLocation;
+
   @override
   void initState() {
     super.initState();
@@ -694,17 +699,23 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
   }
 
   Future<void> _completeOrResolve() async {
+    if (!_canMarkComplete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Set the meter location before marking this installation complete.',
+          ),
+        ),
+      );
+      return;
+    }
     final notes = await _askForText(
-      _isMeterInstall ? 'Complete installation' : 'Resolve ticket',
-      _isMeterInstall
-          ? 'Installation notes (sent to customer for approval)'
-          : 'Resolution notes',
+      'Mark work complete',
+      'Completion notes (customer must approve next)',
     );
     if (notes == null) return;
-    _transition(
-      _isMeterInstall ? 'awaiting_customer' : 'resolved',
-      notes: notes,
-    );
+    // All tickets go to awaiting_customer until the customer approves.
+    _transition('awaiting_customer', notes: notes);
   }
 
   Future<void> _transition(String status,
@@ -898,9 +909,10 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
                   await widget.repo.updateMeterLocation(
                       widget.ticket.id, latVal, lngVal);
                   if (!ctx.mounted) return;
-                  _loadDevice();
                   Navigator.pop(ctx);
                   if (mounted) {
+                    await _loadDevice();
+                    setState(() {});
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Location saved: ${latVal.toStringAsFixed(6)}°, ${lngVal.toStringAsFixed(6)}°'),
@@ -1206,48 +1218,78 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
               label: const Text('Start work'),
             ),
             const SizedBox(height: 8),
+            if (_isMeterInstall && !_hasMeterLocation) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFDBA74)),
+                ),
+                child: const Text(
+                  'Set the meter location before you can mark this installation complete.',
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF9A3412)),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             OutlinedButton.icon(
-              onPressed: _loading ? null : _completeOrResolve,
+              onPressed: (_loading || !_canMarkComplete) ? null : _completeOrResolve,
               icon: const Icon(Icons.check),
-              label: Text(_isMeterInstall
-                  ? 'Complete installation'
-                  : 'Resolve ticket'),
+              label: const Text('Mark complete (await customer)'),
             ),
           ],
           if (status == 'in_progress') ...[
-            FilledButton.icon(
-              onPressed: _loading
-                  ? null
-                  : () async {
-                      setState(() => _loading = true);
-                      try {
-                        await widget.repo.activateMeter(widget.ticket.id);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Water meter activated for usage')),
-                          );
-                          await _loadDevice();
+            if (_isMeterInstall) ...[
+              FilledButton.icon(
+                onPressed: _loading
+                    ? null
+                    : () async {
+                        setState(() => _loading = true);
+                        try {
+                          await widget.repo.activateMeter(widget.ticket.id);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Water meter activated for usage')),
+                            );
+                            await _loadDevice();
+                          }
+                        } catch (error) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('$error')));
+                          }
+                        } finally {
+                          if (mounted) setState(() => _loading = false);
                         }
-                      } catch (error) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('$error')));
-                        }
-                      } finally {
-                        if (mounted) setState(() => _loading = false);
-                      }
-                    },
-              icon: const Icon(Icons.power_settings_new),
-              label: const Text('Activate water meter'),
-            ),
-            const SizedBox(height: 8),
+                      },
+                icon: const Icon(Icons.power_settings_new),
+                label: const Text('Activate water meter'),
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (_isMeterInstall && !_hasMeterLocation) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFDBA74)),
+                ),
+                child: const Text(
+                  'Set the meter location before you can mark this installation complete.',
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF9A3412)),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             FilledButton.icon(
-              onPressed: _loading ? null : _completeOrResolve,
+              onPressed: (_loading || !_canMarkComplete) ? null : _completeOrResolve,
               icon: const Icon(Icons.check),
-              label: Text(_isMeterInstall
-                  ? 'Complete installation'
-                  : 'Resolve ticket'),
+              label: const Text('Mark complete (await customer)'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -1273,7 +1315,7 @@ class _TechnicianTicketDetailState extends State<TechnicianTicketDetail> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
-                'Installation submitted. Waiting for the customer to approve the installed meter.',
+                'Status: Awaiting Customer. Waiting for the customer to approve your completed work.',
                 style: TextStyle(fontSize: 13, color: Color(0xFF92400E)),
               ),
             ),
@@ -1291,9 +1333,20 @@ class _TechnicianTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const steps = ['assigned', 'accepted', 'in progress', 'resolved'];
+    const steps = [
+      'assigned',
+      'accepted',
+      'in progress',
+      'awaiting customer',
+      'resolved',
+    ];
     final normalized = status.replaceAll('_', ' ');
-    final current = steps.indexOf(normalized == 'open' ? 'assigned' : normalized);
+    final mapped = normalized == 'open'
+        ? 'assigned'
+        : normalized == 'in_progress'
+            ? 'in progress'
+            : normalized;
+    final current = steps.indexOf(mapped);
     return Row(
       children: [
         for (var i = 0; i < steps.length; i++) ...[
