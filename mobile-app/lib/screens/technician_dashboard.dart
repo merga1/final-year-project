@@ -375,10 +375,20 @@ class _TechnicianHomeState extends State<TechnicianHome> {
                       color: const Color(0xFF7C3AED)),
                   const SizedBox(width: 12),
                   _MetricCard(
+                      label: 'Awaiting customer',
+                      value: summary.awaitingCustomer,
+                      icon: Icons.hourglass_top_outlined,
+                      color: const Color(0xFFCA8A04)),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: [
+                  _MetricCard(
                       label: 'Resolved',
                       value: summary.resolved,
                       icon: Icons.check_circle_outline,
                       color: const Color(0xFF15803D)),
+                  const SizedBox(width: 12),
+                  const Expanded(child: SizedBox()),
                 ]),
                 const SizedBox(height: 20),
                 Card(
@@ -487,6 +497,7 @@ class _TechnicianTicketsState extends State<TechnicianTickets> {
                 'Assigned',
                 'Accepted',
                 'In Progress',
+                'Awaiting Customer',
                 'Resolved',
               ]
                   .map((filter) => Padding(

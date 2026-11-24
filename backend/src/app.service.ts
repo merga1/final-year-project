@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CustomersService } from './customers/customers.service';
 import { DevicesService } from './devices/devices.service';
 import { BillingService } from './billing/billing.service';
@@ -212,10 +212,12 @@ export class AppService {
     const countWhere = (statuses: string[]) =>
       tickets.filter((t) => statuses.includes(t.status.toLowerCase())).length;
 
+    // Status buckets are mutually exclusive so one ticket cannot appear twice.
     return {
       assigned: countWhere(['assigned', 'open', 'pending']),
-      accepted: countWhere(['accepted', 'in_progress']),
+      accepted: countWhere(['accepted']),
       inProgress: countWhere(['in_progress']),
+      awaitingCustomer: countWhere(['awaiting_customer']),
       resolved: countWhere(['resolved', 'closed']),
       total: tickets.length,
       technicianName: technician?.name ?? 'Technician',
@@ -230,13 +232,23 @@ export class AppService {
     };
   }
 
+  private async resolveTicketDevice(ticket: { deviceId?: string | null; customerId?: string | null }) {
+    if (ticket.deviceId) {
+      try {
+        return await this.devices.resolve(ticket.deviceId);
+      } catch {
+        // Fall through to customer-linked device.
+      }
+    }
+    if (ticket.customerId) {
+      return this.devices.findByCustomerId(ticket.customerId);
+    }
+    return null;
+  }
+
   async getTechnicianDevice(ticketId: string, technicianId: string) {
     const ticket = await this.tickets.findOneForTechnician(ticketId, technicianId);
-    const device = ticket.deviceId
-      ? await this.devices.findOne(ticket.deviceId)
-      : ticket.customerId
-        ? await this.devices.findByCustomerId(ticket.customerId)
-        : null;
+    const device = await this.resolveTicketDevice(ticket);
     const meterId = device?.meterId;
     const [reading, alerts] = meterId
       ? await Promise.all([this.readings.findLatestByMeterId(meterId), this.alerts.findByMeterId(meterId)])
@@ -263,27 +275,29 @@ export class AppService {
   }
 
   async setMeterLocation(ticketId: string, technicianId: string, latitude: number, longitude: number) {
-    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-      throw new Error('latitude and longitude must be numbers');
+    const lat = typeof latitude === 'number' ? latitude : Number(latitude);
+    const lng = typeof longitude === 'number' ? longitude : Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException('latitude and longitude must be numbers');
     }
-    if (latitude < -90 || latitude > 90) throw new Error('latitude must be between -90 and 90');
-    if (longitude < -180 || longitude > 180) throw new Error('longitude must be between -180 and 180');
+    if (lat < -90 || lat > 90) throw new BadRequestException('latitude must be between -90 and 90');
+    if (lng < -180 || lng > 180) throw new BadRequestException('longitude must be between -180 and 180');
 
     const ticket = await this.tickets.findOneForTechnician(ticketId, technicianId);
-    const device = ticket.deviceId
-      ? await this.devices.findOne(ticket.deviceId)
-      : ticket.customerId
-        ? await this.devices.findByCustomerId(ticket.customerId)
-        : null;
+    const device = await this.resolveTicketDevice(ticket);
 
-    if (!device) throw new Error('No device linked to this ticket');
+    if (!device) {
+      throw new BadRequestException(
+        'No device linked to this ticket. Ask an admin to assign a water meter first.',
+      );
+    }
 
-    await this.devices.updateByMeterId(device.meterId, { latitude, longitude });
+    await this.devices.updateByMeterId(device.meterId, { latitude: lat, longitude: lng });
     return {
       success: true,
       meterId: device.meterId,
-      latitude,
-      longitude,
+      latitude: lat,
+      longitude: lng,
       message: 'Meter location updated successfully',
     };
   }
@@ -291,20 +305,29 @@ export class AppService {
   /** Technician activates the ticket's meter for usage after installation. */
   async activateTicketMeter(ticketId: string, technicianId: string) {
     const ticket = await this.tickets.findOneForTechnician(ticketId, technicianId);
-    const device = ticket.deviceId
-      ? await this.devices.findOne(ticket.deviceId)
-      : ticket.customerId
-        ? await this.devices.findByCustomerId(ticket.customerId)
-        : null;
+    const device = await this.resolveTicketDevice(ticket);
 
-    if (!device) throw new Error('No device linked to this ticket. Ask an admin to assign a meter first.');
+    if (!device) {
+      throw new BadRequestException(
+        'No device linked to this ticket. Ask an admin to assign a meter first.',
+      );
+    }
 
-    await this.devices.updateByMeterId(device.meterId, { connectivity: 'ONLINE' });
+    await this.devices.updateByMeterId(device.meterId, {
+      connectivity: 'ONLINE',
+      customerId: ticket.customerId || device.customerId,
+    });
+
     if (ticket.customerId) {
-      await this.customers.update(ticket.customerId, {
-        meterId: device.meterId,
-        accountStatus: 'active',
-      });
+      try {
+        await this.customers.update(ticket.customerId, {
+          meterId: device.meterId,
+          accountStatus: 'active',
+        });
+      } catch (err) {
+        // Device is already ONLINE; customer link failure should not hide activation success.
+        console.warn('activateTicketMeter: customer link failed', err);
+      }
     }
 
     return {

@@ -4,6 +4,7 @@ class TechnicianSummary {
     required this.accepted,
     required this.resolved,
     this.inProgress = 0,
+    this.awaitingCustomer = 0,
     this.total = 0,
     this.technicianName = 'Technician',
     this.email = '',
@@ -19,6 +20,7 @@ class TechnicianSummary {
   final int accepted;
   final int resolved;
   final int inProgress;
+  final int awaitingCustomer;
   final int total;
   final String technicianName;
   final String email;
@@ -35,6 +37,7 @@ class TechnicianSummary {
         accepted: (json['accepted'] as num?)?.toInt() ?? 0,
         resolved: (json['resolved'] as num?)?.toInt() ?? 0,
         inProgress: (json['inProgress'] as num?)?.toInt() ?? 0,
+        awaitingCustomer: (json['awaitingCustomer'] as num?)?.toInt() ?? 0,
         total: (json['total'] as num?)?.toInt() ?? 0,
         technicianName:
             json['technicianName']?.toString() ?? 'Technician',

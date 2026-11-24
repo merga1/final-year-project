@@ -48,14 +48,18 @@ export class SupportTicketsService {
   }
 
   /**
-   * The mobile dashboard groups several raw statuses under one chip:
-   * "Assigned" = assigned/open/pending, "Accepted" = accepted/in_progress.
-   * This matches the counts returned by `getTechnicianHome`.
+   * Map technician list filters to DB statuses.
+   * Buckets are exclusive so a ticket is never listed under two filters.
    */
   private statusGroup(status?: string): string[] | undefined {
     if (!status) return undefined;
     if (status === 'assigned') return ['assigned', 'open', 'pending'];
-    if (status === 'accepted') return ['accepted', 'in_progress'];
+    if (status === 'accepted') return ['accepted'];
+    if (status === 'in_progress' || status === 'in progress') return ['in_progress'];
+    if (status === 'awaiting_customer' || status === 'awaiting customer') {
+      return ['awaiting_customer'];
+    }
+    if (status === 'resolved') return ['resolved', 'closed'];
     return [status];
   }
 
@@ -479,16 +483,18 @@ export class SupportTicketsService {
     } else if (requested === 'closed') {
       if (current !== 'resolved') throw new BadRequestException('Only resolved tickets can be closed');
       ticket.status = 'closed';
-    } else if (requested === 'accepted' || requested === 'in_progress') {
-      if (current === 'awaiting_customer') {
-        // Customer rejected installation — technician continues work.
-        ticket.status = 'in_progress';
-        if (data.progressNotes?.trim()) ticket.progressNotes = data.progressNotes.trim();
-      } else {
-        ticket.status = 'in_progress';
-        ticket.acceptedAt = ticket.acceptedAt ?? now;
-        if (data.progressNotes?.trim()) ticket.progressNotes = data.progressNotes.trim();
+    } else if (requested === 'accepted') {
+      ticket.status = 'accepted';
+      ticket.acceptedAt = ticket.acceptedAt ?? now;
+      if (data.progressNotes?.trim()) ticket.progressNotes = data.progressNotes.trim();
+    } else if (requested === 'in_progress') {
+      // Start work / continue after customer rejection.
+      if (!['accepted', 'in_progress', 'awaiting_customer'].includes(current)) {
+        throw new BadRequestException('Accept the ticket before starting work');
       }
+      ticket.status = 'in_progress';
+      ticket.acceptedAt = ticket.acceptedAt ?? now;
+      if (data.progressNotes?.trim()) ticket.progressNotes = data.progressNotes.trim();
     } else {
       throw new BadRequestException('Unsupported ticket status transition');
     }
